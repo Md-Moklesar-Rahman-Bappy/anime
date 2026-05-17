@@ -51,6 +51,8 @@ Route::get('/random', RandomController::class)->name('random');
 Route::middleware('auth')->group(function () {
     Route::post('/comments', [App\Http\Controllers\CommentsController::class, 'store'])->name('comments.store');
     Route::post('/favorites/toggle', [App\Http\Controllers\FavoritesController::class, 'toggle'])->name('favorites.toggle');
+    Route::post('/favorites/list', [App\Http\Controllers\FavoritesController::class, 'updateList'])->name('favorites.list');
+    Route::post('/reports/submit', [App\Http\Controllers\Admin\ReportController::class, 'store'])->name('reports.submit');
 });
 
 // Static pages

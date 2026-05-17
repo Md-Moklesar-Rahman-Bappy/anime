@@ -3,68 +3,161 @@
 @section('title', $episode->anime->title . ' - Episode ' . $episode->number)
 
 @section('content')
+@php
+    $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
+    $videoServers = $episode->servers->where('type', '!=', 'youtube');
+    $hasServers = $videoServers->count() > 0;
+    $hasVideoPath = !empty($episode->video_path);
+    $ytInVideoPath = false;
+    $ytVideoId = null;
+    if ($hasVideoPath && !$youtubeServer) {
+        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $episode->video_path, $m)) {
+            $ytInVideoPath = true;
+            $ytVideoId = $m[1];
+        }
+    }
+    $allServers = [];
+    if ($youtubeServer) {
+        $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => $youtubeServer->url, 'type' => 'youtube'];
+    } elseif ($ytInVideoPath) {
+        $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => 'https://www.youtube.com/watch?v=' . $ytVideoId, 'type' => 'youtube'];
+    }
+    $idx = 0;
+    foreach ($videoServers as $s) {
+        $idx++;
+        $allServers[] = ['id' => $s->id, 'label' => $s->label ?? 'Server ' . $idx, 'url' => $s->url, 'type' => $s->type];
+    }
+    if (!$hasServers && $hasVideoPath && !$ytInVideoPath) {
+        $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path);
+        $allServers[] = ['id' => 'local', 'label' => 'Default', 'url' => $videoSrc, 'type' => 'mp4'];
+    }
+    $skipTimes = $episode->skipTimes->first();
+    $initialServer = $allServers[0] ?? null;
+    $isYoutubeInit = $initialServer && $initialServer['type'] === 'youtube';
+@endphp
+
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-4">
-            <div class="bg-black rounded-lg overflow-hidden aspect-video relative" x-data="player()">
-                @php
-                    $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
-                    $videoServers = $episode->servers->where('type', '!=', 'youtube');
-                    $hasServers = $videoServers->count() > 0;
-                    $hasVideoPath = !empty($episode->video_path);
-                    // Detect YouTube URLs stored directly in video_path (legacy data)
-                    $ytInVideoPath = false;
-                    $ytVideoId = null;
-                    if ($hasVideoPath && !$youtubeServer) {
-                        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $episode->video_path, $m)) {
-                            $ytInVideoPath = true;
-                            $ytVideoId = $m[1];
-                        }
-                    }
-                @endphp
-
-                @if($youtubeServer || $ytInVideoPath)
-                    @php $embedUrl = $youtubeServer ? $youtubeServer->url : 'https://www.youtube.com/embed/' . $ytVideoId; @endphp
-                    @php $watchUrl = $episode->source_url ?: 'https://www.youtube.com/watch?v=' . ($youtubeServer ? basename($youtubeServer->url) : $ytVideoId); @endphp
-                    <div class="relative w-full h-full">
-                        <iframe src="{{ $embedUrl }}?rel=0" class="w-full h-full" allow="encrypted-media" allowfullscreen></iframe>
-                        <a href="{{ $watchUrl }}" target="_blank" rel="noopener" class="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 shadow-lg z-10">
-                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z"/></svg>
-                            <span>Watch on YouTube</span>
-                        </a>
-                        <div class="absolute bottom-4 left-4 flex space-x-2 z-10">
-                            <span class="bg-red-600/80 text-white text-xs px-2 py-1 rounded">YouTube</span>
+            <div class="bg-black rounded-lg overflow-hidden" x-data="player()" x-init="init()">
+                <div class="plyr-wrapper">
+                    @if($initialServer)
+                        <video id="videoPlayer" class="w-full aspect-video" playsinline
+                            {{ $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>
+                            @if(!$isYoutubeInit)
+                            <source src="{{ $initialServer['url'] }}" type="{{ $initialServer['type'] === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
+                            @endif
+                        </video>
+                    @else
+                        <div class="w-full aspect-video flex items-center justify-center bg-gray-900 text-gray-500">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                <p class="text-sm">No video source available for this episode.</p>
+                            </div>
                         </div>
-                    </div>
-                @elseif($hasServers || $hasVideoPath)
-                    <video id="videoPlayer" class="w-full h-full" controls {{ $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>
-                        @foreach($videoServers as $server)
-                            <source src="{{ $server->url }}" type="{{ $server->type === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
-                        @endforeach
-                        @if(!$hasServers && $hasVideoPath)
-                            @php $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path); @endphp
-                            <source src="{{ $videoSrc }}" type="video/mp4">
-                        @endif
-                    </video>
-                @else
-                    <div class="w-full h-full flex items-center justify-center bg-gray-900 text-gray-500">
-                        <div class="text-center">
-                            <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            <p class="text-sm">No video source available for this episode.</p>
-                        </div>
-                    </div>
-                @endif
+                    @endif
 
-                @if($episode->skipTimes->count() && !$youtubeServer)
-                <div class="absolute bottom-20 left-4 flex space-x-2">
-                    @if($episode->skipTimes->first()->intro_start)
-                    <button onclick="skipIntro()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">Skip Intro</button>
-                    @endif
-                    @if($episode->skipTimes->first()->outro_start)
-                    <button onclick="skipOutro()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">Skip Outro</button>
-                    @endif
+                    <div class="skip-overlay" x-cloak x-show="showSkipIntro || showSkipOutro">
+                        <button x-cloak x-show="showSkipIntro" @click="skipIntro()">Skip Intro</button>
+                        <button x-cloak x-show="showSkipOutro" @click="skipOutro()">Skip Outro</button>
+                    </div>
                 </div>
-                @endif
+
+                <div class="player-control-bar">
+                    <div class="ctrl-group">
+                        <button class="ctrl-btn" @click="togglePlay()" title="Play/Pause (Space)">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button class="ctrl-btn" @click="skip(-config.skipSeconds)" title="Rewind 10s (J)">
+                            <i class="fa-solid fa-backward"></i> <span class="label">10s</span>
+                        </button>
+                        <button class="ctrl-btn" @click="skip(config.skipSeconds)" title="Forward 10s (L)">
+                            <i class="fa-solid fa-forward"></i> <span class="label">10s</span>
+                        </button>
+                        <button class="ctrl-btn" :class="{ active: config.isLight }" @click="toggleLight()" title="Light mode">
+                            <i class="fa-solid fa-lightbulb"></i>
+                        </button>
+                    </div>
+                    <div class="ctrl-group">
+                        <button class="ctrl-btn" :class="{ active: config.autoPlay }" @click="toggleAutoPlay()" title="Auto Play">
+                            <i class="fa-solid" :class="config.autoPlay ? 'fa-check-square' : 'fa-square'"></i>
+                            <span class="label">Auto Play</span>
+                        </button>
+                        <button class="ctrl-btn" :class="{ active: config.autoNext }" @click="toggleAutoNext()" title="Auto Next">
+                            <i class="fa-solid" :class="config.autoNext ? 'fa-check-square' : 'fa-square'"></i>
+                            <span class="label">Auto Next</span>
+                        </button>
+                        <button class="ctrl-btn" :class="{ active: config.autoSkip }" @click="toggleAutoSkip()" title="Auto Skip Intro/Outro">
+                            <i class="fa-solid" :class="config.autoSkip ? 'fa-check-square' : 'fa-square'"></i>
+                            <span class="label">Auto Skip</span>
+                        </button>
+                    </div>
+                    <div class="ctrl-group">
+                        @if($prevEpisode)
+                        <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) }}" class="ctrl-btn" title="Previous episode (B)">
+                            <i class="fa-solid fa-backward-step"></i> <span class="label">Prev</span>
+                        </a>
+                        @endif
+                        @if($nextEpisode)
+                        <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number]) }}" class="ctrl-btn" title="Next episode (N)">
+                            <span class="label">Next</span> <i class="fa-solid fa-forward-step"></i>
+                        </a>
+                        @endif
+                    </div>
+                    <div class="ctrl-group">
+                        @if(count($allServers) > 1)
+                        <select class="server-select" @change="switchServer($event.target.selectedIndex)">
+                            @foreach($allServers as $i => $s)
+                            <option value="{{ $s['id'] }}" @if($i === 0) selected @endif>{{ $s['label'] }}</option>
+                            @endforeach
+                        </select>
+                        @endif
+                        <div class="relative">
+                            <button class="ctrl-btn" @click="toggleList()" title="Add to list">
+                                <i class="fa-solid fa-bookmark"></i> <span class="label">List</span>
+                            </button>
+                            <div class="player-dropdown" x-cloak x-show="listOpen" @click.outside="listOpen = false">
+                                <template x-for="cat in categories" :key="cat.value">
+                                    <button class="dropdown-item" :class="{ active: favoriteCategory === cat.value }" @click="updateList(favoriteCategory === cat.value ? null : cat.value)">
+                                        <span class="check">
+                                            <i class="fa-solid fa-check" x-show="favoriteCategory === cat.value"></i>
+                                        </span>
+                                        <span x-text="cat.label"></span>
+                                    </button>
+                                </template>
+                                <hr style="border-color:#374151; margin: 6px 0">
+                                <button class="dropdown-item" @click="updateList(null)" :class="{ active: !favoriteCategory }">
+                                    <span class="check">
+                                        <i class="fa-solid fa-check" x-show="!favoriteCategory"></i>
+                                    </span>
+                                    <span>Not in list</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <button class="ctrl-btn" @click="toggleReport()" title="Report issue">
+                                <i class="fa-solid fa-triangle-exclamation"></i> <span class="label">Report</span>
+                            </button>
+                            <div class="player-dropdown" x-cloak x-show="reportOpen" @click.outside="reportOpen = false">
+                                <div style="padding: 8px 12px">
+                                    <div style="margin-bottom: 10px">
+                                        <label style="font-size:12px; color:#9ca3af; display:block; margin-bottom:4px">Issue type</label>
+                                        <select x-model="reportType" class="server-select" style="width:100%">
+                                            <template x-for="it in issueTypes" :key="it.value">
+                                                <option :value="it.value" x-text="it.label"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div style="margin-bottom: 10px">
+                                        <label style="font-size:12px; color:#9ca3af; display:block; margin-bottom:4px">Description</label>
+                                        <textarea x-model="reportDesc" rows="3" style="width:100%; background:#111827; border:1px solid #374151; border-radius:4px; padding:6px 8px; color:#d1d5db; font-size:12px; resize:vertical" placeholder="Describe the issue..."></textarea>
+                                    </div>
+                                    <button @click="submitReport()" :disabled="submitting" style="width:100%; background:#7c3aed; color:#fff; border:none; border-radius:4px; padding:6px; font-size:12px; font-weight:600; cursor:pointer" x-text="submitting ? 'Submitting...' : 'Submit Report'"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center justify-between">
@@ -99,11 +192,6 @@
                         <p class="text-gray-400 text-sm mt-1">{{ $episode->title }}</p>
                         @endif
                     </div>
-                    @auth
-                    <button onclick="toggleFavorite({{ $anime->id }})" class="text-gray-400 hover:text-red-500 transition">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
-                    </button>
-                    @endauth
                 </div>
             </div>
 
@@ -180,23 +268,18 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
-function skipIntro() {
-    const video = document.getElementById('videoPlayer');
-    const skipTime = @json($episode->skipTimes->first());
-    if (skipTime && skipTime.intro_end) video.currentTime = skipTime.intro_end;
-}
-function skipOutro() {
-    const video = document.getElementById('videoPlayer');
-    const skipTime = @json($episode->skipTimes->first());
-    if (skipTime && skipTime.outro_end) video.currentTime = skipTime.outro_end;
-}
-function toggleFavorite(animeId) {
-    fetch('/favorites/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify({ anime_id: animeId })
-    }).then(r => r.json()).then(d => { if(d.status) location.reload(); });
-}
+window.PLAYER_SERVERS = @json($allServers);
+window.PLAYER_IS_YOUTUBE = {{ $isYoutubeInit ? 'true' : 'false' }};
+window.PLAYER_IS_FAVORITED = {{ $isFavorited ? 'true' : 'false' }};
+window.PLAYER_FAV_CATEGORY = {{ $favCategory ? '"'.$favCategory.'"' : 'null' }};
+window.PLAYER_NEXT_URL = {{ $nextEpisode ? '"'.route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number]).'"' : 'null' }};
+window.PLAYER_PREV_URL = {{ $prevEpisode ? '"'.route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]).'"' : 'null' }};
+window.PLAYER_ANIME_ID = {{ $anime->id }};
+window.PLAYER_EPISODE_ID = {{ $episode->id }};
+window.PLAYER_IS_AUTH = {{ auth()->check() ? 'true' : 'false' }};
+window.PLAYER_SKIP_TIMES = @json($skipTimes);
 </script>
+@endpush
 @endsection

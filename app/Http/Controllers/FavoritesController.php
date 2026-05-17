@@ -26,4 +26,27 @@ class FavoritesController extends Controller
 
         return response()->json(['status' => 'added']);
     }
+
+    public function updateList(Request $request)
+    {
+        $request->validate([
+            'anime_id' => 'required|exists:anime,id',
+            'category' => 'nullable|string|in:null,watching,completed,plan_to_watch,on_hold,dropped',
+        ]);
+
+        $category = $request->category;
+
+        if (!$category) {
+            Favorite::where('user_id', auth()->id())
+                ->where('anime_id', $request->anime_id)->delete();
+            return response()->json(['status' => 'ok', 'category' => null]);
+        }
+
+        $fav = Favorite::updateOrCreate(
+            ['user_id' => auth()->id(), 'anime_id' => $request->anime_id],
+            ['category' => $category]
+        );
+
+        return response()->json(['status' => 'ok', 'category' => $fav->category]);
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Anime;
 use App\Models\Comment;
+use App\Models\Favorite;
 use Illuminate\Http\Request;
 
 class WatchController extends Controller
@@ -36,9 +37,18 @@ class WatchController extends Controller
             $q->whereIn('genres.id', $anime->genres->pluck('id'));
         })->where('id', '!=', $anime->id)->inRandomOrder()->take(8)->get();
 
+        $isFavorited = false;
+        $favCategory = null;
+        if (auth()->check()) {
+            $fav = Favorite::where('user_id', auth()->id())
+                ->where('anime_id', $anime->id)->first();
+            $isFavorited = (bool) $fav;
+            $favCategory = $fav?->category;
+        }
+
         return view('watch', compact(
             'anime', 'episode', 'prevEpisode', 'nextEpisode',
-            'comments', 'related'
+            'comments', 'related', 'isFavorited', 'favCategory'
         ));
     }
 }

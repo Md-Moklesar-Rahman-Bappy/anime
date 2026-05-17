@@ -74,11 +74,14 @@
                             <p class="text-white font-medium" x-text="uploadFile.name"></p>
                             <p class="text-gray-400 text-sm" x-text="formatSize(uploadFile.size)"></p>
                             <button type="button" @click="uploadFile = null; $refs.fileInput.value = ''" class="text-red-500 text-sm mt-2">Remove</button>
-                            <div class="mt-3" x-show="uploadProgress > 0">
-                                <div class="bg-gray-700 rounded-full h-2">
-                                    <div class="bg-purple-600 rounded-full h-2 transition-all" :style="'width: ' + uploadProgress + '%'"></div>
+                            <div class="mt-3" x-show="uploading">
+                                <div class="flex items-center justify-between text-sm text-gray-400 mb-1">
+                                    <span>Uploading...</span>
+                                    <span x-text="uploadProgress + '%'"></span>
                                 </div>
-                                <p class="text-sm text-gray-400 mt-1" x-text="uploadProgress + '%'"></p>
+                                <div class="bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                    <div class="bg-gradient-to-r from-purple-600 to-purple-400 h-full rounded-full transition-all duration-200 ease-out" :style="'width: ' + uploadProgress + '%'"></div>
+                                </div>
                             </div>
                         </div>
                     </template>
