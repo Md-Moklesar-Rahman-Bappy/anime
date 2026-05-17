@@ -133,7 +133,9 @@ class UploadController extends Controller
 
         fclose($out);
 
-        $disk->put($finalPath, file_get_contents($outPath));
+        $stream = fopen($outPath, 'rb');
+        $disk->writeStream($finalPath, $stream);
+        fclose($stream);
         unlink($outPath);
 
         $upload->update([

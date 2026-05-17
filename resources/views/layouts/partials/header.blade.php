@@ -28,12 +28,13 @@
                     <a href="{{ route('ongoing') }}" class="text-gray-300 hover:text-white transition">Ongoing</a>
                     <a href="{{ route('trending') }}" class="text-gray-300 hover:text-white transition">Trending</a>
                     <a href="{{ route('random') }}" class="text-gray-300 hover:text-white transition">Random</a>
+                    <a href="{{ route('manga.index') }}" class="text-gray-300 hover:text-white transition">Manga</a>
                 </nav>
             </div>
 
             <div class="flex items-center space-x-4">
                 <form action="{{ route('filter') }}" method="GET" class="hidden md:block">
-                    <input type="text" name="q" placeholder="Search anime..." class="bg-gray-800 text-sm text-white rounded-lg px-4 py-2 w-48 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-700">
+                    <input type="text" name="q" placeholder="Search..." class="bg-gray-800 text-sm text-white rounded-lg px-4 py-2 w-48 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-700">
                 </form>
                 @auth
                     <div x-data="{ open: false }" class="relative">

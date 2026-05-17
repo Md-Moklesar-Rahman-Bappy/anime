@@ -251,48 +251,89 @@ function episodeForm() {
             }
         },
 
-        uploadVideo() {
+        async uploadVideo() {
             this.uploading = true;
             this.uploadProgress = 0;
 
-            const form = this.$el;
-            const formData = new FormData();
-            formData.append('file', this.uploadFile);
-            formData.append('anime_slug', '{{ $anime->slug }}');
+            const file = this.uploadFile;
+            const chunkSize = 5 * 1024 * 1024; // 5MB
+            const totalChunks = Math.ceil(file.size / chunkSize);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-            const xhr = new XMLHttpRequest();
+            try {
+                // 1. Initiate chunked upload
+                const initRes = await fetch('/admin/upload/initiate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    body: JSON.stringify({
+                        filename: file.name,
+                        file_size: file.size,
+                        mime_type: file.type || 'video/mp4',
+                        chunk_size: chunkSize,
+                    }),
+                });
 
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    this.uploadProgress = Math.round((e.loaded / e.total) * 100);
+                if (!initRes.ok) {
+                    throw new Error('Initiation failed');
                 }
-            });
 
-            xhr.addEventListener('load', () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    const data = JSON.parse(xhr.responseText);
-                    this.uploadedPath = data.path;
-                    this.uploadProgress = 100;
-                    this.uploading = false;
-                    this.uploadFile = null;
-                    this.$refs.fileInput.value = '';
-                    form.submit();
-                } else {
-                    this.uploading = false;
-                    this.uploadProgress = 0;
-                    alert('Upload failed. Please try again.');
+                const { upload_id } = await initRes.json();
+
+                // 2. Send chunks sequentially
+                let start = 0;
+                for (let i = 0; i < totalChunks; i++) {
+                    const end = Math.min(start + chunkSize, file.size);
+                    const chunk = file.slice(start, end);
+
+                    const formData = new FormData();
+                    formData.append('upload_id', upload_id);
+                    formData.append('chunk_index', i);
+                    formData.append('chunk', chunk);
+
+                    const chunkRes = await fetch('/admin/upload/chunk', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                        body: formData,
+                    });
+
+                    if (!chunkRes.ok) {
+                        throw new Error(`Chunk ${i} failed`);
+                    }
+
+                    this.uploadProgress = Math.round(((i + 1) / totalChunks) * 100);
+                    start = end;
                 }
-            });
 
-            xhr.addEventListener('error', () => {
+                // 3. Poll for completion to get final_path
+                await this.pollUploadStatus(upload_id);
+
+                this.uploading = false;
+                this.uploadFile = null;
+                this.$refs.fileInput.value = '';
+                this.$el.submit();
+            } catch (error) {
                 this.uploading = false;
                 this.uploadProgress = 0;
-                alert('Upload failed. Network error.');
-            });
+                alert('Upload failed. Please try again.');
+            }
+        },
 
-            xhr.open('POST', '/admin/upload/file');
-            xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').content);
-            xhr.send(formData);
+        async pollUploadStatus(upload_id) {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            while (true) {
+                const res = await fetch(`/admin/upload/status/${upload_id}`, {
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                });
+                const data = await res.json();
+                if (data.status === 'completed') {
+                    this.uploadedPath = data.final_path;
+                    return;
+                }
+                if (data.status === 'failed') {
+                    throw new Error('Server assembly failed');
+                }
+                await new Promise(r => setTimeout(r, 1000));
+            }
         },
 
         previewYouTube() {
