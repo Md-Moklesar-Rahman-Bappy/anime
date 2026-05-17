@@ -10,16 +10,49 @@
                 @php
                     $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
                     $videoServers = $episode->servers->where('type', '!=', 'youtube');
+                    $hasServers = $videoServers->count() > 0;
+                    $hasVideoPath = !empty($episode->video_path);
+                    // Detect YouTube URLs stored directly in video_path (legacy data)
+                    $ytInVideoPath = false;
+                    $ytVideoId = null;
+                    if ($hasVideoPath && !$youtubeServer) {
+                        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $episode->video_path, $m)) {
+                            $ytInVideoPath = true;
+                            $ytVideoId = $m[1];
+                        }
+                    }
                 @endphp
 
-                @if($youtubeServer)
-                    <iframe src="{{ $youtubeServer->url }}?autoplay=1&rel=0" class="w-full h-full" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-                @else
-                    <video id="videoPlayer" class="w-full h-full" controls {{ $videoServers->count() == 0 && $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>
+                @if($youtubeServer || $ytInVideoPath)
+                    @php $embedUrl = $youtubeServer ? $youtubeServer->url : 'https://www.youtube.com/embed/' . $ytVideoId; @endphp
+                    @php $watchUrl = $episode->source_url ?: 'https://www.youtube.com/watch?v=' . ($youtubeServer ? basename($youtubeServer->url) : $ytVideoId); @endphp
+                    <div class="relative w-full h-full">
+                        <iframe src="{{ $embedUrl }}?rel=0" class="w-full h-full" allow="encrypted-media" allowfullscreen></iframe>
+                        <a href="{{ $watchUrl }}" target="_blank" rel="noopener" class="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 shadow-lg z-10">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z"/></svg>
+                            <span>Watch on YouTube</span>
+                        </a>
+                        <div class="absolute bottom-4 left-4 flex space-x-2 z-10">
+                            <span class="bg-red-600/80 text-white text-xs px-2 py-1 rounded">YouTube</span>
+                        </div>
+                    </div>
+                @elseif($hasServers || $hasVideoPath)
+                    <video id="videoPlayer" class="w-full h-full" controls {{ $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>
                         @foreach($videoServers as $server)
                             <source src="{{ $server->url }}" type="{{ $server->type === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
                         @endforeach
+                        @if(!$hasServers && $hasVideoPath)
+                            @php $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path); @endphp
+                            <source src="{{ $videoSrc }}" type="video/mp4">
+                        @endif
                     </video>
+                @else
+                    <div class="w-full h-full flex items-center justify-center bg-gray-900 text-gray-500">
+                        <div class="text-center">
+                            <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <p class="text-sm">No video source available for this episode.</p>
+                        </div>
+                    </div>
                 @endif
 
                 @if($episode->skipTimes->count() && !$youtubeServer)

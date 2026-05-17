@@ -8,6 +8,7 @@ use App\Models\Episode;
 use App\Models\Server;
 use App\Services\YouTubeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class EpisodeController extends Controller
 {
@@ -75,19 +76,14 @@ class EpisodeController extends Controller
                 $data['storage_disk'] = 'streaming';
                 $data['duration'] = $data['duration'] ?? $info['duration'];
                 $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
+            } else {
+                return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
             }
         }
 
         $episode = Episode::create($data);
 
-        if ($data['source_type'] === 'youtube' && !empty($episode->video_path)) {
-            Server::create([
-                'episode_id' => $episode->id,
-                'label' => 'YouTube',
-                'url' => $episode->video_path,
-                'type' => 'youtube',
-            ]);
-        }
+        $this->createServerForSource($episode, $data);
 
         if ($request->server_label) {
             foreach ($request->server_label as $i => $label) {
@@ -104,6 +100,51 @@ class EpisodeController extends Controller
 
         return redirect()->route('admin.anime.episodes.index', $anime)
             ->with('success', 'Episode created.');
+    }
+
+    protected function createServerForSource(Episode $episode, array $data): void
+    {
+        if (empty($data['video_path']) && empty($data['source_url'])) return;
+
+        $sourceType = $data['source_type'] ?? 'upload';
+        $url = $data['video_path'] ?? $data['source_url'];
+
+        switch ($sourceType) {
+            case 'youtube':
+                Server::create([
+                    'episode_id' => $episode->id,
+                    'label' => 'YouTube',
+                    'url' => $url,
+                    'type' => 'youtube',
+                ]);
+                break;
+
+            case 'upload':
+                $ext = strtolower(pathinfo($data['video_path'], PATHINFO_EXTENSION));
+                $type = in_array($ext, ['mp4', 'webm', 'mkv']) ? $ext : 'mp4';
+                Server::create([
+                    'episode_id' => $episode->id,
+                    'label' => 'Upload',
+                    'url' => Storage::disk('public')->url($data['video_path']),
+                    'type' => $type,
+                ]);
+                break;
+
+            case 'direct_url':
+                $ext = strtolower(pathinfo($url, PATHINFO_EXTENSION));
+                $type = match ($ext) {
+                    'm3u8' => 'm3u8',
+                    'mp4', 'webm', 'mkv' => $ext,
+                    default => 'embed',
+                };
+                Server::create([
+                    'episode_id' => $episode->id,
+                    'label' => 'Direct URL',
+                    'url' => $url,
+                    'type' => $type,
+                ]);
+                break;
+        }
     }
 
     public function edit(Anime $anime, Episode $episode)
@@ -156,6 +197,8 @@ class EpisodeController extends Controller
                 $data['storage_disk'] = 'streaming';
                 $data['duration'] = $data['duration'] ?? $info['duration'];
                 $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
+            } else {
+                return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
             }
         }
 
@@ -163,14 +206,7 @@ class EpisodeController extends Controller
 
         $episode->servers()->delete();
 
-        if ($data['source_type'] === 'youtube' && !empty($episode->video_path)) {
-            Server::create([
-                'episode_id' => $episode->id,
-                'label' => 'YouTube',
-                'url' => $episode->video_path,
-                'type' => 'youtube',
-            ]);
-        }
+        $this->createServerForSource($episode, $data);
 
         if ($request->server_label) {
             foreach ($request->server_label as $i => $label) {

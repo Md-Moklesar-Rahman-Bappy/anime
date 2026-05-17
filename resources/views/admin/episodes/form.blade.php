@@ -105,9 +105,12 @@
             <div x-show="tab === 'youtube'" class="space-y-4">
                 <p class="text-sm text-gray-500">Enter a YouTube URL to auto-fetch video details. This creates an embedded YouTube player.</p>
                 <div class="flex space-x-2">
-                    <input type="url" name="youtube_url" x-model="youtubeUrl" placeholder="https://youtube.com/watch?v=..." class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
+                    <input type="url" name="youtube_url" x-model="youtubeUrl" placeholder="https://youtube.com/watch?v=..." class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700" @input="youtubePreview=null; previewError=null">
                     <button type="button" @click="previewYouTube" :disabled="!youtubeUrl" class="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm">Preview</button>
                 </div>
+                <template x-if="previewError">
+                    <div class="bg-red-600/20 border border-red-600 text-red-400 text-sm rounded-lg p-3" x-text="previewError"></div>
+                </template>
                 <template x-if="youtubePreview">
                     <div class="bg-gray-800 rounded-lg p-4 mt-2">
                         <div class="aspect-video bg-black rounded mb-3">
@@ -158,6 +161,7 @@ function episodeForm() {
         uploadProgress: 0,
         youtubeUrl: '',
         youtubePreview: null,
+        previewError: null,
         servers: {{ (isset($episode) && $episode->servers) ? $episode->servers->count() : 0 }},
 
         init() {
@@ -197,6 +201,8 @@ function episodeForm() {
         },
 
         previewYouTube() {
+            this.previewError = null;
+            this.youtubePreview = null;
             const form = this.$el.closest('form');
             const animeId = {{ $anime->id }};
             const epNum = form.querySelector('input[name="number"]').value;
@@ -205,6 +211,7 @@ function episodeForm() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
                 body: JSON.stringify({
@@ -213,14 +220,16 @@ function episodeForm() {
                     episode_number: epNum || null,
                 })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.id) {
+            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.id) {
                     this.youtubePreview = data;
+                } else {
+                    this.previewError = data.error || 'Could not fetch video info. Check the URL and try again.';
                 }
             })
             .catch(() => {
-                // Fallback: let form submit handle it
+                this.previewError = 'Network error. Make sure the server is running.';
             });
         }
     };
