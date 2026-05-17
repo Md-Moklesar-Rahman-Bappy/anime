@@ -13,13 +13,15 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\UploadController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AnimeController;
+use App\Http\Controllers\CommentsController;
+use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\GenreController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RandomController;
 use App\Http\Controllers\StaticController;
 use App\Http\Controllers\WatchController;
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -49,10 +51,10 @@ Route::get('/random', RandomController::class)->name('random');
 
 // Comments & Favorites (auth required)
 Route::middleware('auth')->group(function () {
-    Route::post('/comments', [App\Http\Controllers\CommentsController::class, 'store'])->name('comments.store');
-    Route::post('/favorites/toggle', [App\Http\Controllers\FavoritesController::class, 'toggle'])->name('favorites.toggle');
-    Route::post('/favorites/list', [App\Http\Controllers\FavoritesController::class, 'updateList'])->name('favorites.list');
-    Route::post('/reports/submit', [App\Http\Controllers\Admin\ReportController::class, 'store'])->name('reports.submit');
+    Route::post('/comments', [CommentsController::class, 'store'])->name('comments.store');
+    Route::post('/favorites/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle');
+    Route::post('/favorites/list', [FavoritesController::class, 'updateList'])->name('favorites.list');
+    Route::post('/reports/submit', [ReportController::class, 'store'])->name('reports.submit');
 });
 
 // Static pages
