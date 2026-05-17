@@ -12,8 +12,9 @@ class ListController extends Controller
     {
         $animeList = Anime::latest()->paginate(24);
         $title = 'Newest Anime';
+        $genres = Genre::all();
 
-        return view('anime-list', compact('animeList', 'title'));
+        return view('anime-list', compact('animeList', 'title', 'genres'));
     }
 
     public function updated()
@@ -22,24 +23,27 @@ class ListController extends Controller
             $q->where('created_at', '>=', now()->subWeek());
         })->latest()->paginate(24);
         $title = 'Recently Updated';
+        $genres = Genre::all();
 
-        return view('anime-list', compact('animeList', 'title'));
+        return view('anime-list', compact('animeList', 'title', 'genres'));
     }
 
     public function ongoing()
     {
         $animeList = Anime::where('status', 'Ongoing')->latest()->paginate(24);
         $title = 'Ongoing Anime';
+        $genres = Genre::all();
 
-        return view('anime-list', compact('animeList', 'title'));
+        return view('anime-list', compact('animeList', 'title', 'genres'));
     }
 
     public function trending()
     {
         $animeList = Anime::orderBy('views', 'desc')->paginate(24);
         $title = 'Trending Anime';
+        $genres = Genre::all();
 
-        return view('anime-list', compact('animeList', 'title'));
+        return view('anime-list', compact('animeList', 'title', 'genres'));
     }
 
     public function azList($letter = null)
@@ -50,8 +54,9 @@ class ListController extends Controller
         }
         $animeList = $query->orderBy('title')->paginate(24);
         $title = $letter ? "Anime starting with $letter" : 'All Anime';
+        $genres = Genre::all();
 
-        return view('anime-list', compact('animeList', 'title'));
+        return view('anime-list', compact('animeList', 'title', 'genres'));
     }
 
     public function filter(Request $request)

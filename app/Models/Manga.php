@@ -11,7 +11,7 @@ class Manga extends Model
     protected $fillable = [
         'title', 'slug', 'description', 'alternative_titles',
         'type', 'status', 'year', 'rating', 'score',
-        'chapters_count', 'source', 'author', 'artist', 'publisher',
+        'chapters_count', 'source', 'source_id', 'author', 'artist', 'publisher',
         'thumbnail', 'banner', 'views', 'featured', 'featured_order',
     ];
 
