@@ -1,66 +1,141 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AniWaves
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A full-featured anime streaming website built with Laravel 11. Browse, search, filter, and watch anime episodes with a custom video player, user lists, watch history, and a complete admin panel.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Anime Catalog** — Browse anime by genre, A-Z, newest, updated, ongoing, trending, or advanced filters
+- **Video Player** — Custom Plyr.io-based player with multiple server/language sources, YouTube support, skip intro/outro, keyboard shortcuts, auto-next, and light mode
+- **User System** — Registration, login, email verification, password reset, profile management (Laravel Breeze)
+- **Anime Lists** — Personal categorized lists (Watching, Completed, Plan to Watch, On Hold, Dropped)
+- **Watch History** — Tracks episode progress and completion per user
+- **Comments** — Per-episode comment system
+- **Episode Reporting** — Report broken videos, audio/sync issues, incorrect skip times, etc.
+- **Admin Panel** — Full CRUD for anime, episodes, genres; featured slider management; user/role management; report and request moderation; site settings
+- **MAL Import** — Import anime metadata from MyAnimeList via the Jikan API (single or batch with resume, filler/recap filtering)
+- **External Scrapers** — Import episode sources from Gogoanime, Zoro/AniWatch, AnimePahe
+- **YouTube Import** — Import YouTube videos as episodes via oEmbed (optional Data API for duration)
+- **Chunked Video Uploads** — Upload large video files in chunks with progress tracking
+- **Search & Filtering** — Full-text search with filters by type, status, year, season, country, rating, genres, and multiple sort options
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Laravel 11, PHP 8.2+ |
+| **Frontend** | Blade, Tailwind CSS 3, Alpine.js 3 |
+| **Video Player** | Plyr.io 3 |
+| **Icons** | Font Awesome 6 (CDN) |
+| **Build Tool** | Vite + laravel-vite-plugin |
+| **Database** | SQLite (default), MySQL/MariaDB supported |
+| **Cache/Session/Queue** | Database driver (default) |
+| **Auth** | Laravel Breeze |
 
-## Learning Laravel
+## Requirements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- PHP 8.2 or higher
+- Composer
+- Node.js & npm
+- SQLite or MySQL/MariaDB
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Installation
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd anime
+   ```
 
-## Laravel Sponsors
+2. **Install PHP dependencies**
+   ```bash
+   composer install
+   ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+3. **Install JavaScript dependencies**
+   ```bash
+   npm install
+   ```
 
-### Premium Partners
+4. **Environment setup**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+5. **Configure database** in `.env` — SQLite is used by default; no additional config needed. For MySQL, uncomment and fill in the `DB_*` settings.
 
-## Contributing
+6. **Run migrations**
+   ```bash
+   php artisan migrate
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+7. **Build frontend assets**
+   ```bash
+   npm run build
+   ```
 
-## Code of Conduct
+8. **Start the development server**
+   ```bash
+   php artisan serve
+   ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Configuration
 
-## Security Vulnerabilities
+Key environment variables in `.env`:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| Variable | Description |
+|----------|-------------|
+| `YOUTUBE_API_KEY` | Optional — YouTube Data API v3 key for video duration |
+| `FILESYSTEM_DISK` | Storage disk for uploads (`local` or `s3`) |
+
+### Optional: Link Storage
+```bash
+php artisan storage:link
+```
+
+## Usage
+
+### Default Routes
+
+| Route | Description |
+|-------|-------------|
+| `/` | Homepage with featured slider, latest episodes, trending, ongoing |
+| `/anime/{slug}` | Anime detail page |
+| `/watch/{slug}` | Video player page |
+| `/genre/{slug}` | Anime by genre |
+| `/list/newest` | Newest anime |
+| `/list/updated` | Recently updated |
+| `/list/ongoing` | Ongoing anime |
+| `/list/trending` | Trending anime |
+| `/list/a-z/{letter}` | A-Z listing |
+| `/list/filter` | Advanced search & filter |
+| `/random` | Random anime redirect |
+| `/faq`, `/about`, `/contact`, `/dmca`, `/terms` | Static pages |
+
+### Admin Panel
+
+Access at `/admin`. The first user can be assigned admin/super_admin role via `php artisan tinker`:
+
+```php
+$user = App\Models\User::find(1);
+$user->role = 'super_admin';
+$user->save();
+```
+
+Admin features:
+- **Dashboard** — Site stats overview
+- **Anime** — Create/edit/delete anime with genres, images, featured ordering
+- **Episodes** — Manage episodes per anime with servers, uploads, YouTube/scraper imports
+- **Genres** — Manage genre taxonomy
+- **Featured Slider** — Manual reorder or auto-fill modes
+- **Users** — List, change roles, delete
+- **Reports** — Moderate episode issue reports
+- **Requests** — Manage user-submitted anime requests
+- **Settings** — Site-wide key-value settings
+- **MAL Import** — Search, preview, and import from MyAnimeList
+- **External Sources** — Search Gogoanime, Zoro, AnimePahe and import episodes
+- **YouTube Import** — Import YouTube videos as episodes
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+[MIT](https://opensource.org/licenses/MIT)
