@@ -36,6 +36,10 @@ class JikanController extends Controller
         $results = $this->jikan->searchAnime($request->q, $page);
         $pagination = $this->jikan->searchPagination($request->q, $page);
 
+        if ($this->jikan->lastError) {
+            return back()->withInput()->with('error', 'Jikan API error: '.$this->jikan->lastError);
+        }
+
         $existingMalIds = Anime::whereIn('mal_id', $results->pluck('mal_id')->filter())
             ->pluck('mal_id')
             ->toArray();
@@ -54,6 +58,11 @@ class JikanController extends Controller
     public function preview(int $malId)
     {
         $anime = $this->jikan->getAnime($malId);
+
+        if ($this->jikan->lastError) {
+            return redirect()->route('admin.jikan.search')
+                ->with('error', 'Jikan API error: '.$this->jikan->lastError);
+        }
 
         if (! $anime) {
             return redirect()->route('admin.jikan.search')
@@ -74,6 +83,11 @@ class JikanController extends Controller
         }
 
         $data = $this->jikan->getAnime($malId);
+
+        if ($this->jikan->lastError) {
+            return redirect()->route('admin.jikan.search')
+                ->with('error', 'Jikan API error: '.$this->jikan->lastError);
+        }
 
         if (! $data) {
             return redirect()->route('admin.jikan.search')

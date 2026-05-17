@@ -29,8 +29,9 @@ class EpisodeController extends Controller
     public function create(Anime $anime)
     {
         $languages = ['english', 'japanese', 'hindi'];
+        $episode = null;
 
-        return view('admin.episodes.form', compact('anime', 'languages'));
+        return view('admin.episodes.form', compact('anime', 'episode', 'languages'));
     }
 
     public function store(Request $request, Anime $anime)

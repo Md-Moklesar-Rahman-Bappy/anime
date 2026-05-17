@@ -60,7 +60,7 @@
                 <label class="block text-sm text-gray-400 mb-1">Language</label>
                 <select name="language" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
                     @foreach($languages as $lang)
-                    <option value="{{ $lang }}" {{ old('language', $episode->servers->first()->language ?? 'english') === $lang ? 'selected' : '' }}>{{ ucfirst($lang) }}</option>
+                    <option value="{{ $lang }}" {{ old('language', optional(optional($episode)->servers)->first()->language ?? 'english') === $lang ? 'selected' : '' }}>{{ ucfirst($lang) }}</option>
                     @endforeach
                 </select>
             </div>

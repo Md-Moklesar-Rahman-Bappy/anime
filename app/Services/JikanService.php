@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -15,6 +16,8 @@ class JikanService
 
     protected int $retryDelay;
 
+    public ?string $lastError = null;
+
     public function __construct()
     {
         $this->baseUrl = config('services.jikan.base_url', 'https://api.jikan.moe/v4');
@@ -25,14 +28,44 @@ class JikanService
 
     protected function request(string $endpoint, array $params = []): array
     {
-        $response = Http::baseUrl($this->baseUrl)
-            ->timeout($this->timeout)
-            ->retry($this->retry, $this->retryDelay)
-            ->get($endpoint, $params);
+        $this->lastError = null;
 
-        $this->rateLimit();
+        try {
+            $response = Http::baseUrl($this->baseUrl)
+                ->timeout($this->timeout)
+                ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
+                ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
+                ->acceptJson()
+                ->get($endpoint, $params);
 
-        return $response->successful() ? $response->json() : [];
+            $this->rateLimit();
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            if ($response->status() === 429) {
+                $retryAfter = (int) $response->header('Retry-After', 5);
+                sleep(min($retryAfter, 10));
+                $response = Http::baseUrl($this->baseUrl)
+                    ->timeout($this->timeout)
+                    ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
+                    ->acceptJson()
+                    ->get($endpoint, $params);
+                if ($response->successful()) {
+                    return $response->json();
+                }
+            }
+
+            $body = $response->json();
+            $this->lastError = $body['message'] ?? $body['error'] ?? "Jikan API returned HTTP {$response->status()}";
+
+            return [];
+        } catch (Exception $e) {
+            $this->lastError = 'Failed to connect to Jikan API: '.$e->getMessage();
+
+            return [];
+        }
     }
 
     protected function rateLimit(): void
