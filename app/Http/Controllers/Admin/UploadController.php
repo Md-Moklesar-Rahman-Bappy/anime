@@ -140,6 +140,21 @@ class UploadController extends Controller
         ]);
     }
 
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'file' => 'required|file|mimes:mp4,webm,mkv,avi,mov|max:2097152',
+            'anime_slug' => 'required|string',
+        ]);
+
+        $path = $request->file('file')->store("anime/{$data['anime_slug']}/videos", 'public');
+
+        return response()->json([
+            'path' => $path,
+            'url' => url('storage/' . $path),
+        ]);
+    }
+
     public function cancel(ChunkedUpload $upload)
     {
         if ($upload->user_id !== auth()->id()) {

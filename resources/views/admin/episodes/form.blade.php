@@ -4,7 +4,7 @@
 <div class="max-w-3xl mx-auto">
     <h1 class="text-2xl font-bold mb-6">{{ isset($episode) ? 'Edit' : 'Create' }} Episode for {{ $anime->title }}</h1>
 
-    <form action="{{ isset($episode) ? route('admin.anime.episodes.update', [$anime, $episode]) : route('admin.anime.episodes.store', $anime) }}" method="POST" enctype="multipart/form-data" class="space-y-4" x-data="episodeForm()">
+    <form action="{{ isset($episode) ? route('admin.anime.episodes.update', [$anime, $episode]) : route('admin.anime.episodes.store', $anime) }}" method="POST" enctype="multipart/form-data" class="space-y-4" x-data="episodeForm()" @submit.prevent="submitForm">
         @csrf
         @if(isset($episode)) @method('PUT') @endif
 
@@ -148,9 +148,12 @@
             </div>
         </div>
 
+        <input type="hidden" name="uploaded_video_path" x-model="uploadedPath">
+
         <div class="flex space-x-3">
             <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg">
-                {{ isset($episode) ? 'Update' : 'Create' }} Episode
+                <span x-show="!uploading">{{ isset($episode) ? 'Update' : 'Create' }} Episode</span>
+                <span x-show="uploading">Uploading...</span>
             </button>
             @if(isset($episode) && $episode->video_path && $episode->storage_disk === 'local')
                 <button type="button" onclick="if(confirm('Delete the uploaded video file?')) { document.getElementById('delete-video-form').submit(); }" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">
@@ -175,6 +178,8 @@ function episodeForm() {
         storageDisk: '{{ old('storage_disk', $episode->storage_disk ?? 'local') }}',
         uploadFile: null,
         uploadProgress: 0,
+        uploading: false,
+        uploadedPath: '',
         youtubeUrl: '',
         youtubePreview: null,
         previewError: null,
@@ -209,6 +214,7 @@ function episodeForm() {
         handleFileSelect(event) {
             if (event.target.files.length > 0) {
                 this.uploadFile = event.target.files[0];
+                this.uploadedPath = '';
             }
         },
 
@@ -218,6 +224,58 @@ function episodeForm() {
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        },
+
+        submitForm() {
+            if (this.uploadFile && !this.uploadedPath) {
+                this.uploadVideo();
+            } else {
+                this.$el.submit();
+            }
+        },
+
+        uploadVideo() {
+            this.uploading = true;
+            this.uploadProgress = 0;
+
+            const form = this.$el;
+            const formData = new FormData();
+            formData.append('file', this.uploadFile);
+            formData.append('anime_slug', '{{ $anime->slug }}');
+
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    this.uploadProgress = Math.round((e.loaded / e.total) * 100);
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    const data = JSON.parse(xhr.responseText);
+                    this.uploadedPath = data.path;
+                    this.uploadProgress = 100;
+                    this.uploading = false;
+                    this.uploadFile = null;
+                    this.$refs.fileInput.value = '';
+                    form.submit();
+                } else {
+                    this.uploading = false;
+                    this.uploadProgress = 0;
+                    alert('Upload failed. Please try again.');
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                this.uploading = false;
+                this.uploadProgress = 0;
+                alert('Upload failed. Network error.');
+            });
+
+            xhr.open('POST', '/admin/upload/file');
+            xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').content);
+            xhr.send(formData);
         },
 
         previewYouTube() {

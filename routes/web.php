@@ -116,8 +116,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
         Route::post('/import', [ScraperController::class, 'youtubeImport'])->name('import');
     });
 
-    // Chunked Upload
+    // Upload
     Route::prefix('upload')->name('upload.')->group(function () {
+        Route::post('/file', [UploadController::class, 'store'])->name('file');
         Route::post('/initiate', [UploadController::class, 'initiate'])->name('initiate');
         Route::post('/chunk', [UploadController::class, 'chunk'])->name('chunk');
         Route::get('/status/{upload}', [UploadController::class, 'status'])->name('status');

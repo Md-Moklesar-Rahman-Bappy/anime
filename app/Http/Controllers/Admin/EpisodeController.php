@@ -47,6 +47,7 @@ class EpisodeController extends Controller
             'has_dub' => 'nullable|boolean',
             'air_date' => 'nullable|date',
             'youtube_url' => 'nullable|url',
+            'uploaded_video_path' => 'nullable|string',
         ]);
 
         $data['anime_id'] = $anime->id;
@@ -63,6 +64,9 @@ class EpisodeController extends Controller
         if ($request->hasFile('video')) {
             $data['video_path'] = $request->file('video')
                 ->store("anime/{$anime->slug}/videos", 'public');
+            $data['storage_disk'] = 'local';
+        } elseif ($request->uploaded_video_path) {
+            $data['video_path'] = $request->uploaded_video_path;
             $data['storage_disk'] = 'local';
         }
 
@@ -170,6 +174,7 @@ class EpisodeController extends Controller
             'has_dub' => 'nullable|boolean',
             'air_date' => 'nullable|date',
             'youtube_url' => 'nullable|url',
+            'uploaded_video_path' => 'nullable|string',
         ]);
 
         $data['has_sub'] = $request->has('has_sub');
@@ -184,6 +189,9 @@ class EpisodeController extends Controller
         if ($request->hasFile('video')) {
             $data['video_path'] = $request->file('video')
                 ->store("anime/{$anime->slug}/videos", 'public');
+            $data['storage_disk'] = 'local';
+        } elseif ($request->uploaded_video_path) {
+            $data['video_path'] = $request->uploaded_video_path;
             $data['storage_disk'] = 'local';
         }
 
