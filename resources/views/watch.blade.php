@@ -73,20 +73,11 @@
                     </div>
                     <div class="ctrl-group">
                         @if(count($allServers) > 1)
-                        <div class="flex items-center space-x-1">
-                            @if(count($languages) > 1)
-                            <select class="server-select" @change="switchLanguage($event.target.value)">
-                                @foreach($languages as $lang)
-                                <option value="{{ $lang }}" @if($loop->first) selected @endif>{{ ucfirst($lang) }}</option>
-                                @endforeach
-                            </select>
-                            @endif
-                            <select class="server-select" @change="switchServer($event.target.selectedIndex)">
-                                <template x-for="(s, i) in currentServers" :key="s.id">
-                                    <option :value="s.id" x-text="s.label" :selected="i === currentIndex"></option>
-                                </template>
-                            </select>
-                        </div>
+                        <select class="server-select" @change="switchServer($event.target.selectedIndex)">
+                            @foreach($allServers as $i => $s)
+                            <option value="{{ $s['id'] }}" @if($i === 0) selected @endif>{{ $s['label'] }}</option>
+                            @endforeach
+                        </select>
                         @endif
                         <div class="relative" @click.outside="listOpen = false">
                             <button class="ctrl-btn" @click="toggleList()" title="Add to list">
@@ -247,7 +238,6 @@
 @push('scripts')
 <script>
 window.PLAYER_SERVERS = @json($allServers);
-window.PLAYER_LANGUAGES = @json($languages);
 window.PLAYER_IS_YOUTUBE = {{ $isYoutubeInit ? 'true' : 'false' }};
 window.PLAYER_IS_FAVORITED = {{ $isFavorited ? 'true' : 'false' }};
 window.PLAYER_FAV_CATEGORY = {{ $favCategory ? '"'.$favCategory.'"' : 'null' }};
