@@ -66,6 +66,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
     Route::resource('anime', AdminAnimeController::class);
     Route::prefix('anime/{anime}')->name('anime.')->group(function () {
         Route::resource('episodes', EpisodeController::class);
+        Route::delete('episodes/{episode}/delete-video', [EpisodeController::class, 'deleteVideo'])->name('episodes.delete-video');
     });
 
     Route::get('/genres', [AdminGenreController::class, 'index'])->name('genres.index');

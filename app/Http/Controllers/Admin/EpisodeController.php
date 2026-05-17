@@ -74,7 +74,7 @@ class EpisodeController extends Controller
                 $data['source_url'] = $info['watch_url'];
                 $data['video_path'] = $info['embed_url'];
                 $data['storage_disk'] = 'streaming';
-                $data['duration'] = $data['duration'] ?? $info['duration'];
+                $data['duration'] = $data['duration'] ?? (int) round($info['duration'] / 60);
                 $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
             } else {
                 return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
@@ -195,7 +195,7 @@ class EpisodeController extends Controller
                 $data['source_url'] = $info['watch_url'];
                 $data['video_path'] = $info['embed_url'];
                 $data['storage_disk'] = 'streaming';
-                $data['duration'] = $data['duration'] ?? $info['duration'];
+                $data['duration'] = $data['duration'] ?? (int) round($info['duration'] / 60);
                 $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
             } else {
                 return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
@@ -227,8 +227,22 @@ class EpisodeController extends Controller
 
     public function destroy(Anime $anime, Episode $episode)
     {
+        if ($episode->video_path && $episode->storage_disk === 'local') {
+            Storage::disk('public')->delete($episode->video_path);
+        }
         $episode->delete();
         return redirect()->route('admin.anime.episodes.index', $anime)
             ->with('success', 'Episode deleted.');
+    }
+
+    public function deleteVideo(Anime $anime, Episode $episode)
+    {
+        if ($episode->video_path && $episode->storage_disk === 'local') {
+            Storage::disk('public')->delete($episode->video_path);
+        }
+        $episode->update(['video_path' => null, 'storage_disk' => 'local']);
+        $episode->servers()->delete();
+
+        return back()->with('success', 'Video deleted.');
     }
 }

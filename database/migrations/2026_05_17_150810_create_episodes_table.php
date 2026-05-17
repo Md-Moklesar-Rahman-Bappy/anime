@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('video_path')->nullable();
             $table->string('storage_disk')->default('local');
-            $table->integer('duration')->nullable(); // in seconds
+            $table->integer('duration')->nullable(); // in minutes
             $table->string('thumbnail')->nullable();
             $table->boolean('has_sub')->default(true);
             $table->boolean('has_dub')->default(false);

@@ -44,12 +44,18 @@
                                 <span class="text-gray-500 text-xs">{{ $ep->source_type ?? '-' }}</span>
                         @endswitch
                     </td>
-                    <td class="p-3">{{ $ep->duration ? $ep->duration.'s' : '-' }}</td>
+                    <td class="p-3">{{ $ep->duration ? $ep->duration.'min' : '-' }}</td>
                     <td class="p-3">{{ $ep->has_sub ? 'Yes' : 'No' }}</td>
                     <td class="p-3">{{ $ep->has_dub ? 'Yes' : 'No' }}</td>
                     <td class="p-3 flex space-x-2">
                         <a href="{{ route('admin.anime.episodes.edit', [$anime, $ep]) }}" class="text-blue-500 hover:text-blue-400">Edit</a>
-                        <form action="{{ route('admin.anime.episodes.destroy', [$anime, $ep]) }}" method="POST" onsubmit="return confirm('Delete?')">
+                        @if($ep->video_path && $ep->storage_disk === 'local')
+                            <form action="{{ route('admin.anime.episodes.delete-video', [$anime, $ep]) }}" method="POST" onsubmit="return confirm('Delete video file?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-orange-500 hover:text-orange-400">Video</button>
+                            </form>
+                        @endif
+                        <form action="{{ route('admin.anime.episodes.destroy', [$anime, $ep]) }}" method="POST" onsubmit="return confirm('Delete this episode?')">
                             @csrf @method('DELETE')
                             <button type="submit" class="text-red-500 hover:text-red-400">Delete</button>
                         </form>

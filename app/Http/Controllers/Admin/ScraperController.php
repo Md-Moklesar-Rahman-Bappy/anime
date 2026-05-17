@@ -166,7 +166,7 @@ class ScraperController extends Controller
             'video_id' => 'required|string',
             'title' => 'nullable|string|max:255',
             'episode_number' => 'required|integer',
-            'duration' => 'nullable|integer',
+            'duration' => 'nullable|integer|min:0',
             'thumbnail' => 'nullable|string',
         ]);
 

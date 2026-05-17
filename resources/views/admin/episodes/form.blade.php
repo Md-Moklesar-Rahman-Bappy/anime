@@ -14,7 +14,7 @@
                 <input type="number" name="number" value="{{ old('number', $episode->number ?? '') }}" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700" required>
             </div>
             <div>
-                <label class="block text-sm text-gray-400 mb-1">Duration (seconds)</label>
+                <label class="block text-sm text-gray-400 mb-1">Duration (minutes)</label>
                 <input type="number" name="duration" value="{{ old('duration', $episode->duration ?? '') }}" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
             </div>
         </div>
@@ -147,10 +147,23 @@
             </div>
         </div>
 
-        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg">
-            {{ isset($episode) ? 'Update' : 'Create' }} Episode
-        </button>
+        <div class="flex space-x-3">
+            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg">
+                {{ isset($episode) ? 'Update' : 'Create' }} Episode
+            </button>
+            @if(isset($episode) && $episode->video_path && $episode->storage_disk === 'local')
+                <button type="button" onclick="if(confirm('Delete the uploaded video file?')) { document.getElementById('delete-video-form').submit(); }" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">
+                    Delete Video
+                </button>
+            @endif
+        </div>
     </form>
+
+    @if(isset($episode) && $episode->video_path && $episode->storage_disk === 'local')
+        <form id="delete-video-form" action="{{ route('admin.anime.episodes.delete-video', [$anime, $episode]) }}" method="POST" class="hidden">
+            @csrf @method('DELETE')
+        </form>
+    @endif
 </div>
 
 <script>

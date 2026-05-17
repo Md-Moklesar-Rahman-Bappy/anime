@@ -37,7 +37,7 @@
             <input type="hidden" name="anime_id" value="{{ $anime->id }}">
             <input type="hidden" name="video_id" value="{{ $info['id'] }}">
             <input type="hidden" name="title" value="{{ $info['title'] }}">
-            <input type="hidden" name="duration" value="{{ $info['duration'] }}">
+            <input type="hidden" name="duration" value="{{ $info['duration'] ? round($info['duration'] / 60) : '' }}">
             <input type="hidden" name="thumbnail" value="{{ $info['thumbnail'] }}">
 
             <div class="mb-4">

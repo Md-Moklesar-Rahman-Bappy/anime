@@ -7,6 +7,8 @@ use App\Services\Scrapers\ScraperManager;
 use App\Services\Scrapers\GogoanimeScraper;
 use App\Services\Scrapers\ZoroScraper;
 use App\Services\Scrapers\AnimePaheScraper;
+use App\Services\Scrapers\ZoroTvScraper;
+use App\Services\Scrapers\GogoanimeByScraper;
 
 class ScraperServiceProvider extends ServiceProvider
 {
@@ -17,6 +19,8 @@ class ScraperServiceProvider extends ServiceProvider
             $manager->register(new GogoanimeScraper());
             $manager->register(new ZoroScraper());
             $manager->register(new AnimePaheScraper());
+            $manager->register(new ZoroTvScraper());
+            $manager->register(new GogoanimeByScraper());
             return $manager;
         });
     }
