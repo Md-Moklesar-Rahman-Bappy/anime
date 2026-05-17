@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Server extends Model
 {
-    protected $fillable = ['episode_id', 'label', 'url', 'type'];
+    protected $fillable = ['episode_id', 'label', 'url', 'type', 'language'];
 
     public function episode()
     {

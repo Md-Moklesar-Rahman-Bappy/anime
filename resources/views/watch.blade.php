@@ -3,39 +3,6 @@
 @section('title', $episode->anime->title . ' - Episode ' . $episode->number)
 
 @section('content')
-@php
-    $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
-    $videoServers = $episode->servers->where('type', '!=', 'youtube');
-    $hasServers = $videoServers->count() > 0;
-    $hasVideoPath = !empty($episode->video_path);
-    $ytInVideoPath = false;
-    $ytVideoId = null;
-    if ($hasVideoPath && !$youtubeServer) {
-        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $episode->video_path, $m)) {
-            $ytInVideoPath = true;
-            $ytVideoId = $m[1];
-        }
-    }
-    $allServers = [];
-    if ($youtubeServer) {
-        $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => $youtubeServer->url, 'type' => 'youtube'];
-    } elseif ($ytInVideoPath) {
-        $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => 'https://www.youtube.com/watch?v=' . $ytVideoId, 'type' => 'youtube'];
-    }
-    $idx = 0;
-    foreach ($videoServers as $s) {
-        $idx++;
-        $allServers[] = ['id' => $s->id, 'label' => $s->label ?? 'Server ' . $idx, 'url' => $s->url, 'type' => $s->type];
-    }
-    if (!$hasServers && $hasVideoPath && !$ytInVideoPath) {
-        $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path);
-        $allServers[] = ['id' => 'local', 'label' => 'Default', 'url' => $videoSrc, 'type' => 'mp4'];
-    }
-    $skipTimes = $episode->skipTimes->first();
-    $initialServer = $allServers[0] ?? null;
-    $isYoutubeInit = $initialServer && $initialServer['type'] === 'youtube';
-@endphp
-
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-4">
@@ -106,17 +73,26 @@
                     </div>
                     <div class="ctrl-group">
                         @if(count($allServers) > 1)
-                        <select class="server-select" @change="switchServer($event.target.selectedIndex)">
-                            @foreach($allServers as $i => $s)
-                            <option value="{{ $s['id'] }}" @if($i === 0) selected @endif>{{ $s['label'] }}</option>
-                            @endforeach
-                        </select>
+                        <div class="flex items-center space-x-1">
+                            @if(count($languages) > 1)
+                            <select class="server-select" @change="switchLanguage($event.target.value)">
+                                @foreach($languages as $lang)
+                                <option value="{{ $lang }}" @if($loop->first) selected @endif>{{ ucfirst($lang) }}</option>
+                                @endforeach
+                            </select>
+                            @endif
+                            <select class="server-select" @change="switchServer($event.target.selectedIndex)">
+                                <template x-for="(s, i) in currentServers" :key="s.id">
+                                    <option :value="s.id" x-text="s.label" :selected="i === currentIndex"></option>
+                                </template>
+                            </select>
+                        </div>
                         @endif
-                        <div class="relative">
+                        <div class="relative" @click.outside="listOpen = false">
                             <button class="ctrl-btn" @click="toggleList()" title="Add to list">
                                 <i class="fa-solid fa-bookmark"></i> <span class="label">List</span>
                             </button>
-                            <div class="player-dropdown" x-cloak x-show="listOpen" @click.outside="listOpen = false">
+                            <div class="player-dropdown" x-cloak x-show="listOpen">
                                 <template x-for="cat in categories" :key="cat.value">
                                     <button class="dropdown-item" :class="{ active: favoriteCategory === cat.value }" @click="updateList(favoriteCategory === cat.value ? null : cat.value)">
                                         <span class="check">
@@ -134,11 +110,11 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="relative">
+                        <div class="relative" @click.outside="reportOpen = false">
                             <button class="ctrl-btn" @click="toggleReport()" title="Report issue">
                                 <i class="fa-solid fa-triangle-exclamation"></i> <span class="label">Report</span>
                             </button>
-                            <div class="player-dropdown" x-cloak x-show="reportOpen" @click.outside="reportOpen = false">
+                            <div class="player-dropdown" x-cloak x-show="reportOpen">
                                 <div style="padding: 8px 12px">
                                     <div style="margin-bottom: 10px">
                                         <label style="font-size:12px; color:#9ca3af; display:block; margin-bottom:4px">Issue type</label>
@@ -271,6 +247,7 @@
 @push('scripts')
 <script>
 window.PLAYER_SERVERS = @json($allServers);
+window.PLAYER_LANGUAGES = @json($languages);
 window.PLAYER_IS_YOUTUBE = {{ $isYoutubeInit ? 'true' : 'false' }};
 window.PLAYER_IS_FAVORITED = {{ $isFavorited ? 'true' : 'false' }};
 window.PLAYER_FAV_CATEGORY = {{ $favCategory ? '"'.$favCategory.'"' : 'null' }};

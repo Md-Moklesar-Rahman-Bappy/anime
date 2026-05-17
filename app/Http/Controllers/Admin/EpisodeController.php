@@ -27,7 +27,8 @@ class EpisodeController extends Controller
 
     public function create(Anime $anime)
     {
-        return view('admin.episodes.form', compact('anime'));
+        $languages = ['english', 'japanese', 'hindi'];
+        return view('admin.episodes.form', compact('anime', 'languages'));
     }
 
     public function store(Request $request, Anime $anime)
@@ -48,6 +49,7 @@ class EpisodeController extends Controller
             'air_date' => 'nullable|date',
             'youtube_url' => 'nullable|url',
             'uploaded_video_path' => 'nullable|string',
+            'language' => 'nullable|string|in:english,japanese,hindi',
         ]);
 
         $data['anime_id'] = $anime->id;
@@ -97,6 +99,7 @@ class EpisodeController extends Controller
                         'label' => $label,
                         'url' => $request->server_url[$i],
                         'type' => $request->server_type[$i] ?? 'mp4',
+                        'language' => $request->server_language[$i] ?? 'english',
                     ]);
                 }
             }
@@ -112,6 +115,7 @@ class EpisodeController extends Controller
 
         $sourceType = $data['source_type'] ?? 'upload';
         $url = $data['video_path'] ?? $data['source_url'];
+        $language = $data['language'] ?? 'english';
 
         switch ($sourceType) {
             case 'youtube':
@@ -120,6 +124,7 @@ class EpisodeController extends Controller
                     'label' => 'YouTube',
                     'url' => $url,
                     'type' => 'youtube',
+                    'language' => $language,
                 ]);
                 break;
 
@@ -131,6 +136,7 @@ class EpisodeController extends Controller
                     'label' => 'Upload',
                     'url' => url('storage/' . $data['video_path']),
                     'type' => $type,
+                    'language' => $language,
                 ]);
                 break;
 
@@ -146,6 +152,7 @@ class EpisodeController extends Controller
                     'label' => 'Direct URL',
                     'url' => $url,
                     'type' => $type,
+                    'language' => $language,
                 ]);
                 break;
         }
@@ -154,7 +161,8 @@ class EpisodeController extends Controller
     public function edit(Anime $anime, Episode $episode)
     {
         $episode->load('servers');
-        return view('admin.episodes.form', compact('anime', 'episode'));
+        $languages = ['english', 'japanese', 'hindi'];
+        return view('admin.episodes.form', compact('anime', 'episode', 'languages'));
     }
 
     public function update(Request $request, Anime $anime, Episode $episode)
@@ -175,6 +183,7 @@ class EpisodeController extends Controller
             'air_date' => 'nullable|date',
             'youtube_url' => 'nullable|url',
             'uploaded_video_path' => 'nullable|string',
+            'language' => 'nullable|string|in:english,japanese,hindi',
         ]);
 
         $data['has_sub'] = $request->has('has_sub');
@@ -224,6 +233,7 @@ class EpisodeController extends Controller
                         'label' => $label,
                         'url' => $request->server_url[$i],
                         'type' => $request->server_type[$i] ?? 'mp4',
+                        'language' => $request->server_language[$i] ?? 'english',
                     ]);
                 }
             }

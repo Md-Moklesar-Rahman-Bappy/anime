@@ -56,6 +56,15 @@
             </div>
             <input type="hidden" name="source_type" x-model="sourceType">
 
+            <div class="mb-4" x-show="tab !== 'servers'">
+                <label class="block text-sm text-gray-400 mb-1">Language</label>
+                <select name="language" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
+                    @foreach($languages as $lang)
+                    <option value="{{ $lang }}" {{ old('language', $episode->servers->first()->language ?? 'english') === $lang ? 'selected' : '' }}>{{ ucfirst($lang) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             <div x-show="tab === 'upload'" class="space-y-4">
                 <div class="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center"
                      x-on:dragover.prevent="$el.classList.add('border-purple-500')"
@@ -128,17 +137,22 @@
             <div x-show="tab === 'servers'" class="space-y-4">
                 <p class="text-sm text-gray-500">Add external video servers (these play as fallback/alternative sources).</p>
                 <template x-for="(server, i) in servers" :key="i">
-                    <div class="grid grid-cols-3 gap-2 items-start">
-                        <input type="text" name="server_label[]" x-model="server.label" placeholder="Label (e.g. Server 1)" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                    <div class="grid grid-cols-4 gap-2 items-start">
+                        <input type="text" name="server_label[]" x-model="server.label" placeholder="Label" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
                         <input type="url" name="server_url[]" x-model="server.url" placeholder="URL" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                        <select name="server_type[]" x-model="server.type" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                            <option value="mp4">MP4</option>
+                            <option value="m3u8">HLS</option>
+                            <option value="embed">Embed</option>
+                            <option value="youtube">YouTube</option>
+                        </select>
                         <div class="flex space-x-1">
-                            <select name="server_type[]" x-model="server.type" class="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                                <option value="mp4">MP4</option>
-                                <option value="m3u8">HLS</option>
-                                <option value="embed">Embed</option>
-                                <option value="youtube">YouTube</option>
+                            <select name="server_language[]" x-model="server.language" class="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                                <option value="english">English</option>
+                                <option value="japanese">Japanese</option>
+                                <option value="hindi">Hindi</option>
                             </select>
-                            <button type="button" @click="servers.splice(i, 1)" class="text-red-500 hover:text-red-400 px-2 py-2" title="Remove server">&times;</button>
+                            <button type="button" @click="servers.splice(i, 1)" class="text-red-500 hover:text-red-400 px-2 py-2" title="Remove">&times;</button>
                         </div>
                     </div>
                 </template>
@@ -193,7 +207,7 @@ function episodeForm() {
             if (params.get('source') === 'youtube') { this.tab = 'youtube'; this.sourceType = 'youtube'; }
             @if(isset($episode))
                 @foreach($episode->servers as $server)
-                    this.servers.push({ label: '{{ $server->label }}', url: '{{ $server->url }}', type: '{{ $server->type }}' });
+                    this.servers.push({ label: '{{ $server->label }}', url: '{{ $server->url }}', type: '{{ $server->type }}', language: '{{ $server->language }}' });
                 @endforeach
                 @if($episode->source_type === 'youtube')
                     this.tab = 'youtube'; this.sourceType = 'youtube';

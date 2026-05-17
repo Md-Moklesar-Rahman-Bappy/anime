@@ -31,7 +31,10 @@ export function player() {
         config: loadConfig(),
         player: null,
         servers: [],
-        currentServer: 0,
+        languages: [],
+        currentLanguage: null,
+        currentServers: [],
+        currentIndex: 0,
         isFavorited: false,
         favoriteCategory: null,
         isYoutube: false,
@@ -46,7 +49,10 @@ export function player() {
 
         init() {
             this.servers = window.PLAYER_SERVERS || [];
-            this.currentServer = 0;
+            this.languages = window.PLAYER_LANGUAGES || [];
+            this.currentLanguage = this.languages[0] || null;
+            this.currentServers = this.servers.filter(s => s.language === this.currentLanguage);
+            this.currentIndex = 0;
             this.isYoutube = window.PLAYER_IS_YOUTUBE || false;
             this.isFavorited = window.PLAYER_IS_FAVORITED || false;
             this.favoriteCategory = window.PLAYER_FAV_CATEGORY || null;
@@ -73,8 +79,8 @@ export function player() {
             });
 
             this.player.on('ready', () => {
-                if (this.isYoutube && this.servers[0]) {
-                    const ytId = this.extractYoutubeId(this.servers[0].url);
+                if (this.isYoutube && this.currentServers[0]) {
+                    const ytId = this.extractYoutubeId(this.currentServers[0].url);
                     if (ytId) {
                         this.player.source = {
                             type: 'video',
@@ -213,10 +219,23 @@ export function player() {
             });
         },
 
+        switchLanguage(lang) {
+            this.currentLanguage = lang;
+            this.currentServers = this.servers.filter(s => s.language === lang);
+            this.currentIndex = 0;
+            if (this.currentServers.length > 0) {
+                this.loadServer(0);
+            }
+        },
+
         switchServer(index) {
-            const server = this.servers[index];
+            this.currentIndex = index;
+            this.loadServer(index);
+        },
+
+        loadServer(index) {
+            const server = this.currentServers[index];
             if (!server) return;
-            this.currentServer = index;
 
             if (server.type === 'youtube') {
                 const ytId = this.extractYoutubeId(server.url);
