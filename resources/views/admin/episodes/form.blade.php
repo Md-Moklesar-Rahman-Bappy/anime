@@ -127,9 +127,9 @@
                 <p class="text-sm text-gray-500">Add external video servers (these play as fallback/alternative sources).</p>
                 <template x-for="(server, i) in servers" :key="i">
                     <div class="grid grid-cols-3 gap-2">
-                        <input type="text" name="server_label[]" placeholder="Label (e.g. Server 1)" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                        <input type="url" name="server_url[]" placeholder="URL" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                        <select name="server_type[]" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                        <input type="text" name="server_label[]" x-model="server.label" placeholder="Label (e.g. Server 1)" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                        <input type="url" name="server_url[]" x-model="server.url" placeholder="URL" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                        <select name="server_type[]" x-model="server.type" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
                             <option value="mp4">MP4</option>
                             <option value="m3u8">HLS</option>
                             <option value="embed">Embed</option>
@@ -175,17 +175,21 @@ function episodeForm() {
         youtubeUrl: '',
         youtubePreview: null,
         previewError: null,
-        servers: {{ (isset($episode) && $episode->servers) ? $episode->servers->count() : 0 }},
+        servers: [],
 
         init() {
             const params = new URLSearchParams(window.location.search);
             if (params.get('source') === 'youtube') this.tab = 'youtube';
-            else if (this.servers > 0) this.tab = 'servers';
             @if(isset($episode))
+                @foreach($episode->servers as $server)
+                    this.servers.push({ label: '{{ $server->label }}', url: '{{ $server->url }}', type: '{{ $server->type }}' });
+                @endforeach
                 @if($episode->source_type === 'youtube')
                     this.tab = 'youtube';
                 @elseif($episode->source_type === 'direct_url' || ($episode->video_path && $episode->storage_disk !== 'local'))
                     this.tab = 'url';
+                @elseif($episode->servers->count() > 0)
+                    this.tab = 'servers';
                 @endif
             @endif
         },
