@@ -49,11 +49,12 @@
             <label class="block text-sm text-gray-400 mb-3 font-semibold">Video Source</label>
 
             <div class="flex space-x-1 mb-4 bg-gray-800 rounded-lg p-1">
-                <button type="button" @click="tab = 'upload'" :class="tab === 'upload' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Upload File</button>
-                <button type="button" @click="tab = 'url'" :class="tab === 'url' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Direct URL</button>
-                <button type="button" @click="tab = 'youtube'" :class="tab === 'youtube' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">YouTube</button>
-                <button type="button" @click="tab = 'servers'" :class="tab === 'servers' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">External Servers</button>
+                <button type="button" @click="tab = 'upload'; sourceType = 'upload'" :class="tab === 'upload' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Upload File</button>
+                <button type="button" @click="tab = 'url'; sourceType = 'direct_url'" :class="tab === 'url' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Direct URL</button>
+                <button type="button" @click="tab = 'youtube'; sourceType = 'youtube'" :class="tab === 'youtube' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">YouTube</button>
+                <button type="button" @click="tab = 'servers'; sourceType = 'servers'" :class="tab === 'servers' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">External Servers</button>
             </div>
+            <input type="hidden" name="source_type" x-model="sourceType">
 
             <div x-show="tab === 'upload'" class="space-y-4">
                 <div class="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center"
@@ -82,9 +83,9 @@
                         </div>
                     </template>
                 </div>
-                <input type="hidden" name="storage_disk" value="local">
-                <input type="hidden" name="source_type" value="upload">
             </div>
+
+            <input type="hidden" name="storage_disk" x-model="storageDisk">
 
             <div x-show="tab === 'url'" class="space-y-4">
                 <div>
@@ -93,13 +94,12 @@
                 </div>
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Storage Disk</label>
-                    <select name="storage_disk" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
-                        <option value="local" @selected(old('storage_disk', $episode->storage_disk ?? '')=='local')>Local</option>
-                        <option value="s3" @selected(old('storage_disk', $episode->storage_disk ?? '')=='s3')>S3</option>
-                        <option value="streaming" @selected(old('storage_disk', $episode->storage_disk ?? '')=='streaming')>Streaming API</option>
+                    <select x-model="storageDisk" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
+                        <option value="local">Local</option>
+                        <option value="s3">S3</option>
+                        <option value="streaming">Streaming API</option>
                     </select>
                 </div>
-                <input type="hidden" name="source_type" value="direct_url">
             </div>
 
             <div x-show="tab === 'youtube'" class="space-y-4">
@@ -120,25 +120,26 @@
                         <p class="text-gray-400 text-sm" x-text="youtubePreview.author"></p>
                     </div>
                 </template>
-                <input type="hidden" name="source_type" value="youtube">
             </div>
 
             <div x-show="tab === 'servers'" class="space-y-4">
                 <p class="text-sm text-gray-500">Add external video servers (these play as fallback/alternative sources).</p>
                 <template x-for="(server, i) in servers" :key="i">
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-3 gap-2 items-start">
                         <input type="text" name="server_label[]" x-model="server.label" placeholder="Label (e.g. Server 1)" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
                         <input type="url" name="server_url[]" x-model="server.url" placeholder="URL" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                        <select name="server_type[]" x-model="server.type" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                            <option value="mp4">MP4</option>
-                            <option value="m3u8">HLS</option>
-                            <option value="embed">Embed</option>
-                            <option value="youtube">YouTube</option>
-                        </select>
+                        <div class="flex space-x-1">
+                            <select name="server_type[]" x-model="server.type" class="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
+                                <option value="mp4">MP4</option>
+                                <option value="m3u8">HLS</option>
+                                <option value="embed">Embed</option>
+                                <option value="youtube">YouTube</option>
+                            </select>
+                            <button type="button" @click="servers.splice(i, 1)" class="text-red-500 hover:text-red-400 px-2 py-2" title="Remove server">&times;</button>
+                        </div>
                     </div>
                 </template>
                 <button type="button" @click="servers.push({})" class="text-purple-500 text-sm">+ Add Server</button>
-                <input type="hidden" name="source_type" value="servers">
             </div>
 
             <div class="mt-4">
@@ -170,6 +171,8 @@
 function episodeForm() {
     return {
         tab: 'upload',
+        sourceType: 'upload',
+        storageDisk: '{{ old('storage_disk', $episode->storage_disk ?? 'local') }}',
         uploadFile: null,
         uploadProgress: 0,
         youtubeUrl: '',
@@ -179,17 +182,17 @@ function episodeForm() {
 
         init() {
             const params = new URLSearchParams(window.location.search);
-            if (params.get('source') === 'youtube') this.tab = 'youtube';
+            if (params.get('source') === 'youtube') { this.tab = 'youtube'; this.sourceType = 'youtube'; }
             @if(isset($episode))
                 @foreach($episode->servers as $server)
                     this.servers.push({ label: '{{ $server->label }}', url: '{{ $server->url }}', type: '{{ $server->type }}' });
                 @endforeach
                 @if($episode->source_type === 'youtube')
-                    this.tab = 'youtube';
+                    this.tab = 'youtube'; this.sourceType = 'youtube';
                 @elseif($episode->source_type === 'direct_url' || ($episode->video_path && $episode->storage_disk !== 'local'))
-                    this.tab = 'url';
+                    this.tab = 'url'; this.sourceType = 'direct_url';
                 @elseif($episode->servers->count() > 0)
-                    this.tab = 'servers';
+                    this.tab = 'servers'; this.sourceType = 'servers';
                 @endif
             @endif
         },

@@ -125,7 +125,7 @@ class EpisodeController extends Controller
                 Server::create([
                     'episode_id' => $episode->id,
                     'label' => 'Upload',
-                    'url' => Storage::disk('public')->url($data['video_path']),
+                    'url' => url('storage/' . $data['video_path']),
                     'type' => $type,
                 ]);
                 break;

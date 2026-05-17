@@ -8,7 +8,7 @@ class HomeController extends Controller
 {
     public function index()
     {
-        $featured = Anime::where('featured', true)->latest()->take(5)->get();
+        $featured = Anime::where('featured', true)->orderBy('featured_order')->take(5)->get();
         $latestEpisodes = Episode::with(['anime'])->latest()->take(12)->get();
         $newAnime = Anime::latest()->take(10)->get();
         $trending = Anime::orderBy('views', 'desc')->take(10)->get();

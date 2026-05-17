@@ -16,6 +16,7 @@
             <nav class="space-y-2 flex-1">
                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.dashboard') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Dashboard</a>
                 <a href="{{ route('admin.anime.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.anime.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Anime</a>
+                <a href="{{ route('admin.featured.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.featured.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Featured Slider</a>
                 <a href="{{ route('admin.genres.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.genres.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Genres</a>
                 <a href="{{ route('admin.users.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.users.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Users</a>
                 <a href="{{ route('admin.reports.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.reports.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Reports</a>

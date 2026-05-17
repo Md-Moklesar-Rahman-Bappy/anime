@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AnimeController as AdminAnimeController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EpisodeController;
+use App\Http\Controllers\Admin\FeaturedController;
 use App\Http\Controllers\Admin\GenreController as AdminGenreController;
 use App\Http\Controllers\Admin\JikanController;
 use App\Http\Controllers\Admin\ReportController;
@@ -73,6 +74,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
     Route::post('/genres', [AdminGenreController::class, 'store'])->name('genres.store');
     Route::put('/genres/{genre}', [AdminGenreController::class, 'update'])->name('genres.update');
     Route::delete('/genres/{genre}', [AdminGenreController::class, 'destroy'])->name('genres.destroy');
+
+    Route::get('/featured', [FeaturedController::class, 'index'])->name('featured.index');
+    Route::post('/featured', [FeaturedController::class, 'update'])->name('featured.update');
+    Route::post('/featured/auto-fill', [FeaturedController::class, 'autoFill'])->name('featured.auto-fill');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::put('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
