@@ -7,7 +7,9 @@ use App\Http\Controllers\Admin\GenreController as AdminGenreController;
 use App\Http\Controllers\Admin\JikanController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RequestController as AdminRequestController;
+use App\Http\Controllers\Admin\ScraperController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\UploadController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AnimeController;
 use App\Http\Controllers\GenreController;
@@ -92,5 +94,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
         Route::post('/import/{malId}', [JikanController::class, 'import'])->name('import');
         Route::post('/batch-import', [JikanController::class, 'batchImport'])->name('batch-import');
         Route::post('/reset-progress', [JikanController::class, 'resetProgress'])->name('reset-progress');
+    });
+
+    // External Source Scrapers
+    Route::prefix('scrapers')->name('scrapers.')->group(function () {
+        Route::get('/', [ScraperController::class, 'searchForm'])->name('search');
+        Route::post('/search', [ScraperController::class, 'search'])->name('search.results');
+        Route::post('/preview', [ScraperController::class, 'previewEpisodes'])->name('preview');
+        Route::post('/import', [ScraperController::class, 'importEpisodes'])->name('import');
+    });
+
+    // YouTube Import
+    Route::prefix('youtube')->name('youtube.')->group(function () {
+        Route::post('/preview', [ScraperController::class, 'youtubePreview'])->name('preview');
+        Route::post('/import', [ScraperController::class, 'youtubeImport'])->name('import');
+    });
+
+    // Chunked Upload
+    Route::prefix('upload')->name('upload.')->group(function () {
+        Route::post('/initiate', [UploadController::class, 'initiate'])->name('initiate');
+        Route::post('/chunk', [UploadController::class, 'chunk'])->name('chunk');
+        Route::get('/status/{upload}', [UploadController::class, 'status'])->name('status');
+        Route::delete('/cancel/{upload}', [UploadController::class, 'cancel'])->name('cancel');
     });
 });

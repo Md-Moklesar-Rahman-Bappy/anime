@@ -8,7 +8,8 @@ class Episode extends Model
 {
     protected $fillable = [
         'anime_id', 'number', 'title', 'description', 'video_path',
-        'storage_disk', 'duration', 'thumbnail', 'has_sub', 'has_dub',
+        'storage_disk', 'source_type', 'source_id', 'source_url',
+        'duration', 'thumbnail', 'has_sub', 'has_dub',
         'air_date', 'created_by',
     ];
 
