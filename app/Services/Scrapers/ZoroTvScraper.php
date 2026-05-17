@@ -15,12 +15,14 @@ class ZoroTvScraper implements ScraperInterface
 
     public function search(string $query): array
     {
-        $url = "{$this->baseUrl}/?s=" . urlencode($query);
+        $url = "{$this->baseUrl}/?s=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $html = $response->body();
         $results = [];
@@ -34,7 +36,9 @@ class ZoroTvScraper implements ScraperInterface
             $animeName = preg_replace('/\s*Episode\s*\d+.*$/i', '', $title);
             $animeKey = strtolower(trim($animeName));
 
-            if (isset($seen[$animeKey])) continue;
+            if (isset($seen[$animeKey])) {
+                continue;
+            }
             $seen[$animeKey] = true;
 
             $results[] = [
@@ -54,7 +58,9 @@ class ZoroTvScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $html = $response->body();
         $episodes = [];
@@ -70,9 +76,9 @@ class ZoroTvScraper implements ScraperInterface
 
             $catSlug = strtolower(str_replace(' ', '-', $category));
 
-            if (preg_match('/\b' . preg_quote($animeSlug, '/') . '\b/i', $catSlug)) {
+            if (preg_match('/\b'.preg_quote($animeSlug, '/').'\b/i', $catSlug)) {
                 if (preg_match('/Episode\s*(\d+)/i', $title, $numMatch)) {
-                    $epNum = (int)$numMatch[1];
+                    $epNum = (int) $numMatch[1];
                     $epSlug = basename(parse_url($link, PHP_URL_PATH));
                     $episodes[] = [
                         'id' => $epSlug,
@@ -83,7 +89,8 @@ class ZoroTvScraper implements ScraperInterface
             }
         }
 
-        usort($episodes, fn($a, $b) => $a['number'] - $b['number']);
+        usort($episodes, fn ($a, $b) => $a['number'] - $b['number']);
+
         return $episodes;
     }
 
@@ -94,7 +101,9 @@ class ZoroTvScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return null;
+        if (! $response->successful()) {
+            return null;
+        }
 
         $html = $response->body();
 

@@ -13,12 +13,14 @@ class AnimeController extends Controller
     public function index()
     {
         $animeList = Anime::latest()->paginate(20);
+
         return view('admin.anime.index', compact('animeList'));
     }
 
     public function create()
     {
         $genres = Genre::all();
+
         return view('admin.anime.form', compact('genres'));
     }
 
@@ -68,6 +70,7 @@ class AnimeController extends Controller
     public function edit(Anime $anime)
     {
         $genres = Genre::all();
+
         return view('admin.anime.form', compact('anime', 'genres'));
     }
 
@@ -117,6 +120,7 @@ class AnimeController extends Controller
     public function destroy(Anime $anime)
     {
         $anime->delete();
+
         return redirect()->route('admin.anime.index')->with('success', 'Anime deleted.');
     }
 }

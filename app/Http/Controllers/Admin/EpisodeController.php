@@ -22,12 +22,14 @@ class EpisodeController extends Controller
     public function index(Anime $anime)
     {
         $episodes = $anime->episodes()->orderBy('number')->paginate(20);
+
         return view('admin.episodes.index', compact('anime', 'episodes'));
     }
 
     public function create(Anime $anime)
     {
         $languages = ['english', 'japanese', 'hindi'];
+
         return view('admin.episodes.form', compact('anime', 'languages'));
     }
 
@@ -93,7 +95,7 @@ class EpisodeController extends Controller
 
         if ($request->server_label) {
             foreach ($request->server_label as $i => $label) {
-                if (!empty($request->server_url[$i])) {
+                if (! empty($request->server_url[$i])) {
                     Server::create([
                         'episode_id' => $episode->id,
                         'label' => $label,
@@ -111,7 +113,9 @@ class EpisodeController extends Controller
 
     protected function createServerForSource(Episode $episode, array $data): void
     {
-        if (empty($data['video_path']) && empty($data['source_url'])) return;
+        if (empty($data['video_path']) && empty($data['source_url'])) {
+            return;
+        }
 
         $sourceType = $data['source_type'] ?? 'upload';
         $url = $data['video_path'] ?? $data['source_url'];
@@ -134,7 +138,7 @@ class EpisodeController extends Controller
                 Server::create([
                     'episode_id' => $episode->id,
                     'label' => 'Upload',
-                    'url' => url('storage/' . $data['video_path']),
+                    'url' => url('storage/'.$data['video_path']),
                     'type' => $type,
                     'language' => $language,
                 ]);
@@ -162,6 +166,7 @@ class EpisodeController extends Controller
     {
         $episode->load('servers');
         $languages = ['english', 'japanese', 'hindi'];
+
         return view('admin.episodes.form', compact('anime', 'episode', 'languages'));
     }
 
@@ -227,7 +232,7 @@ class EpisodeController extends Controller
 
         if ($request->server_label) {
             foreach ($request->server_label as $i => $label) {
-                if (!empty($request->server_url[$i])) {
+                if (! empty($request->server_url[$i])) {
                     Server::create([
                         'episode_id' => $episode->id,
                         'label' => $label,
@@ -249,6 +254,7 @@ class EpisodeController extends Controller
             Storage::disk('public')->delete($episode->video_path);
         }
         $episode->delete();
+
         return redirect()->route('admin.anime.episodes.index', $anime)
             ->with('success', 'Episode deleted.');
     }

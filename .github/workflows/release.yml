@@ -1,0 +1,47 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Create release archive
+        run: |
+          mkdir -p release/anime
+          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='storage/app' --exclude='tests' ./ release/anime/
+          cd release
+          zip -r ../anime-${{ github.ref_name }}.zip anime/
+
+      - name: Generate checksum
+        run: sha256sum anime-${{ github.ref_name }}.zip > anime-${{ github.ref_name }}.zip.sha256
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            anime-${{ github.ref_name }}.zip
+            anime-${{ github.ref_name }}.zip.sha256
+          generate_release_notes: true

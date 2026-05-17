@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Anime;
 use App\Models\Episode;
+
 class HomeController extends Controller
 {
     public function index()
@@ -13,6 +14,7 @@ class HomeController extends Controller
         $newAnime = Anime::latest()->take(10)->get();
         $trending = Anime::orderBy('views', 'desc')->take(10)->get();
         $ongoing = Anime::where('status', 'Ongoing')->latest()->take(8)->get();
+
         return view('home', compact('featured', 'latestEpisodes', 'newAnime', 'trending', 'ongoing'));
     }
 }

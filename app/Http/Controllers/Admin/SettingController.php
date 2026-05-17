@@ -11,6 +11,7 @@ class SettingController extends Controller
     public function index()
     {
         $settings = Setting::pluck('value', 'key')->toArray();
+
         return view('admin.settings.index', compact('settings'));
     }
 
@@ -19,6 +20,7 @@ class SettingController extends Controller
         foreach ($request->except('_token') as $key => $value) {
             Setting::updateOrCreate(['key' => $key], ['value' => $value]);
         }
+
         return back()->with('success', 'Settings updated.');
     }
 }

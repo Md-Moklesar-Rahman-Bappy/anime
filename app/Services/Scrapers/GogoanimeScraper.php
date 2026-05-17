@@ -15,12 +15,14 @@ class GogoanimeScraper implements ScraperInterface
 
     public function search(string $query): array
     {
-        $url = "{$this->baseUrl}/search.html?keyword=" . urlencode($query);
+        $url = "{$this->baseUrl}/search.html?keyword=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $html = $response->body();
         $results = [];
@@ -54,7 +56,9 @@ class GogoanimeScraper implements ScraperInterface
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             ])->get($url);
 
-            if (!$response->successful()) break;
+            if (! $response->successful()) {
+                break;
+            }
 
             $html = $response->body();
 
@@ -65,7 +69,7 @@ class GogoanimeScraper implements ScraperInterface
                 foreach ($epMatches as $m) {
                     $allEpisodes[] = [
                         'id' => $m[1],
-                        'number' => (int)$m[2],
+                        'number' => (int) $m[2],
                     ];
                 }
                 break;
@@ -74,14 +78,15 @@ class GogoanimeScraper implements ScraperInterface
             foreach ($matches as $m) {
                 $allEpisodes[] = [
                     'id' => $m[0],
-                    'number' => (int)$m[1],
+                    'number' => (int) $m[1],
                 ];
             }
 
             $epStart += 50;
         } while (count($matches) > 0);
 
-        usort($allEpisodes, fn($a, $b) => $a['number'] - $b['number']);
+        usort($allEpisodes, fn ($a, $b) => $a['number'] - $b['number']);
+
         return $allEpisodes;
     }
 
@@ -92,7 +97,9 @@ class GogoanimeScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return null;
+        if (! $response->successful()) {
+            return null;
+        }
 
         $html = $response->body();
 

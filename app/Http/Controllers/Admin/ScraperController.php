@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\Scrapers\ScraperManager;
-use App\Services\YouTubeService;
 use App\Models\Anime;
 use App\Models\Episode;
 use App\Models\Server;
+use App\Services\Scrapers\ScraperManager;
+use App\Services\YouTubeService;
 use Illuminate\Http\Request;
 
 class ScraperController extends Controller
 {
     protected ScraperManager $scraperManager;
+
     protected YouTubeService $youtube;
 
     public function __construct(ScraperManager $scraperManager, YouTubeService $youtube)
@@ -26,6 +27,7 @@ class ScraperController extends Controller
         $scrapers = $this->scraperManager->names();
         $animeId = $request->query('anime_id');
         $anime = $animeId ? Anime::find($animeId) : null;
+
         return view('admin.scrapers.search', compact('scrapers', 'anime'));
     }
 
@@ -37,7 +39,7 @@ class ScraperController extends Controller
         ]);
 
         $scraper = $this->scraperManager->get($data['scraper']);
-        if (!$scraper) {
+        if (! $scraper) {
             return back()->with('error', 'Invalid scraper.');
         }
 
@@ -58,7 +60,7 @@ class ScraperController extends Controller
         ]);
 
         $scraper = $this->scraperManager->get($data['scraper']);
-        if (!$scraper) {
+        if (! $scraper) {
             return back()->with('error', 'Invalid scraper.');
         }
 
@@ -80,18 +82,18 @@ class ScraperController extends Controller
         ]);
 
         $scraper = $this->scraperManager->get($data['scraper']);
-        if (!$scraper) {
+        if (! $scraper) {
             return back()->with('error', 'Invalid scraper.');
         }
 
-        if (!empty($data['local_anime_id'])) {
+        if (! empty($data['local_anime_id'])) {
             $anime = Anime::findOrFail($data['local_anime_id']);
         } else {
             $anime = Anime::where('title', $data['anime_title'])
-                ->orWhere('title', 'like', '%' . $data['anime_title'] . '%')
+                ->orWhere('title', 'like', '%'.$data['anime_title'].'%')
                 ->first();
 
-            if (!$anime) {
+            if (! $anime) {
                 return back()->with('error', 'Anime not found. Please create it first.');
             }
         }
@@ -102,10 +104,14 @@ class ScraperController extends Controller
                 ->where('number', $ep['number'])
                 ->first();
 
-            if ($existing) continue;
+            if ($existing) {
+                continue;
+            }
 
             $sourceUrl = $scraper->getVideoUrl($ep['id']);
-            if (!$sourceUrl) continue;
+            if (! $sourceUrl) {
+                continue;
+            }
 
             $episode = Episode::create([
                 'anime_id' => $anime->id,
@@ -124,6 +130,7 @@ class ScraperController extends Controller
                 'label' => $scraper->name(),
                 'url' => $sourceUrl,
                 'type' => 'embed',
+                'language' => 'english',
             ]);
 
             $imported++;
@@ -143,7 +150,7 @@ class ScraperController extends Controller
 
         $info = $this->youtube->getVideoInfo($data['url']);
 
-        if (!$info) {
+        if (! $info) {
             return $request->expectsJson()
                 ? response()->json(['error' => 'Could not fetch YouTube video info.'], 422)
                 : back()->with('error', 'Could not fetch YouTube video info.');
@@ -199,6 +206,7 @@ class ScraperController extends Controller
             'label' => 'YouTube',
             'url' => "https://www.youtube.com/embed/{$data['video_id']}",
             'type' => 'youtube',
+            'language' => 'english',
         ]);
 
         return redirect()->route('admin.anime.episodes.index', $anime)

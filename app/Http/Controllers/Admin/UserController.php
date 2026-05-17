@@ -11,6 +11,7 @@ class UserController extends Controller
     public function index()
     {
         $users = User::latest()->paginate(20);
+
         return view('admin.users.index', compact('users'));
     }
 
@@ -21,6 +22,7 @@ class UserController extends Controller
             return back()->with('error', 'Only super admins can change roles.');
         }
         $user->update(['role' => $request->role]);
+
         return back()->with('success', 'User role updated.');
     }
 
@@ -30,6 +32,7 @@ class UserController extends Controller
             return back()->with('error', 'You cannot delete yourself.');
         }
         $user->delete();
+
         return back()->with('success', 'User deleted.');
     }
 }

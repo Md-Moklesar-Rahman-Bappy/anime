@@ -16,10 +16,14 @@ class YouTubeService
     public function getVideoInfo(string $url): ?array
     {
         $videoId = $this->extractVideoId($url);
-        if (!$videoId) return null;
+        if (! $videoId) {
+            return null;
+        }
 
         $info = $this->viaOEmbed($videoId);
-        if (!$info) return null;
+        if (! $info) {
+            return null;
+        }
 
         return $info;
     }
@@ -47,7 +51,9 @@ class YouTubeService
         $url = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={$videoId}&format=json";
         $response = Http::get($url);
 
-        if (!$response->successful()) return null;
+        if (! $response->successful()) {
+            return null;
+        }
 
         $data = $response->json();
 
@@ -70,17 +76,23 @@ class YouTubeService
 
     protected function fetchDuration(string $videoId): ?int
     {
-        if (!$this->apiKey) return null;
+        if (! $this->apiKey) {
+            return null;
+        }
 
         $url = "https://www.googleapis.com/youtube/v3/videos?id={$videoId}&part=contentDetails&key={$this->apiKey}";
         $response = Http::get($url);
 
-        if (!$response->successful()) return null;
+        if (! $response->successful()) {
+            return null;
+        }
 
         $data = $response->json();
         $duration = $data['items'][0]['contentDetails']['duration'] ?? null;
 
-        if (!$duration) return null;
+        if (! $duration) {
+            return null;
+        }
 
         return $this->iso8601ToSeconds($duration);
     }
@@ -88,6 +100,7 @@ class YouTubeService
     protected function iso8601ToSeconds(string $iso): int
     {
         $interval = new \DateInterval($iso);
+
         return ($interval->h * 3600) + ($interval->i * 60) + $interval->s;
     }
 }

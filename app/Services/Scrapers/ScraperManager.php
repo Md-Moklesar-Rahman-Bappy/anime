@@ -23,7 +23,7 @@ class ScraperManager
 
     public function names(): array
     {
-        return array_map(fn($s) => [
+        return array_map(fn ($s) => [
             'class' => get_class($s),
             'name' => $s->name(),
         ], $this->scrapers);

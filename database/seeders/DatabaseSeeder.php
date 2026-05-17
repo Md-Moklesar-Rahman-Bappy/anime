@@ -27,7 +27,7 @@ class DatabaseSeeder extends Seeder
             'Music', 'Parody', 'Psychological', 'Samurai', 'School', 'Shounen',
             'Shoujo', 'Seinen', 'Josei', 'Space', 'Vampire', 'Yaoi', 'Yuri',
             'Game', 'Cars', 'Historical', 'Demons', 'Police', 'Martial Arts',
-            'Dementia', 'Super Power', 'Ghost', 'Family', 'Dub'
+            'Dementia', 'Super Power', 'Ghost', 'Family', 'Dub',
         ];
         foreach ($genres as $name) {
             Genre::create(['name' => $name, 'slug' => Str::slug($name)]);
@@ -76,7 +76,7 @@ class DatabaseSeeder extends Seeder
                     'number' => $i,
                     'title' => "Episode {$i}",
                     'description' => "Episode {$i} of {$data['title']}",
-                    'duration' => $data['duration'] * 60,
+                    'duration' => $data['duration'] * 60, // stored in seconds for the player
                     'has_sub' => true,
                     'has_dub' => $i % 3 === 0,
                     'created_by' => 1,

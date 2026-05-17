@@ -15,12 +15,14 @@ class ZoroScraper implements ScraperInterface
 
     public function search(string $query): array
     {
-        $url = "{$this->baseUrl}/search?keyword=" . urlencode($query);
+        $url = "{$this->baseUrl}/search?keyword=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $html = $response->body();
         $results = [];
@@ -45,7 +47,9 @@ class ZoroScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $html = $response->body();
         $episodes = [];
@@ -54,8 +58,8 @@ class ZoroScraper implements ScraperInterface
         preg_match_all('/<a[^>]+href="\/watch\/episode-([^"]+)"[^>]*>.*?Episode\s*(\d+)/s', $html, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $m) {
-            $epNum = (int)$m[2];
-            if (!isset($idMap[$epNum])) {
+            $epNum = (int) $m[2];
+            if (! isset($idMap[$epNum])) {
                 $idMap[$epNum] = true;
                 $episodes[] = [
                     'id' => $m[1],
@@ -64,7 +68,8 @@ class ZoroScraper implements ScraperInterface
             }
         }
 
-        usort($episodes, fn($a, $b) => $a['number'] - $b['number']);
+        usort($episodes, fn ($a, $b) => $a['number'] - $b['number']);
+
         return $episodes;
     }
 
@@ -75,7 +80,9 @@ class ZoroScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return null;
+        if (! $response->successful()) {
+            return null;
+        }
 
         $html = $response->body();
 

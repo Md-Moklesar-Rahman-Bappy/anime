@@ -16,6 +16,7 @@ class FavoritesController extends Controller
 
         if ($exists) {
             $exists->delete();
+
             return response()->json(['status' => 'removed']);
         }
 
@@ -36,9 +37,10 @@ class FavoritesController extends Controller
 
         $category = $request->category;
 
-        if (!$category) {
+        if (! $category) {
             Favorite::where('user_id', auth()->id())
                 ->where('anime_id', $request->anime_id)->delete();
+
             return response()->json(['status' => 'ok', 'category' => null]);
         }
 

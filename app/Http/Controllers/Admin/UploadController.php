@@ -18,8 +18,8 @@ class UploadController extends Controller
             'chunk_size' => 'required|integer|min:1048576|max:52428800',
         ]);
 
-        $totalChunks = (int)ceil($data['file_size'] / $data['chunk_size']);
-        $tempDir = 'chunks/' . uniqid('upload_') . '_' . time();
+        $totalChunks = (int) ceil($data['file_size'] / $data['chunk_size']);
+        $tempDir = 'chunks/'.uniqid('upload_').'_'.time();
 
         Storage::disk('local')->makeDirectory($tempDir);
 
@@ -60,7 +60,7 @@ class UploadController extends Controller
             return response()->json(['error' => 'Upload already completed or failed.'], 400);
         }
 
-        $chunkPath = $upload->temp_dir . '/chunk_' . str_pad($data['chunk_index'], 6, '0', STR_PAD_LEFT);
+        $chunkPath = $upload->temp_dir.'/chunk_'.str_pad($data['chunk_index'], 6, '0', STR_PAD_LEFT);
         $data['chunk']->storeAs($upload->temp_dir, basename($chunkPath), 'local');
 
         $upload->increment('received_chunks');
@@ -103,24 +103,26 @@ class UploadController extends Controller
     {
         $disk = Storage::disk('local');
         $tempDir = $upload->temp_dir;
-        $finalDir = 'uploads/videos/' . date('Y/m/d');
-        $finalPath = $finalDir . '/' . $upload->filename;
+        $finalDir = 'uploads/videos/'.date('Y/m/d');
+        $finalPath = $finalDir.'/'.$upload->filename;
 
         $disk->makeDirectory($finalDir);
 
-        $outPath = storage_path('app/' . $tempDir . '/_assembled');
+        $outPath = storage_path('app/'.$tempDir.'/_assembled');
         $out = fopen($outPath, 'wb');
 
-        if (!$out) {
+        if (! $out) {
             $upload->update(['status' => 'failed']);
+
             return;
         }
 
         for ($i = 0; $i < $upload->total_chunks; $i++) {
-            $chunkFile = storage_path('app/' . $tempDir . '/chunk_' . str_pad($i, 6, '0', STR_PAD_LEFT));
-            if (!file_exists($chunkFile)) {
+            $chunkFile = storage_path('app/'.$tempDir.'/chunk_'.str_pad($i, 6, '0', STR_PAD_LEFT));
+            if (! file_exists($chunkFile)) {
                 $upload->update(['status' => 'failed']);
                 fclose($out);
+
                 return;
             }
             $chunk = fopen($chunkFile, 'rb');
@@ -151,7 +153,7 @@ class UploadController extends Controller
 
         return response()->json([
             'path' => $path,
-            'url' => url('storage/' . $path),
+            'url' => url('storage/'.$path),
         ]);
     }
 
@@ -167,6 +169,7 @@ class UploadController extends Controller
         }
 
         $upload->update(['status' => 'cancelled']);
+
         return response()->json(['status' => 'cancelled']);
     }
 }

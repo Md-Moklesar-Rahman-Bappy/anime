@@ -11,6 +11,7 @@ class RequestController extends Controller
     public function index()
     {
         $requests = AnimeRequest::with('user')->latest()->paginate(20);
+
         return view('admin.requests.index', compact('requests'));
     }
 
@@ -18,6 +19,7 @@ class RequestController extends Controller
     {
         $request->validate(['status' => 'required|in:pending,fulfilled,rejected']);
         $animeRequest->update(['status' => $request->status]);
+
         return back()->with('success', 'Request updated.');
     }
 }

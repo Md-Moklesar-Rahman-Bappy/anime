@@ -1,6 +1,9 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\ScraperServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\ScraperServiceProvider::class,
+    AppServiceProvider::class,
+    ScraperServiceProvider::class,
 ];

@@ -149,7 +149,7 @@ class JikanService
             }
             $all = $all->merge($episodes);
 
-            if (!($data['pagination']['has_next_page'] ?? false)) {
+            if (! ($data['pagination']['has_next_page'] ?? false)) {
                 break;
             }
             $page++;
@@ -206,7 +206,7 @@ class JikanService
         $images = $item['images']['jpg'] ?? [];
 
         return [
-            'number' => $item['mal_id'],
+            'number' => $item['episode'] ?? $item['mal_id'],
             'title' => $item['title'] ?? null,
             'title_japanese' => $item['title_japanese'] ?? null,
             'air_date' => $item['aired'] ?? null,
@@ -220,7 +220,7 @@ class JikanService
 
     protected function parseDuration(?string $duration): ?int
     {
-        if (!$duration) {
+        if (! $duration) {
             return null;
         }
 

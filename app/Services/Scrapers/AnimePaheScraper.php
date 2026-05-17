@@ -15,12 +15,14 @@ class AnimePaheScraper implements ScraperInterface
 
     public function search(string $query): array
     {
-        $url = "{$this->baseUrl}/api?m=search&q=" . urlencode($query);
+        $url = "{$this->baseUrl}/api?m=search&q=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $data = $response->json();
         $results = [];
@@ -45,7 +47,9 @@ class AnimePaheScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $data = $response->json();
         $episodes = [];
@@ -53,7 +57,7 @@ class AnimePaheScraper implements ScraperInterface
         foreach ($data['data'] ?? [] as $item) {
             $episodes[] = [
                 'id' => $item['session'] ?? $item['id'],
-                'number' => (int)$item['episode'],
+                'number' => (int) $item['episode'],
                 'title' => $item['title'] ?? null,
             ];
         }
@@ -68,7 +72,9 @@ class AnimePaheScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return null;
+        if (! $response->successful()) {
+            return null;
+        }
 
         $data = $response->json();
 

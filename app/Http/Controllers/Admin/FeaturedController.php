@@ -57,6 +57,6 @@ class FeaturedController extends Controller
 
         $labels = ['recent' => 'Recent Uploads', 'top_rated' => 'Top Rated', 'most_viewed' => 'Most Popular'];
 
-        return redirect()->route('admin.featured.index')->with('success', 'Featured slider auto-filled from ' . ($labels[$mode] ?? $mode) . '!');
+        return redirect()->route('admin.featured.index')->with('success', 'Featured slider auto-filled from '.($labels[$mode] ?? $mode).'!');
     }
 }

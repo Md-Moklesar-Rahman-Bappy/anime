@@ -15,12 +15,14 @@ class GogoanimeByScraper implements ScraperInterface
 
     public function search(string $query): array
     {
-        $url = "{$this->baseUrl}/?s=" . urlencode($query);
+        $url = "{$this->baseUrl}/?s=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $html = $response->body();
         $results = [];
@@ -32,12 +34,16 @@ class GogoanimeByScraper implements ScraperInterface
             $href = $match[1];
             $title = trim(strip_tags($match[2]));
 
-            if (strlen($title) < 5) continue;
+            if (strlen($title) < 5) {
+                continue;
+            }
 
             $animeName = preg_replace('/\s*Episode\s*\d+.*$/i', '', $title);
             $animeKey = strtolower(trim($animeName));
 
-            if (isset($seen[$animeKey])) continue;
+            if (isset($seen[$animeKey])) {
+                continue;
+            }
             $seen[$animeKey] = true;
 
             $results[] = [
@@ -57,7 +63,9 @@ class GogoanimeByScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return [];
+        if (! $response->successful()) {
+            return [];
+        }
 
         $html = $response->body();
         $episodes = [];
@@ -73,9 +81,9 @@ class GogoanimeByScraper implements ScraperInterface
 
             $catSlug = strtolower($category);
 
-            if (preg_match('/\b' . preg_quote($animeSlug, '/') . '\b/i', $catSlug)) {
+            if (preg_match('/\b'.preg_quote($animeSlug, '/').'\b/i', $catSlug)) {
                 if (preg_match('/Episode\s*(\d+)/i', $title, $numMatch)) {
-                    $epNum = (int)$numMatch[1];
+                    $epNum = (int) $numMatch[1];
                     $epSlug = basename(parse_url($link, PHP_URL_PATH));
                     $episodes[] = [
                         'id' => $epSlug,
@@ -86,7 +94,8 @@ class GogoanimeByScraper implements ScraperInterface
             }
         }
 
-        usort($episodes, fn($a, $b) => $a['number'] - $b['number']);
+        usort($episodes, fn ($a, $b) => $a['number'] - $b['number']);
+
         return $episodes;
     }
 
@@ -97,7 +106,9 @@ class GogoanimeByScraper implements ScraperInterface
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ])->get($url);
 
-        if (!$response->successful()) return null;
+        if (! $response->successful()) {
+            return null;
+        }
 
         $html = $response->body();
 

@@ -79,7 +79,7 @@ class JikanImportCommand extends Command
         $imported = 0;
         $skipped = 0;
         $page = $startPage;
-        $pastResumePoint = !$resumeMalId;
+        $pastResumePoint = ! $resumeMalId;
 
         while (true) {
             $results = $this->jikan->browseAnime($page);
@@ -94,6 +94,7 @@ class JikanImportCommand extends Command
 
                 if ($resumeMalId && $malId <= (int) $resumeMalId) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -101,6 +102,7 @@ class JikanImportCommand extends Command
 
                 if (Anime::where('mal_id', $malId)->exists()) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -108,6 +110,7 @@ class JikanImportCommand extends Command
                     $this->line("[DRY-RUN] Would import: {$data['title']} (MAL #{$malId})");
                     $imported++;
                     Setting::updateOrCreate(['key' => 'jikan_last_mal_id'], ['value' => $malId]);
+
                     continue;
                 }
 
@@ -122,12 +125,13 @@ class JikanImportCommand extends Command
                 if ($imported >= $batchSize) {
                     $this->info("Reached batch limit of {$batchSize}. Run again to continue.");
                     $this->info("Imported: {$imported}, Skipped: {$skipped}");
+
                     return Command::SUCCESS;
                 }
             }
 
             $pagination = $this->jikan->browsePagination($page + 1);
-            if (!($pagination['has_next_page'] ?? false)) {
+            if (! ($pagination['has_next_page'] ?? false)) {
                 $this->info('All pages imported!');
                 break;
             }
@@ -145,14 +149,16 @@ class JikanImportCommand extends Command
     {
         if (Anime::where('mal_id', $malId)->exists()) {
             $this->warn("MAL ID {$malId} is already imported.");
+
             return Command::FAILURE;
         }
 
         $this->info("Fetching MAL ID {$malId}...");
         $data = $this->jikan->getAnime($malId);
 
-        if (!$data) {
+        if (! $data) {
             $this->error("Anime with MAL ID {$malId} not found.");
+
             return Command::FAILURE;
         }
 
@@ -161,6 +167,7 @@ class JikanImportCommand extends Command
 
         if ($this->option('dry-run')) {
             $this->line('Dry-run: would import this anime.');
+
             return Command::SUCCESS;
         }
 
@@ -176,6 +183,7 @@ class JikanImportCommand extends Command
 
         if ($results->isEmpty()) {
             $this->error("No results for \"{$query}\".");
+
             return Command::FAILURE;
         }
 
@@ -183,6 +191,7 @@ class JikanImportCommand extends Command
 
         if (Anime::where('mal_id', $first['mal_id'])->exists()) {
             $this->warn("\"{$first['title']}\" is already imported.");
+
             return Command::FAILURE;
         }
 
@@ -190,10 +199,11 @@ class JikanImportCommand extends Command
 
         if ($this->option('dry-run')) {
             $this->line('Dry-run: would import this anime.');
+
             return Command::SUCCESS;
         }
 
-        if (!$this->confirm("Import \"{$first['title']}\"?", true)) {
+        if (! $this->confirm("Import \"{$first['title']}\"?", true)) {
             return Command::FAILURE;
         }
 
@@ -213,6 +223,7 @@ class JikanImportCommand extends Command
 
         if ($results->isEmpty()) {
             $this->error('No results.');
+
             return Command::FAILURE;
         }
 
@@ -225,6 +236,7 @@ class JikanImportCommand extends Command
             if ($this->option('dry-run')) {
                 $this->line("[DRY-RUN] Would import: {$data['title']}");
                 $imported++;
+
                 continue;
             }
 
@@ -235,6 +247,7 @@ class JikanImportCommand extends Command
         }
 
         $this->info("Imported {$imported} anime.");
+
         return Command::SUCCESS;
     }
 
@@ -248,6 +261,7 @@ class JikanImportCommand extends Command
 
         if ($results->isEmpty()) {
             $this->error("No results for {$season} {$year}.");
+
             return Command::FAILURE;
         }
 
@@ -260,6 +274,7 @@ class JikanImportCommand extends Command
             if ($this->option('dry-run')) {
                 $this->line("[DRY-RUN] Would import: {$data['title']}");
                 $imported++;
+
                 continue;
             }
 
@@ -270,6 +285,7 @@ class JikanImportCommand extends Command
         }
 
         $this->info("Imported {$imported} anime.");
+
         return Command::SUCCESS;
     }
 
@@ -279,13 +295,13 @@ class JikanImportCommand extends Command
         foreach ($data['genres'] as $genreData) {
             $slug = Str::slug($genreData['name']);
             $genre = Genre::where('mal_id', $genreData['mal_id'])->orWhere('slug', $slug)->first();
-            if (!$genre) {
+            if (! $genre) {
                 $genre = Genre::create([
                     'mal_id' => $genreData['mal_id'],
                     'name' => $genreData['name'],
                     'slug' => $slug,
                 ]);
-            } elseif (!$genre->mal_id) {
+            } elseif (! $genre->mal_id) {
                 $genre->update(['mal_id' => $genreData['mal_id']]);
             }
             $genreIds[] = $genre->id;
@@ -326,7 +342,7 @@ class JikanImportCommand extends Command
             $counter = 1;
             $originalSlug = $slug;
             while (Anime::where('slug', $slug)->exists()) {
-                $slug = $originalSlug . '-' . $counter++;
+                $slug = $originalSlug.'-'.$counter++;
             }
 
             $anime = Anime::create([
@@ -367,7 +383,7 @@ class JikanImportCommand extends Command
 
             $anime->episodes()->create([
                 'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                 'description' => $ep['synopsis'],
                 'thumbnail' => $ep['thumbnail'],
                 'air_date' => $ep['air_date'],

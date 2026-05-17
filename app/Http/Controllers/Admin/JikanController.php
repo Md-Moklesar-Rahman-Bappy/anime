@@ -55,7 +55,7 @@ class JikanController extends Controller
     {
         $anime = $this->jikan->getAnime($malId);
 
-        if (!$anime) {
+        if (! $anime) {
             return redirect()->route('admin.jikan.search')
                 ->with('error', 'Anime not found on MyAnimeList.');
         }
@@ -75,7 +75,7 @@ class JikanController extends Controller
 
         $data = $this->jikan->getAnime($malId);
 
-        if (!$data) {
+        if (! $data) {
             return redirect()->route('admin.jikan.search')
                 ->with('error', 'Failed to fetch anime data from MyAnimeList.');
         }
@@ -86,13 +86,13 @@ class JikanController extends Controller
         foreach ($data['genres'] as $genreData) {
             $slug = Str::slug($genreData['name']);
             $genre = Genre::where('mal_id', $genreData['mal_id'])->orWhere('slug', $slug)->first();
-            if (!$genre) {
+            if (! $genre) {
                 $genre = Genre::create([
                     'mal_id' => $genreData['mal_id'],
                     'name' => $genreData['name'],
                     'slug' => $slug,
                 ]);
-            } elseif (!$genre->mal_id) {
+            } elseif (! $genre->mal_id) {
                 $genre->update(['mal_id' => $genreData['mal_id']]);
             }
             $genreIds[] = $genre->id;
@@ -132,7 +132,7 @@ class JikanController extends Controller
             $counter = 1;
             $originalSlug = $slug;
             while (Anime::where('slug', $slug)->exists()) {
-                $slug = $originalSlug . '-' . $counter++;
+                $slug = $originalSlug.'-'.$counter++;
             }
 
             $anime = Anime::create([
@@ -173,7 +173,7 @@ class JikanController extends Controller
 
             $anime->episodes()->create([
                 'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                 'description' => $ep['synopsis'],
                 'thumbnail' => $ep['thumbnail'],
                 'air_date' => $ep['air_date'],
@@ -184,6 +184,7 @@ class JikanController extends Controller
         }
 
         $action = $existing ? 'Updated' : 'Imported';
+
         return redirect()->route('admin.anime.index')
             ->with('success', "{$action} \"{$anime->title}\" with {$anime->episodes()->count()} episodes from MAL.");
     }
@@ -219,11 +220,13 @@ class JikanController extends Controller
 
                 if ($resumeMalId && $malId <= (int) $resumeMalId) {
                     $skipped++;
+
                     continue;
                 }
 
                 if (Anime::where('mal_id', $malId)->exists()) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -238,13 +241,13 @@ class JikanController extends Controller
             }
 
             $pagination = $this->jikan->browsePagination($page + 1);
-            if (!($pagination['has_next_page'] ?? false)) {
+            if (! ($pagination['has_next_page'] ?? false)) {
                 break;
             }
             $page++;
         }
 
-        if (!$resumeMalId && $imported === 0) {
+        if (! $resumeMalId && $imported === 0) {
             Setting::where('key', 'jikan_last_mal_id')->delete();
         }
 
@@ -266,13 +269,13 @@ class JikanController extends Controller
         foreach ($data['genres'] as $genreData) {
             $slug = Str::slug($genreData['name']);
             $genre = Genre::where('mal_id', $genreData['mal_id'])->orWhere('slug', $slug)->first();
-            if (!$genre) {
+            if (! $genre) {
                 $genre = Genre::create([
                     'mal_id' => $genreData['mal_id'],
                     'name' => $genreData['name'],
                     'slug' => $slug,
                 ]);
-            } elseif (!$genre->mal_id) {
+            } elseif (! $genre->mal_id) {
                 $genre->update(['mal_id' => $genreData['mal_id']]);
             }
             $genreIds[] = $genre->id;
@@ -312,7 +315,7 @@ class JikanController extends Controller
             $counter = 1;
             $originalSlug = $slug;
             while (Anime::where('slug', $slug)->exists()) {
-                $slug = $originalSlug . '-' . $counter++;
+                $slug = $originalSlug.'-'.$counter++;
             }
 
             $anime = Anime::create([
@@ -353,7 +356,7 @@ class JikanController extends Controller
 
             $anime->episodes()->create([
                 'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                 'description' => $ep['synopsis'],
                 'thumbnail' => $ep['thumbnail'],
                 'air_date' => $ep['air_date'],
