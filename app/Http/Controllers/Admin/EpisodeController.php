@@ -6,10 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Anime;
 use App\Models\Episode;
 use App\Models\Server;
+use App\Services\YouTubeService;
 use Illuminate\Http\Request;
 
 class EpisodeController extends Controller
 {
+    protected YouTubeService $youtube;
+
+    public function __construct(YouTubeService $youtube)
+    {
+        $this->youtube = $youtube;
+    }
+
     public function index(Anime $anime)
     {
         $episodes = $anime->episodes()->orderBy('number')->paginate(20);
@@ -29,17 +37,22 @@ class EpisodeController extends Controller
             'description' => 'nullable|string',
             'video_path' => 'nullable|string',
             'storage_disk' => 'nullable|string|in:local,s3,streaming',
+            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper',
+            'source_id' => 'nullable|string',
+            'source_url' => 'nullable|string',
             'duration' => 'nullable|integer',
             'thumbnail' => 'nullable|image|max:2048',
             'has_sub' => 'nullable|boolean',
             'has_dub' => 'nullable|boolean',
             'air_date' => 'nullable|date',
+            'youtube_url' => 'nullable|url',
         ]);
 
         $data['anime_id'] = $anime->id;
         $data['has_sub'] = $request->has('has_sub');
         $data['has_dub'] = $request->has('has_dub');
         $data['created_by'] = auth()->id();
+        $data['source_type'] = $data['source_type'] ?? 'upload';
 
         if ($request->hasFile('thumbnail')) {
             $data['thumbnail'] = $request->file('thumbnail')
@@ -52,7 +65,29 @@ class EpisodeController extends Controller
             $data['storage_disk'] = 'local';
         }
 
+        if ($data['source_type'] === 'youtube' && ($request->youtube_url || $data['source_url'])) {
+            $url = $request->youtube_url ?? $data['source_url'];
+            $info = $this->youtube->getVideoInfo($url);
+            if ($info) {
+                $data['source_id'] = $info['id'];
+                $data['source_url'] = $info['watch_url'];
+                $data['video_path'] = $info['embed_url'];
+                $data['storage_disk'] = 'streaming';
+                $data['duration'] = $data['duration'] ?? $info['duration'];
+                $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
+            }
+        }
+
         $episode = Episode::create($data);
+
+        if ($data['source_type'] === 'youtube' && !empty($episode->video_path)) {
+            Server::create([
+                'episode_id' => $episode->id,
+                'label' => 'YouTube',
+                'url' => $episode->video_path,
+                'type' => 'youtube',
+            ]);
+        }
 
         if ($request->server_label) {
             foreach ($request->server_label as $i => $label) {
@@ -85,15 +120,20 @@ class EpisodeController extends Controller
             'description' => 'nullable|string',
             'video_path' => 'nullable|string',
             'storage_disk' => 'nullable|string|in:local,s3,streaming',
+            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper',
+            'source_id' => 'nullable|string',
+            'source_url' => 'nullable|string',
             'duration' => 'nullable|integer',
             'thumbnail' => 'nullable|image|max:2048',
             'has_sub' => 'nullable|boolean',
             'has_dub' => 'nullable|boolean',
             'air_date' => 'nullable|date',
+            'youtube_url' => 'nullable|url',
         ]);
 
         $data['has_sub'] = $request->has('has_sub');
         $data['has_dub'] = $request->has('has_dub');
+        $data['source_type'] = $data['source_type'] ?? $episode->source_type ?? 'upload';
 
         if ($request->hasFile('thumbnail')) {
             $data['thumbnail'] = $request->file('thumbnail')
@@ -106,10 +146,33 @@ class EpisodeController extends Controller
             $data['storage_disk'] = 'local';
         }
 
+        if ($data['source_type'] === 'youtube' && ($request->youtube_url || $data['source_url'])) {
+            $url = $request->youtube_url ?? $data['source_url'];
+            $info = $this->youtube->getVideoInfo($url);
+            if ($info) {
+                $data['source_id'] = $info['id'];
+                $data['source_url'] = $info['watch_url'];
+                $data['video_path'] = $info['embed_url'];
+                $data['storage_disk'] = 'streaming';
+                $data['duration'] = $data['duration'] ?? $info['duration'];
+                $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
+            }
+        }
+
         $episode->update($data);
 
+        $episode->servers()->delete();
+
+        if ($data['source_type'] === 'youtube' && !empty($episode->video_path)) {
+            Server::create([
+                'episode_id' => $episode->id,
+                'label' => 'YouTube',
+                'url' => $episode->video_path,
+                'type' => 'youtube',
+            ]);
+        }
+
         if ($request->server_label) {
-            $episode->servers()->delete();
             foreach ($request->server_label as $i => $label) {
                 if (!empty($request->server_url[$i])) {
                     Server::create([

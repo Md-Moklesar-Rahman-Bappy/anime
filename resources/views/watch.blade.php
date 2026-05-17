@@ -7,12 +7,22 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-4">
             <div class="bg-black rounded-lg overflow-hidden aspect-video relative" x-data="player()">
-                <video id="videoPlayer" class="w-full h-full" controls {{ $episode->servers->count() == 0 ? 'poster="'.$episode->thumbnail.'"' : '' }}>
-                    @foreach($episode->servers as $server)
-                        <source src="{{ $server->url }}" type="{{ $server->type === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
-                    @endforeach
-                </video>
-                @if($episode->skipTimes->count())
+                @php
+                    $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
+                    $videoServers = $episode->servers->where('type', '!=', 'youtube');
+                @endphp
+
+                @if($youtubeServer)
+                    <iframe src="{{ $youtubeServer->url }}?autoplay=1&rel=0" class="w-full h-full" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                @else
+                    <video id="videoPlayer" class="w-full h-full" controls {{ $videoServers->count() == 0 && $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>
+                        @foreach($videoServers as $server)
+                            <source src="{{ $server->url }}" type="{{ $server->type === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
+                        @endforeach
+                    </video>
+                @endif
+
+                @if($episode->skipTimes->count() && !$youtubeServer)
                 <div class="absolute bottom-20 left-4 flex space-x-2">
                     @if($episode->skipTimes->first()->intro_start)
                     <button onclick="skipIntro()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">Skip Intro</button>

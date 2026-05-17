@@ -38,4 +38,8 @@ return [
         'retry_delay' => 100,
     ],
 
+    'youtube' => [
+        'key' => env('YOUTUBE_API_KEY', ''),
+    ],
+
 ];
