@@ -6,8 +6,8 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-4">
-            <div class="bg-black rounded-lg overflow-hidden" x-data="player()" x-init="init()">
-                <div class="plyr-wrapper">
+            <div class="bg-black rounded-lg overflow-visible" x-data="player()" x-init="init()">
+                <div class="plyr-wrapper overflow-hidden rounded-t-lg">
                     @if($initialServer)
                         <video id="videoPlayer" class="w-full aspect-video" playsinline
                             {{ $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>

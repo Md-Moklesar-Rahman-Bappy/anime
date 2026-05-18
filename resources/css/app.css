@@ -50,6 +50,7 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 4px;
+    overflow: visible;
 }
 .player-control-bar .ctrl-group {
     display: flex;
@@ -113,15 +114,15 @@
 /* Dropdown menus */
 .player-dropdown {
     position: absolute;
-    top: 100%;
+    bottom: 100%;
     right: 0;
-    margin-top: 4px;
+    margin-bottom: 6px;
     background: #1f2937;
     border: 1px solid #374151;
     border-radius: 8px;
     padding: 6px;
-    min-width: 180px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    min-width: 200px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
     z-index: 9999;
 }
 .player-dropdown .dropdown-item {
