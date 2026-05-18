@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use danog\MadelineProto\API;
+use danog\MadelineProto\Logger as MPLogger;
 use danog\MadelineProto\Settings\AppInfo;
+use danog\MadelineProto\Settings\Logger;
 
 class TelegramStreamService
 {
@@ -17,11 +19,15 @@ class TelegramStreamService
                 mkdir($dir, 0755, true);
             }
 
-            $settings = new AppInfo;
-            $settings->setApiId((int) config('services.telegram.api_id'));
-            $settings->setApiHash(config('services.telegram.api_hash'));
+            $appInfo = (new AppInfo)
+                ->setApiId((int) config('services.telegram.api_id'))
+                ->setApiHash(config('services.telegram.api_hash'));
 
-            $this->madeline = new API($dir . '/bot_session.madeline', $settings);
+            $logger = (new Logger)
+                ->setMode(MPLogger::NO_LOGGER);
+
+            $this->madeline = new API($dir . '/bot_session.madeline', $appInfo, $logger);
+            $this->madeline->botLogin(config('services.telegram.bot_token'));
             $this->madeline->start();
 
             if (! $this->madeline->isBotLoggedIn()) {
