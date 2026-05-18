@@ -31,6 +31,7 @@ use App\Http\Controllers\MangaReaderController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RandomController;
 use App\Http\Controllers\StaticController;
+use App\Http\Controllers\TgStreamController;
 use App\Http\Controllers\WatchController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\RateLimiter;
@@ -53,6 +54,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Telegram streaming (public, used by Plyr player)
+Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream');
 
 // Anime pages
 Route::get('/watch/{slug}', WatchController::class)->name('watch');

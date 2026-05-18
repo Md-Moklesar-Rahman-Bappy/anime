@@ -164,10 +164,8 @@ class TelegramService
         }
 
         $fileId = $video['file_id'];
+
         $fileInfo = $this->resolveFileId($fileId);
-        if (! $fileInfo) {
-            return null;
-        }
 
         $thumb = null;
         if (! empty($video['thumbnail'])) {
@@ -175,11 +173,11 @@ class TelegramService
             $thumb = $thumbInfo['direct_url'] ?? null;
         }
 
-        return [
+        $result = [
             'file_id' => $fileId,
             'file_unique_id' => $video['file_unique_id'] ?? null,
-            'direct_url' => $fileInfo['direct_url'],
-            'file_size' => $video['file_size'] ?? $fileInfo['file_size'],
+            'direct_url' => null,
+            'file_size' => $video['file_size'] ?? null,
             'duration' => $video['duration'] ?? null,
             'width' => $video['width'] ?? null,
             'height' => $video['height'] ?? null,
@@ -188,7 +186,19 @@ class TelegramService
             'caption' => $message['caption'] ?? null,
             'message_id' => $message['message_id'] ?? null,
             'date' => $message['date'] ?? null,
-            'type' => $fileInfo['type'] ?? 'mp4',
+            'type' => 'mp4',
+            'needs_streaming' => false,
         ];
+
+        if ($fileInfo) {
+            $result['direct_url'] = $fileInfo['direct_url'];
+            $result['file_path'] = $fileInfo['file_path'];
+            $result['type'] = $fileInfo['type'] ?? 'mp4';
+            $result['file_size'] = $fileInfo['file_size'] ?? $result['file_size'];
+        } else {
+            $result['needs_streaming'] = true;
+        }
+
+        return $result;
     }
 }

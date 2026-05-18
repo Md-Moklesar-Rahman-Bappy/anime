@@ -163,11 +163,16 @@
                                     <span x-show="telegramPreview.duration"> | <span x-text="telegramPreview.duration + 's'"></span></span>
                                     <span x-show="telegramPreview.width"> | <span x-text="telegramPreview.width + 'x' + telegramPreview.height"></span></span>
                                 </p>
-                                <p class="text-gray-500 text-xs mt-1 break-all" x-text="telegramPreview.direct_url"></p>
+                                <p class="text-gray-500 text-xs mt-1 break-all" x-text="telegramDirectUrl"></p>
                             </div>
                         </div>
                         <div class="bg-gray-900 rounded p-2">
-                            <p class="text-green-400 text-xs font-medium">Video URL will be saved as Telegram source</p>
+                            <template x-if="telegramPreview.needs_streaming">
+                                <p class="text-yellow-400 text-xs font-medium">Large file detected — will stream via proxy (MadelineProto)</p>
+                            </template>
+                            <template x-if="!telegramPreview.needs_streaming">
+                                <p class="text-green-400 text-xs font-medium">Video URL will be saved as Telegram source</p>
+                            </template>
                         </div>
                     </div>
                 </template>
@@ -446,14 +451,21 @@ function episodeForm() {
             })
             .then(r => r.json().then(data => ({ ok: r.ok, data })))
             .then(({ ok, data }) => {
-                if (ok && data.direct_url) {
+                if (ok && data.file_id) {
                     this.telegramPreview = data;
-                    this.telegramDirectUrl = data.direct_url;
                     this.telegramFileId = data.file_id;
                     this.telegramFileSize = data.file_size || '';
                     this.telegramDuration = data.duration || '';
                     this.telegramThumb = data.thumbnail || '';
                     this.telegramType = data.type || 'mp4';
+
+                    if (data.needs_streaming && data.message_id) {
+                        this.telegramDirectUrl = '/tg/' + data.message_id;
+                    } else if (data.direct_url) {
+                        this.telegramDirectUrl = data.direct_url;
+                    } else {
+                        this.telegramError = 'Could not resolve Telegram video. Check the URL and try again.';
+                    }
                 } else {
                     this.telegramError = data.error || 'Could not resolve Telegram video. Check the URL and try again.';
                 }
