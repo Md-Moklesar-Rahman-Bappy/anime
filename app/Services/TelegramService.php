@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Exception;
 
 class TelegramService
 {
@@ -18,60 +20,97 @@ class TelegramService
 
     public function resolveMessage(string $url): ?array
     {
-        $parsed = $this->parseTmeUrl($url);
-        if (! $parsed) {
+        try {
+            $parsed = $this->parseTmeUrl($url);
+            if (! $parsed || ! isset($parsed['message_id'])) {
+                return null;
+            }
+
+            // Use Python streamer to get message info for the preview
+            $streamService = new TelegramStreamService();
+            $info = $streamService->getMessageInfo($parsed['message_id']);
+
+            if (! $info) {
+                return null;
+            }
+
+            // For large files, set needs_streaming flag and construct the proxy URL
+            $needsStreaming = ($info['file_size'] ?? 0) > 20 * 1024 * 1024; // > 20MB
+
+            return [
+                'file_id' => null, // Not available from Python streamer in preview context
+                'file_unique_id' => null,
+                'direct_url' => $needsStreaming ? null : null, // No direct URL for large files
+                'file_path' => null,
+                'file_size' => $info['file_size'] ?? null,
+                'duration' => $info['duration'] ?? null,
+                'width' => $info['width'] ?? null,
+                'height' => $info['height'] ?? null,
+                'thumbnail' => null,
+                'mime_type' => $info['mime_type'] ?? 'video/mp4',
+                'caption' => $info['caption'] ?? null,
+                'message_id' => $parsed['message_id'],
+                'date' => null,
+                'type' => 'mp4',
+                'needs_streaming' => $needsStreaming,
+            ];
+        } catch (Exception $e) {
+            Log::warning("Telegram resolveMessage failed: {$e->getMessage()}");
             return null;
         }
-
-        $message = $this->fetchMessage($parsed['chat_id'], $parsed['message_id']);
-        if (! $message) {
-            return null;
-        }
-
-        return $this->extractVideo($message);
     }
 
     public function resolveFileId(string $fileId): ?array
     {
-        $response = Http::post("{$this->apiBase}/getFile", [
-            'file_id' => $fileId,
-        ]);
+        try {
+            $response = Http::post("{$this->apiBase}/getFile", [
+                'file_id' => $fileId,
+            ]);
 
-        if (! $response->successful() || ! ($response['ok'] ?? false)) {
+            if (! $response->successful() || ! ($response['ok'] ?? false)) {
+                return null;
+            }
+
+            $filePath = $response['result']['file_path'] ?? null;
+            if (! $filePath) {
+                return null;
+            }
+
+            $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+            return [
+                'file_id' => $fileId,
+                'file_unique_id' => $response['result']['file_unique_id'] ?? null,
+                'file_path' => $filePath,
+                'file_size' => $response['result']['file_size'] ?? null,
+                'direct_url' => "{$this->apiBase}/{$filePath}",
+                'extension' => $ext,
+                'type' => in_array($ext, ['mp4', 'webm', 'mkv', 'm3u8']) ? $ext : 'mp4',
+            ];
+        } catch (Exception $e) {
+            Log::warning("Telegram resolveFileId failed: {$e->getMessage()}");
             return null;
         }
-
-        $filePath = $response['result']['file_path'] ?? null;
-        if (! $filePath) {
-            return null;
-        }
-
-        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-
-        return [
-            'file_id' => $fileId,
-            'file_unique_id' => $response['result']['file_unique_id'] ?? null,
-            'file_path' => $filePath,
-            'file_size' => $response['result']['file_size'] ?? null,
-            'direct_url' => "{$this->apiBase}/{$filePath}",
-            'extension' => $ext,
-            'type' => in_array($ext, ['mp4', 'webm', 'mkv', 'm3u8']) ? $ext : 'mp4',
-        ];
     }
 
     public function getChannelUpdates(int $offset = 0, int $limit = 100): array
     {
-        $response = Http::post("{$this->apiBase}/getUpdates", [
-            'offset' => $offset,
-            'limit' => $limit,
-            'allowed_updates' => ['channel_post'],
-        ]);
+        try {
+            $response = Http::post("{$this->apiBase}/getUpdates", [
+                'offset' => $offset,
+                'limit' => $limit,
+                'allowed_updates' => ['channel_post'],
+            ]);
 
-        if (! $response->successful() || ! ($response['ok'] ?? false)) {
+            if (! $response->successful() || ! ($response['ok'] ?? false)) {
+                return [];
+            }
+
+            return $response['result'] ?? [];
+        } catch (Exception $e) {
+            Log::warning("Telegram getChannelUpdates failed: {$e->getMessage()}");
             return [];
         }
-
-        return $response['result'] ?? [];
     }
 
     public function extractVideoFromUpdate(array $update): ?array
@@ -114,91 +153,39 @@ class TelegramService
         return null;
     }
 
-    protected function fetchMessage(string $chatId, int $messageId): ?array
-    {
-        $response = Http::post("{$this->apiBase}/forwardMessage", [
-            'chat_id' => $chatId,
-            'from_chat_id' => $chatId,
-            'message_id' => $messageId,
-        ]);
-
-        if ($response->successful()) {
-            $result = $response['result'] ?? null;
-            if ($result) {
-                return $result;
-            }
-        }
-
-        $response = Http::post("{$this->apiBase}/getChat", [
-            'chat_id' => $chatId,
-        ]);
-
-        if (! $response->successful()) {
-            return null;
-        }
-
-        $response = Http::post("{$this->apiBase}/getUpdates", [
-            'allowed_updates' => ['channel_post'],
-            'limit' => 100,
-        ]);
-
-        if (! $response->successful() || ! ($response['ok'] ?? false)) {
-            return null;
-        }
-
-        foreach ($response['result'] as $update) {
-            $post = $update['channel_post'] ?? null;
-            if ($post && ($post['message_id'] ?? null) === $messageId) {
-                return $post;
-            }
-        }
-
-        return null;
-    }
-
     protected function extractVideo(array $message): ?array
     {
-        $video = $message['video'] ?? $message['document'] ?? null;
-        if (! $video) {
+        $media = $message['video'] ?? $message['document'] ?? null;
+        if (! $media) {
             return null;
         }
 
-        $fileId = $video['file_id'];
-
-        $fileInfo = $this->resolveFileId($fileId);
-
-        $thumb = null;
-        if (! empty($video['thumbnail'])) {
-            $thumbInfo = $this->resolveFileId($video['thumbnail']['file_id']);
-            $thumb = $thumbInfo['direct_url'] ?? null;
+        $fileId = $media['file_id'] ?? null;
+        if (! $fileId) {
+            return null;
         }
 
-        $result = [
+        // Try to get direct URL via Bot API first (faster for small files)
+        $fileInfo = $this->resolveFileId($fileId);
+        $needsStreaming = ! $fileInfo;
+
+        return [
             'file_id' => $fileId,
-            'file_unique_id' => $video['file_unique_id'] ?? null,
-            'direct_url' => null,
-            'file_size' => $video['file_size'] ?? null,
-            'duration' => $video['duration'] ?? null,
-            'width' => $video['width'] ?? null,
-            'height' => $video['height'] ?? null,
-            'thumbnail' => $thumb,
-            'mime_type' => $video['mime_type'] ?? null,
-            'caption' => $message['caption'] ?? null,
+            'file_unique_id' => $media['file_unique_id'] ?? null,
+            'direct_url' => $fileInfo['direct_url'] ?? null,
+            'file_path' => $fileInfo['file_path'] ?? null,
+            'file_size' => $media['file_size'] ?? null,
+            'duration' => $media['duration'] ?? null,
+            'width' => $media['width'] ?? null,
+            'height' => $media['height'] ?? null,
+            'thumbnail' => null,
+            'mime_type' => $media['mime_type'] ?? null,
+            'caption' => $message['caption'] ?? $message['text'] ?? null,
             'message_id' => $message['message_id'] ?? null,
             'date' => $message['date'] ?? null,
             'type' => 'mp4',
-            'needs_streaming' => false,
+            'needs_streaming' => $needsStreaming,
         ];
-
-        if ($fileInfo) {
-            $result['direct_url'] = $fileInfo['direct_url'];
-            $result['file_path'] = $fileInfo['file_path'];
-            $result['type'] = $fileInfo['type'] ?? 'mp4';
-            $result['file_size'] = $fileInfo['file_size'] ?? $result['file_size'];
-        } else {
-            $result['needs_streaming'] = true;
-        }
-
-        return $result;
     }
 }
+
