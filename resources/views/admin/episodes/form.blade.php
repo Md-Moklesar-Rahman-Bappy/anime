@@ -52,6 +52,7 @@
                 <button type="button" @click="tab = 'upload'; sourceType = 'upload'" :class="tab === 'upload' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Upload File</button>
                 <button type="button" @click="tab = 'url'; sourceType = 'direct_url'" :class="tab === 'url' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Direct URL</button>
                 <button type="button" @click="tab = 'youtube'; sourceType = 'youtube'" :class="tab === 'youtube' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">YouTube</button>
+                <button type="button" @click="tab = 'telegram'; sourceType = 'telegram'" :class="tab === 'telegram' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Telegram</button>
                 <button type="button" @click="tab = 'servers'; sourceType = 'servers'" :class="tab === 'servers' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">External Servers</button>
             </div>
             <input type="hidden" name="source_type" x-model="sourceType">
@@ -134,6 +135,44 @@
                 </template>
             </div>
 
+            <div x-show="tab === 'telegram'" class="space-y-4">
+                <p class="text-sm text-gray-500">Paste a Telegram message URL or file ID to import a video from your channel.</p>
+                <div class="flex space-x-2">
+                    <input type="text" name="telegram_input" x-model="telegramInput" placeholder="https://t.me/aniwavebd/123 or file_id" class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700" @input="telegramPreview=null; telegramError=null">
+                    <button type="button" @click="previewTelegram" :disabled="!telegramInput" class="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm">Resolve</button>
+                </div>
+                <input type="hidden" name="telegram_direct_url" x-model="telegramDirectUrl">
+                <input type="hidden" name="telegram_file_id" x-model="telegramFileId">
+                <input type="hidden" name="telegram_file_size" x-model="telegramFileSize">
+                <input type="hidden" name="telegram_duration" x-model="telegramDuration">
+                <input type="hidden" name="telegram_thumb" x-model="telegramThumb">
+                <input type="hidden" name="telegram_type" x-model="telegramType">
+                <template x-if="telegramError">
+                    <div class="bg-red-600/20 border border-red-600 text-red-400 text-sm rounded-lg p-3" x-text="telegramError"></div>
+                </template>
+                <template x-if="telegramPreview">
+                    <div class="bg-gray-800 rounded-lg p-4 mt-2 space-y-2">
+                        <div class="flex items-start space-x-3">
+                            <template x-if="telegramPreview.thumbnail">
+                                <img :src="telegramPreview.thumbnail" class="w-24 h-16 object-cover rounded" alt="">
+                            </template>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-white font-semibold text-sm">Video Resolved Successfully</p>
+                                <p class="text-gray-400 text-xs mt-1">
+                                    <span x-text="formatBytes(telegramPreview.file_size)"></span>
+                                    <span x-show="telegramPreview.duration"> | <span x-text="telegramPreview.duration + 's'"></span></span>
+                                    <span x-show="telegramPreview.width"> | <span x-text="telegramPreview.width + 'x' + telegramPreview.height"></span></span>
+                                </p>
+                                <p class="text-gray-500 text-xs mt-1 break-all" x-text="telegramPreview.direct_url"></p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900 rounded p-2">
+                            <p class="text-green-400 text-xs font-medium">Video URL will be saved as Telegram source</p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
             <div x-show="tab === 'servers'" class="space-y-4">
                 <p class="text-sm text-gray-500">Add external video servers (these play as fallback/alternative sources).</p>
                 <template x-for="(server, i) in servers" :key="i">
@@ -200,6 +239,15 @@ function episodeForm() {
         youtubeUrl: '',
         youtubePreview: null,
         previewError: null,
+        telegramInput: '',
+        telegramPreview: null,
+        telegramError: null,
+        telegramDirectUrl: '',
+        telegramFileId: '',
+        telegramFileSize: '',
+        telegramDuration: '',
+        telegramThumb: '',
+        telegramType: 'mp4',
         servers: [],
 
         init() {
@@ -211,6 +259,10 @@ function episodeForm() {
                 @endforeach
                 @if($episode->source_type === 'youtube')
                     this.tab = 'youtube'; this.sourceType = 'youtube';
+                @elseif($episode->source_type === 'telegram')
+                    this.tab = 'telegram'; this.sourceType = 'telegram';
+                    this.telegramDirectUrl = '{{ $episode->video_path }}';
+                    this.telegramFileId = '{{ $episode->source_id }}';
                 @elseif($episode->source_type === 'direct_url' || ($episode->video_path && $episode->storage_disk !== 'local'))
                     this.tab = 'url'; this.sourceType = 'direct_url';
                 @elseif($episode->servers->count() > 0)
@@ -366,6 +418,48 @@ function episodeForm() {
             })
             .catch(() => {
                 this.previewError = 'Network error. Make sure the server is running.';
+            });
+        },
+
+        formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        },
+
+        previewTelegram() {
+            this.telegramError = null;
+            this.telegramPreview = null;
+
+            fetch('/admin/telegram/preview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({
+                    url: this.telegramInput,
+                })
+            })
+            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.direct_url) {
+                    this.telegramPreview = data;
+                    this.telegramDirectUrl = data.direct_url;
+                    this.telegramFileId = data.file_id;
+                    this.telegramFileSize = data.file_size || '';
+                    this.telegramDuration = data.duration || '';
+                    this.telegramThumb = data.thumbnail || '';
+                    this.telegramType = data.type || 'mp4';
+                } else {
+                    this.telegramError = data.error || 'Could not resolve Telegram video. Check the URL and try again.';
+                }
+            })
+            .catch(() => {
+                this.telegramError = 'Network error. Make sure the server is running.';
             });
         }
     };

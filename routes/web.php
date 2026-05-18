@@ -167,6 +167,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
         Route::post('/import', [ScraperController::class, 'youtubeImport'])->name('import');
     });
 
+    // Telegram Import
+    Route::prefix('telegram')->name('telegram.')->group(function () {
+        Route::post('/preview', [ScraperController::class, 'telegramPreview'])->name('preview');
+        Route::post('/import', [ScraperController::class, 'telegramImport'])->name('import');
+    });
+
     // Upload
     Route::prefix('upload')->name('upload.')->group(function () {
         Route::post('/file', [UploadController::class, 'store'])->name('file');

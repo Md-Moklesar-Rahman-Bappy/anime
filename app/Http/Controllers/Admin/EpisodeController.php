@@ -42,7 +42,7 @@ class EpisodeController extends Controller
             'description' => 'nullable|string',
             'video_path' => 'nullable|string',
             'storage_disk' => 'nullable|string|in:local,s3,streaming',
-            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper',
+            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper,telegram',
             'source_id' => 'nullable|string',
             'source_url' => 'nullable|string',
             'duration' => 'nullable|integer',
@@ -53,6 +53,12 @@ class EpisodeController extends Controller
             'youtube_url' => 'nullable|url',
             'uploaded_video_path' => 'nullable|string',
             'language' => 'nullable|string|in:english,japanese,hindi',
+            'telegram_direct_url' => 'nullable|string',
+            'telegram_file_id' => 'nullable|string',
+            'telegram_file_size' => 'nullable|integer',
+            'telegram_duration' => 'nullable|integer',
+            'telegram_thumb' => 'nullable|string',
+            'telegram_type' => 'nullable|string',
         ]);
 
         $data['anime_id'] = $anime->id;
@@ -88,6 +94,15 @@ class EpisodeController extends Controller
             } else {
                 return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
             }
+        }
+
+        if ($data['source_type'] === 'telegram' && $request->telegram_direct_url) {
+            $data['video_path'] = $request->telegram_direct_url;
+            $data['source_url'] = $request->telegram_direct_url;
+            $data['source_id'] = $request->telegram_file_id;
+            $data['storage_disk'] = 'streaming';
+            $data['duration'] = $data['duration'] ?? ($request->telegram_duration ? (int) round($request->telegram_duration / 60) : null);
+            $data['thumbnail'] = $data['thumbnail'] ?? $request->telegram_thumb;
         }
 
         $episode = Episode::create($data);
@@ -160,6 +175,16 @@ class EpisodeController extends Controller
                     'language' => $language,
                 ]);
                 break;
+
+            case 'telegram':
+                Server::create([
+                    'episode_id' => $episode->id,
+                    'label' => 'Telegram',
+                    'url' => $url,
+                    'type' => 'mp4',
+                    'language' => $language,
+                ]);
+                break;
         }
     }
 
@@ -179,7 +204,7 @@ class EpisodeController extends Controller
             'description' => 'nullable|string',
             'video_path' => 'nullable|string',
             'storage_disk' => 'nullable|string|in:local,s3,streaming',
-            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper',
+            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper,telegram',
             'source_id' => 'nullable|string',
             'source_url' => 'nullable|string',
             'duration' => 'nullable|integer',
@@ -190,6 +215,12 @@ class EpisodeController extends Controller
             'youtube_url' => 'nullable|url',
             'uploaded_video_path' => 'nullable|string',
             'language' => 'nullable|string|in:english,japanese,hindi',
+            'telegram_direct_url' => 'nullable|string',
+            'telegram_file_id' => 'nullable|string',
+            'telegram_file_size' => 'nullable|integer',
+            'telegram_duration' => 'nullable|integer',
+            'telegram_thumb' => 'nullable|string',
+            'telegram_type' => 'nullable|string',
         ]);
 
         $data['has_sub'] = $request->has('has_sub');
@@ -223,6 +254,15 @@ class EpisodeController extends Controller
             } else {
                 return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
             }
+        }
+
+        if ($data['source_type'] === 'telegram' && $request->telegram_direct_url) {
+            $data['video_path'] = $request->telegram_direct_url;
+            $data['source_url'] = $request->telegram_direct_url;
+            $data['source_id'] = $request->telegram_file_id;
+            $data['storage_disk'] = 'streaming';
+            $data['duration'] = $data['duration'] ?? ($request->telegram_duration ? (int) round($request->telegram_duration / 60) : null);
+            $data['thumbnail'] = $data['thumbnail'] ?? $request->telegram_thumb;
         }
 
         $episode->update($data);
