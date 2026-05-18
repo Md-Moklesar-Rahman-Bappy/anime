@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Chapter;
 use App\Models\ChapterBookmark;
 use App\Models\Manga;
+use App\Models\MangaComment;
 
 class MangaReaderController extends Controller
 {
@@ -39,15 +40,21 @@ class MangaReaderController extends Controller
                 ->where('chapter_id', $chapter->id)
                 ->first();
 
-            ChapterBookmark::updateOrCreate(
-                ['user_id' => auth()->id(), 'chapter_id' => $chapter->id],
-                ['page_number' => 1]
-            );
+            if (! $bookmark) {
+                ChapterBookmark::create([
+                    'user_id' => auth()->id(),
+                    'chapter_id' => $chapter->id,
+                    'page_number' => 1,
+                ]);
+            }
         }
+
+        $comments = MangaComment::where('chapter_id', $chapter->id)
+            ->with('user')->latest()->paginate(20);
 
         return view('manga-reader', compact(
             'manga', 'chapter', 'prevChapter', 'nextChapter',
-            'allChapters', 'bookmark'
+            'allChapters', 'bookmark', 'comments'
         ));
     }
 }

@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Server extends Model
 {
     protected $fillable = ['episode_id', 'label', 'url', 'type', 'language'];
 
-    public function episode()
+    public function episode(): BelongsTo
     {
         return $this->belongsTo(Episode::class);
     }

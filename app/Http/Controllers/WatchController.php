@@ -11,12 +11,54 @@ class WatchController extends Controller
 {
     public function __invoke($slug)
     {
-        $anime = Anime::where('slug', $slug)->with(['episodes' => function ($q) {
+        $anime = $this->loadAnime($slug);
+        $this->incrementViews($anime);
+
+        $episode = $this->resolveEpisode($anime);
+        $episode->load(['servers', 'skipTimes']);
+
+        $data = [
+            'anime' => $anime,
+            'episode' => $episode,
+            'prevEpisode' => $this->prevEpisode($anime, $episode),
+            'nextEpisode' => $this->nextEpisode($anime, $episode),
+            'comments' => $this->loadComments($episode),
+            'related' => $this->loadRelated($anime),
+            'isFavorited' => false,
+            'favCategory' => null,
+        ];
+
+        if (auth()->check()) {
+            $fav = Favorite::where('user_id', auth()->id())
+                ->where('anime_id', $anime->id)->first();
+            $data['isFavorited'] = (bool) $fav;
+            $data['favCategory'] = $fav?->category;
+        }
+
+        $serverData = $this->buildServerData($episode);
+        $data = array_merge($data, $serverData);
+
+        return view('watch', $data);
+    }
+
+    protected function loadAnime(string $slug): Anime
+    {
+        return Anime::where('slug', $slug)->with(['episodes' => function ($q) {
             $q->orderBy('number');
         }, 'genres'])->firstOrFail();
+    }
 
-        $anime->increment('views');
+    protected function incrementViews(Anime $anime): void
+    {
+        $key = "anime_view_{$anime->id}";
+        if (! session()->has($key)) {
+            $anime->increment('views');
+            session()->put($key, true);
+        }
+    }
 
+    protected function resolveEpisode(Anime $anime)
+    {
         $episode = request('ep')
             ? $anime->episodes->where('number', request('ep'))->first()
             : $anime->episodes->first();
@@ -25,28 +67,34 @@ class WatchController extends Controller
             abort(404);
         }
 
-        $episode->load(['servers', 'skipTimes']);
+        return $episode;
+    }
 
-        $prevEpisode = $anime->episodes->where('number', $episode->number - 1)->first();
-        $nextEpisode = $anime->episodes->where('number', $episode->number + 1)->first();
+    protected function prevEpisode(Anime $anime, $episode)
+    {
+        return $anime->episodes->where('number', $episode->number - 1)->first();
+    }
 
-        $comments = Comment::where('episode_id', $episode->id)
+    protected function nextEpisode(Anime $anime, $episode)
+    {
+        return $anime->episodes->where('number', $episode->number + 1)->first();
+    }
+
+    protected function loadComments($episode)
+    {
+        return Comment::where('episode_id', $episode->id)
             ->with('user')->latest()->paginate(20);
+    }
 
-        $related = Anime::whereHas('genres', function ($q) use ($anime) {
+    protected function loadRelated(Anime $anime)
+    {
+        return Anime::whereHas('genres', function ($q) use ($anime) {
             $q->whereIn('genres.id', $anime->genres->pluck('id'));
         })->where('id', '!=', $anime->id)->inRandomOrder()->take(8)->get();
+    }
 
-        $isFavorited = false;
-        $favCategory = null;
-        if (auth()->check()) {
-            $fav = Favorite::where('user_id', auth()->id())
-                ->where('anime_id', $anime->id)->first();
-            $isFavorited = (bool) $fav;
-            $favCategory = $fav?->category;
-        }
-
-        // Build all servers with language
+    protected function buildServerData($episode): array
+    {
         $allServers = [];
         $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
         $videoServers = $episode->servers->where('type', '!=', 'youtube');
@@ -63,36 +111,61 @@ class WatchController extends Controller
         }
 
         if ($youtubeServer) {
-            $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => $youtubeServer->url, 'type' => 'youtube', 'language' => $youtubeServer->language];
+            $allServers[] = [
+                'server_id' => 'youtube',
+                'label' => 'YouTube',
+                'url' => $youtubeServer->url,
+                'type' => 'youtube',
+                'language' => $youtubeServer->language,
+            ];
         } elseif ($ytInVideoPath) {
-            $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => 'https://www.youtube.com/watch?v='.$ytVideoId, 'type' => 'youtube', 'language' => 'english'];
+            $allServers[] = [
+                'server_id' => 'youtube',
+                'label' => 'YouTube',
+                'url' => 'https://www.youtube.com/watch?v='.$ytVideoId,
+                'type' => 'youtube',
+                'language' => 'english',
+            ];
         }
 
         $idx = 0;
         foreach ($videoServers as $s) {
             $idx++;
-            $allServers[] = ['id' => $s->id, 'label' => $s->label ?? 'Server '.$idx, 'url' => $s->url, 'type' => $s->type, 'language' => $s->language];
+            $allServers[] = [
+                'server_id' => 'video_'.$s->id,
+                'label' => $s->label ?? 'Server '.$idx,
+                'url' => $s->url,
+                'type' => $s->type,
+                'language' => $s->language,
+            ];
         }
 
         if (! $hasServers && $hasVideoPath && ! $ytInVideoPath) {
             $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path);
-            $allServers[] = ['id' => 'local', 'label' => 'Default', 'url' => $videoSrc, 'type' => 'mp4', 'language' => 'english'];
+            $allServers[] = [
+                'server_id' => 'local',
+                'label' => 'Default',
+                'url' => $videoSrc,
+                'type' => 'mp4',
+                'language' => 'english',
+            ];
         }
 
-        $skipTimes = $episode->skipTimes->first();
+        $skipTimes = $episode->skipTimes->first() ?: null;
 
-        // Group servers by language
         $languageGroups = collect($allServers)->groupBy('language');
         $languages = $languageGroups->keys()->values()->toArray();
 
         $initialServer = $allServers[0] ?? null;
         $isYoutubeInit = $initialServer && $initialServer['type'] === 'youtube';
 
-        return view('watch', compact(
-            'anime', 'episode', 'prevEpisode', 'nextEpisode',
-            'comments', 'related', 'isFavorited', 'favCategory',
-            'allServers', 'languageGroups', 'languages', 'initialServer',
-            'isYoutubeInit', 'skipTimes'
-        ));
+        return [
+            'allServers' => $allServers,
+            'languageGroups' => $languageGroups,
+            'languages' => $languages,
+            'initialServer' => $initialServer,
+            'isYoutubeInit' => $isYoutubeInit,
+            'skipTimes' => $skipTimes,
+        ];
     }
 }

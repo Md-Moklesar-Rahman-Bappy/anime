@@ -60,8 +60,19 @@ class UploadController extends Controller
             return response()->json(['error' => 'Upload already completed or failed.'], 400);
         }
 
+        $chunkFile = $request->file('chunk');
+        $maxExpectedChunkSize = $upload->chunk_size * 1.1;
+        if ($chunkFile->getSize() > $maxExpectedChunkSize) {
+            return response()->json(['error' => 'Chunk size exceeds expected size.'], 400);
+        }
+
+        $accumulatedSize = ($upload->received_chunks * $upload->chunk_size) + $chunkFile->getSize();
+        if ($accumulatedSize > $upload->total_size * 1.05) {
+            return response()->json(['error' => 'Total file size exceeds declared size.'], 400);
+        }
+
         $chunkPath = $upload->temp_dir.'/chunk_'.str_pad($data['chunk_index'], 6, '0', STR_PAD_LEFT);
-        $data['chunk']->storeAs($upload->temp_dir, basename($chunkPath), 'local');
+        $chunkFile->storeAs($upload->temp_dir, basename($chunkPath), 'local');
 
         $upload->increment('received_chunks');
 

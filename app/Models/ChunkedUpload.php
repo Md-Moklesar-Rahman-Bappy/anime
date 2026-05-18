@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ChunkedUpload extends Model
 {
@@ -11,7 +12,17 @@ class ChunkedUpload extends Model
         'total_chunks', 'received_chunks', 'temp_dir', 'status', 'final_path',
     ];
 
-    public function user()
+    protected function casts(): array
+    {
+        return [
+            'total_size' => 'integer',
+            'chunk_size' => 'integer',
+            'total_chunks' => 'integer',
+            'received_chunks' => 'integer',
+        ];
+    }
+
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }

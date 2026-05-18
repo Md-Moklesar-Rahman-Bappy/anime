@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Anime;
 use App\Models\Genre;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AnimeController extends Controller
@@ -119,6 +120,13 @@ class AnimeController extends Controller
 
     public function destroy(Anime $anime)
     {
+        if ($anime->thumbnail) {
+            Storage::disk('public')->delete($anime->thumbnail);
+        }
+        if ($anime->banner) {
+            Storage::disk('public')->delete($anime->banner);
+        }
+
         $anime->delete();
 
         return redirect()->route('admin.anime.index')->with('success', 'Anime deleted.');

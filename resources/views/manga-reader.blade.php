@@ -114,7 +114,7 @@
             @endauth
 
             <div class="space-y-3">
-                @foreach($chapter->comments()->with('user')->latest()->get() as $comment)
+                @foreach($comments as $comment)
                 <div class="bg-gray-900 rounded-lg p-4">
                     <div class="flex items-center space-x-2 mb-2">
                         <img src="https://ui-avatars.com/api/?name={{ urlencode($comment->user->name) }}&background=7c3aed&color=fff" class="w-6 h-6 rounded-full" alt="">
@@ -124,6 +124,9 @@
                     <p class="text-sm text-gray-400">{{ $comment->body }}</p>
                 </div>
                 @endforeach
+                @if($comments->hasPages())
+                <div class="mt-4">{{ $comments->links() }}</div>
+                @endif
             </div>
         </div>
     </div>

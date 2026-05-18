@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Episode extends Model
 {
@@ -13,27 +15,38 @@ class Episode extends Model
         'air_date', 'created_by',
     ];
 
-    public function anime()
+    protected function casts(): array
+    {
+        return [
+            'number' => 'integer',
+            'duration' => 'integer',
+            'has_sub' => 'boolean',
+            'has_dub' => 'boolean',
+            'air_date' => 'date',
+        ];
+    }
+
+    public function anime(): BelongsTo
     {
         return $this->belongsTo(Anime::class);
     }
 
-    public function servers()
+    public function servers(): HasMany
     {
         return $this->hasMany(Server::class);
     }
 
-    public function comments()
+    public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
     }
 
-    public function creator()
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function skipTimes()
+    public function skipTimes(): HasMany
     {
         return $this->hasMany(SkipTime::class);
     }

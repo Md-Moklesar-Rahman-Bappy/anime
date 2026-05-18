@@ -47,6 +47,8 @@ export function player() {
         showSkipOutro: false,
         skipTimes: null,
 
+        _keyboardHandler: null,
+
         init() {
             this.servers = window.PLAYER_SERVERS || [];
             this.languages = window.PLAYER_LANGUAGES || [];
@@ -63,6 +65,17 @@ export function player() {
                 this.setupKeyboard();
                 this.applyTheme();
             });
+        },
+
+        destroy() {
+            if (this._keyboardHandler) {
+                document.removeEventListener('keydown', this._keyboardHandler);
+                this._keyboardHandler = null;
+            }
+            if (this.player) {
+                this.player.destroy();
+                this.player = null;
+            }
         },
 
         initPlyr() {
@@ -192,7 +205,7 @@ export function player() {
         },
 
         setupKeyboard() {
-            document.addEventListener('keydown', (e) => {
+            this._keyboardHandler = (e) => {
                 if (!this.player) return;
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
@@ -216,7 +229,8 @@ export function player() {
                         }
                         break;
                 }
-            });
+            };
+            document.addEventListener('keydown', this._keyboardHandler);
         },
 
         switchLanguage(lang) {

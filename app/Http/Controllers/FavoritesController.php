@@ -32,12 +32,12 @@ class FavoritesController extends Controller
     {
         $request->validate([
             'anime_id' => 'required|exists:anime,id',
-            'category' => 'nullable|string|in:null,watching,completed,plan_to_watch,on_hold,dropped',
+            'category' => 'nullable|string|in:watching,completed,plan_to_watch,on_hold,dropped',
         ]);
 
-        $category = $request->category;
+        $category = $request->input('category');
 
-        if (! $category) {
+        if (! $category || $category === 'null') {
             Favorite::where('user_id', auth()->id())
                 ->where('anime_id', $request->anime_id)->delete();
 

@@ -31,6 +31,11 @@ class UserController extends Controller
         if ($user->id === auth()->id()) {
             return back()->with('error', 'You cannot delete yourself.');
         }
+
+        if ($user->role === 'super_admin' && User::where('role', 'super_admin')->count() <= 1) {
+            return back()->with('error', 'Cannot delete the last super admin.');
+        }
+
         $user->delete();
 
         return back()->with('success', 'User deleted.');

@@ -3,20 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportAnimeJob;
 use App\Models\Anime;
-use App\Models\Genre;
 use App\Models\Setting;
+use App\Services\JikanImporter;
 use App\Services\JikanService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class JikanController extends Controller
 {
     protected JikanService $jikan;
+    protected JikanImporter $importer;
 
-    public function __construct(JikanService $jikan)
+    public function __construct(JikanService $jikan, JikanImporter $importer)
     {
         $this->jikan = $jikan;
+        $this->importer = $importer;
     }
 
     public function searchForm()
@@ -96,108 +98,11 @@ class JikanController extends Controller
 
         $episodeData = $this->jikan->getAnimeEpisodes($malId);
 
-        $genreIds = [];
-        foreach ($data['genres'] as $genreData) {
-            $slug = Str::slug($genreData['name']);
-            $genre = Genre::where('mal_id', $genreData['mal_id'])->orWhere('slug', $slug)->first();
-            if (! $genre) {
-                $genre = Genre::create([
-                    'mal_id' => $genreData['mal_id'],
-                    'name' => $genreData['name'],
-                    'slug' => $slug,
-                ]);
-            } elseif (! $genre->mal_id) {
-                $genre->update(['mal_id' => $genreData['mal_id']]);
-            }
-            $genreIds[] = $genre->id;
-        }
+        $genreIds = $this->importer->syncGenres($data['genres']);
+        $anime = $this->importer->upsertAnime($data, $genreIds);
+        $this->importer->upsertEpisodes($anime, $episodeData);
 
-        $slug = Str::slug($data['title']);
-
-        $existing = Anime::where('slug', $slug)
-            ->orWhere('mal_id', $data['mal_id'])
-            ->first();
-
-        if ($existing) {
-            $existing->update([
-                'mal_id' => $data['mal_id'],
-                'title' => $data['title'],
-                'description' => $data['description'],
-                'type' => $data['type'],
-                'status' => $data['status'],
-                'country' => $data['country'],
-                'season' => $data['season'],
-                'year' => $data['year'],
-                'rating' => $data['rating'],
-                'score' => $data['score'],
-                'episodes_count' => $data['episodes_count'],
-                'duration' => $data['duration'],
-                'source' => $data['source'],
-                'studio' => $data['studio'],
-                'producers' => $data['producers'],
-                'licensors' => $data['licensors'],
-                'thumbnail' => $data['thumbnail'] ?: $existing->thumbnail,
-                'banner' => $data['banner'] ?: $existing->banner,
-                'jikan_synced_at' => now(),
-            ]);
-            $existing->genres()->sync($genreIds);
-            $anime = $existing;
-        } else {
-            $counter = 1;
-            $originalSlug = $slug;
-            while (Anime::where('slug', $slug)->exists()) {
-                $slug = $originalSlug.'-'.$counter++;
-            }
-
-            $anime = Anime::create([
-                'mal_id' => $data['mal_id'],
-                'title' => $data['title'],
-                'slug' => $slug,
-                'description' => $data['description'],
-                'type' => $data['type'],
-                'status' => $data['status'],
-                'country' => $data['country'],
-                'season' => $data['season'],
-                'year' => $data['year'],
-                'rating' => $data['rating'],
-                'score' => $data['score'],
-                'episodes_count' => $data['episodes_count'],
-                'duration' => $data['duration'],
-                'source' => $data['source'],
-                'studio' => $data['studio'],
-                'producers' => $data['producers'],
-                'licensors' => $data['licensors'],
-                'thumbnail' => $data['thumbnail'],
-                'banner' => $data['banner'],
-                'jikan_synced_at' => now(),
-            ]);
-
-            $anime->genres()->sync($genreIds);
-        }
-
-        foreach ($episodeData as $ep) {
-            if ($ep['filler'] || $ep['recap']) {
-                continue;
-            }
-
-            $existingEp = $anime->episodes()->where('number', $ep['number'])->first();
-            if ($existingEp) {
-                continue;
-            }
-
-            $anime->episodes()->create([
-                'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
-                'description' => $ep['synopsis'],
-                'thumbnail' => $ep['thumbnail'],
-                'air_date' => $ep['air_date'],
-                'duration' => $ep['duration'],
-                'has_sub' => false,
-                'has_dub' => false,
-            ]);
-        }
-
-        $action = $existing ? 'Updated' : 'Imported';
+        $action = $anime->wasRecentlyCreated ? 'Imported' : 'Updated';
 
         return redirect()->route('admin.anime.index')
             ->with('success', "{$action} \"{$anime->title}\" with {$anime->episodes()->count()} episodes from MAL.");
@@ -214,11 +119,12 @@ class JikanController extends Controller
         $fetchEpisodes = $request->boolean('with_episodes', false);
         $resumeMalId = Setting::where('key', 'jikan_last_mal_id')->value('value');
         $page = 1;
-        $imported = 0;
+        $dispatched = 0;
         $skipped = 0;
-        $errors = 0;
 
-        while ($imported < $batchSize) {
+        $existingMalIds = Anime::whereNotNull('mal_id')->pluck('mal_id')->toArray();
+
+        while ($dispatched < $batchSize) {
             $results = $this->jikan->browseAnime($page);
 
             if ($results->isEmpty()) {
@@ -226,7 +132,7 @@ class JikanController extends Controller
             }
 
             foreach ($results as $data) {
-                if ($imported >= $batchSize) {
+                if ($dispatched >= $batchSize) {
                     break 2;
                 }
 
@@ -234,24 +140,17 @@ class JikanController extends Controller
 
                 if ($resumeMalId && $malId <= (int) $resumeMalId) {
                     $skipped++;
-
                     continue;
                 }
 
-                if (Anime::where('mal_id', $malId)->exists()) {
+                if (in_array($malId, $existingMalIds)) {
                     $skipped++;
-
                     continue;
                 }
 
-                try {
-                    $episodes = $fetchEpisodes ? $this->jikan->getAllEpisodes($malId) : collect();
-                    $this->storeAnime($data, $episodes);
-                    Setting::updateOrCreate(['key' => 'jikan_last_mal_id'], ['value' => $malId]);
-                    $imported++;
-                } catch (\Exception $e) {
-                    $errors++;
-                }
+                ImportAnimeJob::dispatch($data, $fetchEpisodes);
+                $dispatched++;
+                $existingMalIds[] = $malId;
             }
 
             $pagination = $this->jikan->browsePagination($page + 1);
@@ -261,12 +160,8 @@ class JikanController extends Controller
             $page++;
         }
 
-        if (! $resumeMalId && $imported === 0) {
-            Setting::where('key', 'jikan_last_mal_id')->delete();
-        }
-
         return redirect()->route('admin.jikan.search')
-            ->with('success', "Batch import complete. Imported: {$imported}, Skipped: {$skipped}, Errors: {$errors}.");
+            ->with('success', "Dispatched {$dispatched} anime for import. {$skipped} skipped (already imported). Run `php artisan queue:work` to process the queue.");
     }
 
     public function resetProgress()
@@ -279,106 +174,9 @@ class JikanController extends Controller
 
     protected function storeAnime(array $data, $episodes): Anime
     {
-        $genreIds = [];
-        foreach ($data['genres'] as $genreData) {
-            $slug = Str::slug($genreData['name']);
-            $genre = Genre::where('mal_id', $genreData['mal_id'])->orWhere('slug', $slug)->first();
-            if (! $genre) {
-                $genre = Genre::create([
-                    'mal_id' => $genreData['mal_id'],
-                    'name' => $genreData['name'],
-                    'slug' => $slug,
-                ]);
-            } elseif (! $genre->mal_id) {
-                $genre->update(['mal_id' => $genreData['mal_id']]);
-            }
-            $genreIds[] = $genre->id;
-        }
-
-        $slug = Str::slug($data['title']);
-
-        $existing = Anime::where('slug', $slug)
-            ->orWhere('mal_id', $data['mal_id'])
-            ->first();
-
-        if ($existing) {
-            $existing->update([
-                'mal_id' => $data['mal_id'],
-                'title' => $data['title'],
-                'description' => $data['description'],
-                'type' => $data['type'],
-                'status' => $data['status'],
-                'country' => $data['country'],
-                'season' => $data['season'],
-                'year' => $data['year'],
-                'rating' => $data['rating'],
-                'score' => $data['score'],
-                'episodes_count' => $data['episodes_count'],
-                'duration' => $data['duration'],
-                'source' => $data['source'],
-                'studio' => $data['studio'],
-                'producers' => $data['producers'],
-                'licensors' => $data['licensors'],
-                'thumbnail' => $data['thumbnail'] ?: $existing->thumbnail,
-                'banner' => $data['banner'] ?: $existing->banner,
-                'jikan_synced_at' => now(),
-            ]);
-            $existing->genres()->sync($genreIds);
-            $anime = $existing;
-        } else {
-            $counter = 1;
-            $originalSlug = $slug;
-            while (Anime::where('slug', $slug)->exists()) {
-                $slug = $originalSlug.'-'.$counter++;
-            }
-
-            $anime = Anime::create([
-                'mal_id' => $data['mal_id'],
-                'title' => $data['title'],
-                'slug' => $slug,
-                'description' => $data['description'],
-                'type' => $data['type'],
-                'status' => $data['status'],
-                'country' => $data['country'],
-                'season' => $data['season'],
-                'year' => $data['year'],
-                'rating' => $data['rating'],
-                'score' => $data['score'],
-                'episodes_count' => $data['episodes_count'],
-                'duration' => $data['duration'],
-                'source' => $data['source'],
-                'studio' => $data['studio'],
-                'producers' => $data['producers'],
-                'licensors' => $data['licensors'],
-                'thumbnail' => $data['thumbnail'],
-                'banner' => $data['banner'],
-                'jikan_synced_at' => now(),
-            ]);
-
-            $anime->genres()->sync($genreIds);
-        }
-
-        foreach ($episodes as $ep) {
-            if ($ep['filler'] || $ep['recap']) {
-                continue;
-            }
-
-            $existingEp = $anime->episodes()->where('number', $ep['number'])->first();
-            if ($existingEp) {
-                continue;
-            }
-
-            $anime->episodes()->create([
-                'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
-                'description' => $ep['synopsis'],
-                'thumbnail' => $ep['thumbnail'],
-                'air_date' => $ep['air_date'],
-                'duration' => $ep['duration'],
-                'has_sub' => false,
-                'has_dub' => false,
-            ]);
-        }
+        $genreIds = $this->importer->syncGenres($data['genres']);
+        $anime = $this->importer->upsertAnime($data, $genreIds);
+        $this->importer->upsertEpisodes($anime, $episodes, true);
 
         return $anime;
     }

@@ -14,7 +14,11 @@ class MangaController extends Controller
             }])
             ->firstOrFail();
 
-        $manga->increment('views');
+        $key = "manga_view_{$manga->id}";
+        if (! session()->has($key)) {
+            $manga->increment('views');
+            session()->put($key, true);
+        }
 
         $related = Manga::whereHas('genres', function ($q) use ($manga) {
             $q->whereIn('manga_genre_relation.manga_genre_id', $manga->genres->pluck('id'));

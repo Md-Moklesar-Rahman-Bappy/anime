@@ -8,7 +8,7 @@ class ScraperManager
 
     public function register(ScraperInterface $scraper): void
     {
-        $this->scrapers[get_class($scraper)] = $scraper;
+        $this->scrapers[class_basename($scraper)] = $scraper;
     }
 
     public function all(): array
@@ -24,7 +24,7 @@ class ScraperManager
     public function names(): array
     {
         return array_map(fn ($s) => [
-            'class' => get_class($s),
+            'class' => class_basename($s),
             'name' => $s->name(),
         ], $this->scrapers);
     }

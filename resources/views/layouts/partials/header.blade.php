@@ -8,7 +8,7 @@
                     <div x-data="{ open: false }" class="relative">
                         <button @click="open = !open" class="text-gray-300 hover:text-white transition flex items-center">Genre <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></button>
                         <div x-show="open" @click.outside="open = false" class="absolute left-0 mt-2 bg-gray-800 rounded-xl shadow-xl p-5 z-50 flex gap-6 border border-gray-700/50">
-                            @php $genres = \App\Models\Genre::all(); @endphp
+                            @php $genres = \Illuminate\Support\Facades\Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all()); @endphp
                             @foreach($genres->chunk(10) as $chunk)
                                 <div class="flex flex-col gap-1">
                                     @foreach($chunk as $genre)

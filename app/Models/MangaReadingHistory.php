@@ -5,14 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class WatchHistory extends Model
+class MangaReadingHistory extends Model
 {
-    protected $fillable = ['user_id', 'episode_id', 'progress', 'completed'];
+    protected $table = 'manga_reading_history';
+
+    protected $fillable = ['user_id', 'chapter_id', 'page_number', 'completed'];
 
     protected function casts(): array
     {
         return [
-            'progress' => 'integer',
+            'page_number' => 'integer',
             'completed' => 'boolean',
         ];
     }
@@ -22,8 +24,8 @@ class WatchHistory extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function episode(): BelongsTo
+    public function chapter(): BelongsTo
     {
-        return $this->belongsTo(Episode::class);
+        return $this->belongsTo(Chapter::class);
     }
 }

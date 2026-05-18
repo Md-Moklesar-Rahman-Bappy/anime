@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Manga extends Model
 {
@@ -15,22 +17,36 @@ class Manga extends Model
         'thumbnail', 'banner', 'views', 'featured', 'featured_order',
     ];
 
-    public function genres()
+    protected function casts(): array
+    {
+        return [
+            'alternative_titles' => 'array',
+            'year' => 'integer',
+            'rating' => 'decimal:1',
+            'score' => 'decimal:2',
+            'chapters_count' => 'integer',
+            'views' => 'integer',
+            'featured' => 'boolean',
+            'featured_order' => 'integer',
+        ];
+    }
+
+    public function genres(): BelongsToMany
     {
         return $this->belongsToMany(MangaGenre::class, 'manga_genre_relation', 'manga_id', 'manga_genre_id');
     }
 
-    public function chapters()
+    public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class);
     }
 
-    public function favorites()
+    public function favorites(): HasMany
     {
         return $this->hasMany(MangaFavorite::class);
     }
 
-    public function favoritedBy()
+    public function favoritedBy(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'manga_favorites');
     }

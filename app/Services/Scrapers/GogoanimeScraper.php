@@ -62,7 +62,7 @@ class GogoanimeScraper implements ScraperInterface
 
             $html = $response->body();
 
-            preg_match_all('/<a href="\/[^"]+"\s*class="[^"]*"?\s*ep="(\d+)"[^>]*>.*?<\/a>/s', $html, $matches, PREG_SET_ORDER);
+            preg_match_all('/<a href="\/([^"]+)"\s*class="[^"]*"?\s*ep="(\d+)"[^>]*>.*?<\/a>/s', $html, $matches, PREG_SET_ORDER);
 
             if (empty($matches)) {
                 preg_match_all('/<li class="dowloads">.*?<a href="\/([^"]+)"[^>]*>.*?Episode\s*(\d+)/s', $html, $epMatches, PREG_SET_ORDER);
@@ -77,8 +77,8 @@ class GogoanimeScraper implements ScraperInterface
 
             foreach ($matches as $m) {
                 $allEpisodes[] = [
-                    'id' => $m[0],
-                    'number' => (int) $m[1],
+                    'id' => $m[1],
+                    'number' => (int) $m[2],
                 ];
             }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Manga;
 use App\Models\MangaGenre;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MangaController extends Controller
@@ -113,6 +114,13 @@ class MangaController extends Controller
 
     public function destroy(Manga $manga)
     {
+        if ($manga->thumbnail) {
+            Storage::disk('public')->delete($manga->thumbnail);
+        }
+        if ($manga->banner) {
+            Storage::disk('public')->delete($manga->banner);
+        }
+
         $manga->delete();
 
         return redirect()->route('admin.manga.index')->with('success', 'Manga deleted.');

@@ -75,7 +75,7 @@
                         @if(count($allServers) > 1)
                         <select class="server-select" @change="switchServer($event.target.selectedIndex)">
                             @foreach($allServers as $i => $s)
-                            <option value="{{ $s['id'] }}" @if($i === 0) selected @endif>{{ $s['label'] }}</option>
+                            <option value="{{ $s['server_id'] }}" @if($i === 0) selected @endif>{{ $s['label'] }}</option>
                             @endforeach
                         </select>
                         @endif

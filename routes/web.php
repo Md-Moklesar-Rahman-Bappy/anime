@@ -33,6 +33,13 @@ use App\Http\Controllers\RandomController;
 use App\Http\Controllers\StaticController;
 use App\Http\Controllers\WatchController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
+
+RateLimiter::for('comments', fn ($request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
+RateLimiter::for('reports', fn ($request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
+RateLimiter::for('favorites', fn ($request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
+RateLimiter::for('scrapers', fn ($request) => Limit::perMinute(20)->by($request->user()?->id ?: $request->ip()));
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -75,15 +82,15 @@ Route::get('/manga/random', MangaRandomController::class)->name('manga.random');
 
 // Comments & Favorites (auth required)
 Route::middleware('auth')->group(function () {
-    Route::post('/comments', [CommentsController::class, 'store'])->name('comments.store');
-    Route::post('/favorites/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle');
-    Route::post('/favorites/list', [FavoritesController::class, 'updateList'])->name('favorites.list');
-    Route::post('/reports/submit', [ReportController::class, 'store'])->name('reports.submit');
+    Route::post('/comments', [CommentsController::class, 'store'])->name('comments.store')->middleware('throttle:comments');
+    Route::post('/favorites/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle')->middleware('throttle:favorites');
+    Route::post('/favorites/list', [FavoritesController::class, 'updateList'])->name('favorites.list')->middleware('throttle:favorites');
+    Route::post('/reports/submit', [ReportController::class, 'store'])->name('reports.submit')->middleware('throttle:reports');
 
     // Manga auth routes
-    Route::post('/manga/favorites/toggle', [MangaFavoritesController::class, 'toggle'])->name('manga.favorites.toggle');
-    Route::post('/manga/favorites/list', [MangaFavoritesController::class, 'updateList'])->name('manga.favorites.list');
-    Route::post('/manga/comments', [MangaCommentsController::class, 'store'])->name('manga.comments.store');
+    Route::post('/manga/favorites/toggle', [MangaFavoritesController::class, 'toggle'])->name('manga.favorites.toggle')->middleware('throttle:favorites');
+    Route::post('/manga/favorites/list', [MangaFavoritesController::class, 'updateList'])->name('manga.favorites.list')->middleware('throttle:favorites');
+    Route::post('/manga/comments', [MangaCommentsController::class, 'store'])->name('manga.comments.store')->middleware('throttle:comments');
     Route::post('/manga/bookmark', [MangaFavoritesController::class, 'bookmark'])->name('manga.bookmark');
 });
 
@@ -147,7 +154,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
     });
 
     // External Source Scrapers
-    Route::prefix('scrapers')->name('scrapers.')->group(function () {
+    Route::prefix('scrapers')->name('scrapers.')->middleware('throttle:scrapers')->group(function () {
         Route::get('/', [ScraperController::class, 'searchForm'])->name('search');
         Route::post('/search', [ScraperController::class, 'search'])->name('search.results');
         Route::post('/preview', [ScraperController::class, 'previewEpisodes'])->name('preview');
