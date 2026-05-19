@@ -1,4 +1,4 @@
-name: "Laravel Deploy"
+name: Deploy
 
 on:
   push:
@@ -12,28 +12,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, bcmath, intl, pdo_mysql
-          coverage: none
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.DEPLOY_KEY }}" > deploy_key.pem
+          chmod 600 deploy_key.pem
 
-      - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --optimize-autoloader --no-dev
+      - name: Test SSH connection
+        run: ssh -o StrictHostKeyChecking=no -i deploy_key.pem ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "echo '✅ SSH connection successful'"
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          script: |
-            cd /var/www/anime
-            git pull origin main
-            composer install --no-progress --prefer-dist --optimize-autoloader --no-dev
-            php artisan migrate --force
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan route:clear
-            php artisan view:clear
+      - name: Deploy to Server
+        run: |
+          ssh -o StrictHostKeyChecking=no -i deploy_key.pem ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            set -e
+
+            # Paths
+            APP_DIR=/var/www/anime
+            RELEASES_DIR=$APP_DIR/releases
+            CURRENT_DIR=$APP_DIR/current
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            NEW_RELEASE=$RELEASES_DIR/$TIMESTAMP
+
+            # Create new release directory
+            mkdir -p $NEW_RELEASE
+            cd $NEW_RELEASE
+
+            # Pull latest code
+            git clone --branch main --depth 1 git@github.com:Md-Moklesar-Rahman-Bappy/anime.git .
+
+            # Install dependencies
+            composer install --no-dev --optimize-autoloader
+            npm install --production=false
+            npm run build
+
+            # Run migrations (rollback if fails)
+            if ! php artisan migrate --force; then
+              echo "❌ Migration failed, rolling back..."
+              rm -rf $NEW_RELEASE
+              exit 1
+            fi
+
+            # Update symlink to new release
+            ln -sfn $NEW_RELEASE $CURRENT_DIR
+
+            # Cleanup old releases (keep last 5)
+            cd $RELEASES_DIR
+            ls -1t | tail -n +6 | xargs rm -rf --
+
+            echo "✅ Deployment successful: $NEW_RELEASE"
+          EOF
