@@ -139,3 +139,11 @@ Admin features:
 ## License
 
 [MIT](https://opensource.org/licenses/MIT)
+
+
+![CodeQL](https://github.com/Md-Moklesar-Rahman-Bappy/anime/actions/workflows/codeql-analysis.yml/badge.svg)
+![Laravel CI](https://github.com/Md-Moklesar-Rahman-Bappy/anime/actions/workflows/ci.yml/badge.svg)
+![PHPUnit Tests](https://github.com/Md-Moklesar-Rahman-Bappy/anime/actions/workflows/phpunit.yml/badge.svg)
+![Release](https://github.com/Md-Moklesar-Rahman-Bappy/anime/actions/workflows/release.yml/badge.svg)
+![Security Audit](https://github.com/Md-Moklesar-Rahman-Bappy/anime/actions/workflows/security-audit.yml/badge.svg)
+
