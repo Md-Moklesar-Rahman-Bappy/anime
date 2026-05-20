@@ -1,26 +1,38 @@
 # Security Policy
 
+## Supported Versions
+We provide security updates for the following versions:
+
+| Version | Supported          |
+| ------- | ------------------ |
+| 1.x     | ✅                 |
+| < 1.0   | ❌                 |
+
+---
+
 ## Reporting a Vulnerability
+⚠️ **Do not open a public issue for security vulnerabilities.**
 
-If you discover a security vulnerability in AniWaves, please report it privately by opening a GitHub Security Advisory or contacting the project maintainers directly.
+If you discover a security vulnerability in this project:
 
-**Do not** report security vulnerabilities through public GitHub issues.
+1. **Email us privately** at: [security@example.com]  
+   (replace with your actual contact email)
 
-Please include as much information as possible:
+2. Provide:
+   - A clear description of the vulnerability
+   - Steps to reproduce (if safe to share)
+   - Potential impact
 
-- Type of vulnerability
-- Steps to reproduce
-- Affected versions
-- Potential impact
+3. We will:
+   - Acknowledge receipt within 48 hours
+   - Investigate and confirm the issue
+   - Work on a fix and release updates
+   - Credit you in the release notes (if desired)
 
-## Response
+---
 
-You can expect an acknowledgment within 48 hours, and we will work to assess and address the issue as quickly as possible.
-
-## Best Practices
-
-- Keep your Laravel installation and dependencies up to date
-- Use HTTPS in production
-- Set appropriate file permissions on `storage/` and `bootstrap/cache/`
-- Regularly review and rotate application keys and secrets
-- Restrict admin access to trusted IPs where possible
+## Responsible Disclosure
+We ask that you:
+- Do not publicly disclose the vulnerability until a fix is released.
+- Give us reasonable time to address the issue.
+- Act in good faith to protect users of this project.

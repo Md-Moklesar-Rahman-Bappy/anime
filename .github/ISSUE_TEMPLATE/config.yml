@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & Discussions
+    url: https://github.com/Md-Moklesar-Rahman-Bappy/anime/discussions
+    about: Please ask and answer questions here.
+  - name: 📖 Documentation
+    url: https://github.com/Md-Moklesar-Rahman-Bappy/anime/wiki
+    about: Check the project documentation for guides and references.

@@ -1,15 +1,13 @@
-name: "Security Audit"
+name: "Laravel CI"
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  schedule:
-    - cron: '0 3 * * *'   # Nightly run at 3 AM UTC
 
 jobs:
-  audit:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,9 +24,11 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
 
-      - name: Run Composer Audit
-        run: composer audit --no-interaction --format=json
+      - name: Copy .env
+        run: cp .env.example .env
 
-      - name: Run NPM Audit (if package.json exists)
-        if: ${{ hashFiles('**/package.json') != '' }}
-        run: npm install && npm audit --json
+      - name: Generate app key
+        run: php artisan key:generate
+
+      - name: Run tests
+        run: php artisan test

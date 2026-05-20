@@ -1,47 +1,41 @@
-name: Create Release
+name: "Laravel Release"
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'   # e.g., v1.0.0, v2.3.1
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup PHP
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          tools: composer:v2
+          extensions: mbstring, bcmath, intl, pdo_mysql
+          coverage: none
 
-      - name: Install dependencies
-        run: composer install --no-dev --optimize-autoloader
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader --no-dev
 
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Build assets
-        run: npm run build
-
-      - name: Create release archive
+      - name: Build Laravel project
         run: |
-          mkdir -p release/anime
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='storage/app' --exclude='tests' ./ release/anime/
-          cd release
-          zip -r ../anime-${{ github.ref_name }}.zip anime/
-
-      - name: Generate checksum
-        run: sha256sum anime-${{ github.ref_name }}.zip > anime-${{ github.ref_name }}.zip.sha256
+          php artisan config:clear
+          php artisan cache:clear
+          php artisan route:clear
+          php artisan view:clear
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v1
         with:
-          files: |
-            anime-${{ github.ref_name }}.zip
-            anime-${{ github.ref_name }}.zip.sha256
-          generate_release_notes: true
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
