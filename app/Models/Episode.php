@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Episode extends Model
 {
@@ -15,6 +16,8 @@ class Episode extends Model
         'air_date', 'created_by',
     ];
 
+    protected $appends = ['thumbnail_url'];
+
     protected function casts(): array
     {
         return [
@@ -24,6 +27,13 @@ class Episode extends Model
             'has_dub' => 'boolean',
             'air_date' => 'date',
         ];
+    }
+
+    public function getThumbnailUrlAttribute(): string
+    {
+        return $this->thumbnail
+            ? (str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail))
+            : ($this->anime->thumbnail_url ?? 'https://via.placeholder.com/80x45/1a1a2e/7c3aed');
     }
 
     public function anime(): BelongsTo

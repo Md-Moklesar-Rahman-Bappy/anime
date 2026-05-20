@@ -98,7 +98,7 @@
             class="absolute inset-0"
             :aria-hidden="current !== {{ $i }}"
         >
-            <img src="{{ $anime->banner ?? $anime->thumbnail ?? 'https://via.placeholder.com/1200x500/1a1a2e/7c3aed?text='.urlencode($anime->title) }}" class="w-full h-full object-cover" alt="{{ $anime->title }} banner">
+            <img src="{{ $anime->banner_url }}" class="w-full h-full object-cover" alt="{{ $anime->title }} banner">
             <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/60 to-transparent"></div>
             <div class="absolute inset-0 bg-gradient-to-r from-gray-950/40 to-transparent"></div>
             <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
@@ -162,7 +162,7 @@
                     @foreach($latestEpisodes as $episode)
                     <a href="{{ route('watch', ['slug' => $episode->anime->slug, 'ep' => $episode->number]) }}" class="group">
                         <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                            <img src="{{ $episode->thumbnail ?? $episode->anime->thumbnail ?? 'https://via.placeholder.com/200x280/1a1a2e/7c3aed' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                            <img src="{{ $episode->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
                             <div class="absolute top-2 left-2 bg-purple-600 text-xs font-bold px-2 py-1 rounded">Ep {{ $episode->number }}</div>
                             @if($episode->has_sub)<div class="absolute top-2 right-2 bg-blue-600 text-xs px-2 py-1 rounded">SUB</div>@endif
                             @if($episode->has_dub)<div class="absolute top-8 right-2 bg-green-600 text-xs px-2 py-1 rounded">DUB</div>@endif
@@ -186,7 +186,7 @@
                     @foreach($trending as $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
                         <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                            <img src="{{ $anime->thumbnail ?? 'https://via.placeholder.com/200x280/1a1a2e/7c3aed' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                            <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
                             <div class="absolute top-2 left-2 bg-gray-900/80 text-xs px-2 py-1 rounded">{{ $anime->type }}</div>
                             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-3">
                                 <span class="text-white text-sm font-semibold">View Details</span>
@@ -211,7 +211,7 @@
                     @foreach($ongoing as $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
                         <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                            <img src="{{ $anime->thumbnail ?? 'https://via.placeholder.com/200x280/1a1a2e/7c3aed' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                            <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
                             <div class="absolute top-2 left-2 bg-red-600 text-xs px-2 py-1 rounded">ONGOING</div>
                         </div>
                         <h3 class="text-sm text-gray-300 mt-2 line-clamp-1 group-hover:text-white">{{ $anime->title }}</h3>
@@ -233,7 +233,7 @@
                     @foreach($trending->take(5) as $i => $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="flex items-center space-x-3 group">
                         <span class="text-lg font-bold text-gray-600 w-6">{{ $i + 1 }}</span>
-                        <img src="{{ $anime->thumbnail ?? 'https://via.placeholder.com/40x56/1a1a2e/7c3aed' }}" class="w-10 h-14 object-cover rounded" alt="">
+                        <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm text-gray-300 truncate group-hover:text-white">{{ $anime->title }}</p>
                             <div class="flex items-center text-xs text-gray-500">
@@ -251,7 +251,7 @@
                 <div class="space-y-3">
                     @foreach($newAnime->take(5) as $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="flex items-center space-x-3 group">
-                        <img src="{{ $anime->thumbnail ?? 'https://via.placeholder.com/40x56/1a1a2e/7c3aed' }}" class="w-10 h-14 object-cover rounded" alt="">
+                        <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm text-gray-300 truncate group-hover:text-white">{{ $anime->title }}</p>
                             <p class="text-xs text-gray-500">{{ $anime->year }}</p>

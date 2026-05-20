@@ -76,7 +76,12 @@ class ListController extends Controller
         }
 
         if ($request->year) {
-            $query->where('year', $request->year);
+            if (str_ends_with($request->year, 's')) {
+                $decade = (int) substr($request->year, 0, -1);
+                $query->whereBetween('year', [$decade * 10, $decade * 10 + 9]);
+            } else {
+                $query->where('year', $request->year);
+            }
         }
 
         if ($request->season) {

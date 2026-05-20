@@ -10,7 +10,7 @@
                 <div class="plyr-wrapper overflow-hidden rounded-t-lg">
                     @if($initialServer)
                         <video id="videoPlayer" class="w-full aspect-video" playsinline
-                            {{ $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>
+                            {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}>
                             @if(!$isYoutubeInit)
                             <source src="{{ $initialServer['url'] }}" type="{{ $initialServer['type'] === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
                             @endif
@@ -200,7 +200,7 @@
                 <div class="space-y-2 max-h-[500px] overflow-y-auto">
                     @foreach($anime->episodes as $ep)
                     <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $ep->number]) }}" class="flex items-center space-x-3 p-2 rounded-lg transition {{ $ep->id === $episode->id ? 'bg-purple-600/20 border border-purple-600' : 'hover:bg-gray-800' }}">
-                        <img src="{{ $ep->thumbnail ?? $anime->thumbnail ?? 'https://via.placeholder.com/80x45/1a1a2e/7c3aed' }}" class="w-20 h-12 object-cover rounded" alt="">
+                        <img src="{{ $ep->thumbnail_url }}" class="w-20 h-12 object-cover rounded" alt="">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm truncate">Episode {{ $ep->number }}</p>
                             @if($ep->title)<p class="text-xs text-gray-500 truncate">{{ $ep->title }}</p>@endif
@@ -222,7 +222,7 @@
                 <div class="space-y-2">
                     @foreach($related as $rel)
                     <a href="{{ route('anime.detail', $rel->slug) }}" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800 transition">
-                        <img src="{{ $rel->thumbnail ?? 'https://via.placeholder.com/40x56/1a1a2e/7c3aed' }}" class="w-10 h-14 object-cover rounded" alt="">
+                        <img src="{{ $rel->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm truncate">{{ $rel->title }}</p>
                             <p class="text-xs text-gray-500">{{ $rel->type }} | {{ $rel->year }}</p>

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Anime extends Model
 {
@@ -16,6 +17,8 @@ class Anime extends Model
         'source', 'studio', 'producers', 'licensors', 'thumbnail', 'banner',
         'views', 'featured', 'jikan_synced_at',
     ];
+
+    protected $appends = ['thumbnail_url', 'banner_url'];
 
     protected function casts(): array
     {
@@ -29,6 +32,20 @@ class Anime extends Model
             'featured' => 'boolean',
             'jikan_synced_at' => 'datetime',
         ];
+    }
+
+    public function getThumbnailUrlAttribute(): string
+    {
+        return $this->thumbnail
+            ? (str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail))
+            : 'https://via.placeholder.com/300x420/1a1a2e/7c3aed?text='.urlencode($this->title ?? 'Anime');
+    }
+
+    public function getBannerUrlAttribute(): string
+    {
+        return $this->banner
+            ? (str_starts_with($this->banner, 'http') ? $this->banner : Storage::url($this->banner))
+            : $this->thumbnail_url;
     }
 
     public function genres(): BelongsToMany
