@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Chapter;
 use App\Models\Manga;
 use App\Models\MangaGenre;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class MangaListController extends Controller
 {
+    protected function getCachedGenres()
+    {
+        return Cache::remember('manga_genres_list', 1800, fn() => MangaGenre::all());
+    }
+
     public function index()
     {
         $mangaList = Manga::latest()->paginate(24);
         $title = 'All Manga';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
@@ -21,18 +28,21 @@ class MangaListController extends Controller
     {
         $mangaList = Manga::latest()->paginate(24);
         $title = 'Newest Manga';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
 
     public function updated()
     {
-        $mangaList = Manga::whereHas('chapters', function ($q) {
-            $q->where('created_at', '>=', now()->subWeek());
-        })->latest()->paginate(24);
+        $recentIds = Cache::remember('recently_updated_manga_ids', 300, function () {
+            return Chapter::where('created_at', '>=', now()->subWeek())
+                ->distinct()->pluck('manga_id');
+        });
+
+        $mangaList = Manga::whereIn('id', $recentIds)->latest()->paginate(24);
         $title = 'Recently Updated';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
@@ -41,7 +51,7 @@ class MangaListController extends Controller
     {
         $mangaList = Manga::where('status', 'Ongoing')->latest()->paginate(24);
         $title = 'Ongoing Manga';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
@@ -50,7 +60,7 @@ class MangaListController extends Controller
     {
         $mangaList = Manga::orderBy('views', 'desc')->paginate(24);
         $title = 'Trending Manga';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
@@ -59,7 +69,7 @@ class MangaListController extends Controller
     {
         $mangaList = Manga::where('status', 'Completed')->latest()->paginate(24);
         $title = 'Completed Manga';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
@@ -72,7 +82,7 @@ class MangaListController extends Controller
         }
         $mangaList = $query->orderBy('title')->paginate(24);
         $title = $letter ? "Manga starting with $letter" : 'All Manga';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
@@ -141,7 +151,7 @@ class MangaListController extends Controller
 
         $mangaList = $query->paginate(24)->withQueryString();
         $title = 'Filter Results';
-        $genres = MangaGenre::all();
+        $genres = $this->getCachedGenres();
 
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }

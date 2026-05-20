@@ -3,27 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\Anime;
+use App\Models\Episode;
 use App\Models\Genre;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ListController extends Controller
 {
+    protected function getCachedGenres()
+    {
+        return Cache::remember('genres_list', 1800, fn() => Genre::all());
+    }
+
     public function newest()
     {
         $animeList = Anime::latest()->paginate(24);
         $title = 'Newest Anime';
-        $genres = Genre::all();
+        $genres = $this->getCachedGenres();
 
         return view('anime-list', compact('animeList', 'title', 'genres'));
     }
 
     public function updated()
     {
-        $animeList = Anime::whereHas('episodes', function ($q) {
-            $q->where('created_at', '>=', now()->subWeek());
-        })->latest()->paginate(24);
+        $recentIds = Cache::remember('recently_updated_anime_ids', 300, function () {
+            return Episode::where('created_at', '>=', now()->subWeek())
+                ->distinct()->pluck('anime_id');
+        });
+
+        $animeList = Anime::whereIn('id', $recentIds)->latest()->paginate(24);
         $title = 'Recently Updated';
-        $genres = Genre::all();
+        $genres = $this->getCachedGenres();
 
         return view('anime-list', compact('animeList', 'title', 'genres'));
     }
@@ -32,7 +42,7 @@ class ListController extends Controller
     {
         $animeList = Anime::where('status', 'Ongoing')->latest()->paginate(24);
         $title = 'Ongoing Anime';
-        $genres = Genre::all();
+        $genres = $this->getCachedGenres();
 
         return view('anime-list', compact('animeList', 'title', 'genres'));
     }
@@ -41,7 +51,7 @@ class ListController extends Controller
     {
         $animeList = Anime::orderBy('views', 'desc')->paginate(24);
         $title = 'Trending Anime';
-        $genres = Genre::all();
+        $genres = $this->getCachedGenres();
 
         return view('anime-list', compact('animeList', 'title', 'genres'));
     }
@@ -54,7 +64,7 @@ class ListController extends Controller
         }
         $animeList = $query->orderBy('title')->paginate(24);
         $title = $letter ? "Anime starting with $letter" : 'All Anime';
-        $genres = Genre::all();
+        $genres = $this->getCachedGenres();
 
         return view('anime-list', compact('animeList', 'title', 'genres'));
     }
@@ -135,7 +145,7 @@ class ListController extends Controller
 
         $animeList = $query->paginate(24)->withQueryString();
         $title = 'Filter Results';
-        $genres = Genre::all();
+        $genres = $this->getCachedGenres();
 
         return view('anime-list', compact('animeList', 'title', 'genres'));
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Manga;
+use Illuminate\Support\Facades\Cache;
 
 class MangaController extends Controller
 {
@@ -20,12 +21,19 @@ class MangaController extends Controller
             session()->put($key, true);
         }
 
-        $related = Manga::whereHas('genres', function ($q) use ($manga) {
-            $q->whereIn('manga_genre_relation.manga_genre_id', $manga->genres->pluck('id'));
-        })
-            ->where('id', '!=', $manga->id)
-            ->take(8)
-            ->get();
+        $related = Cache::remember('related_manga_'.$manga->id, 600, function () use ($manga) {
+            $genreIds = $manga->genres->pluck('id')->toArray();
+            if (empty($genreIds)) {
+                return collect();
+            }
+            return Manga::whereHas('genres', function ($q) use ($genreIds) {
+                $q->whereIn('manga_genre_relation.manga_genre_id', $genreIds);
+            }, '>=', count($genreIds))
+                ->where('id', '!=', $manga->id)
+                ->orderBy('views', 'desc')
+                ->take(8)
+                ->get();
+        });
 
         $isFavorited = auth()->check() && $manga->favoritedBy()->where('user_id', auth()->id())->exists();
 

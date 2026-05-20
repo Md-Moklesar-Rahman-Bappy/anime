@@ -38,6 +38,7 @@ export function player() {
         isFavorited: false,
         favoriteCategory: null,
         isYoutube: false,
+        playing: false,
         listOpen: false,
         reportOpen: false,
         reportType: 'broken',
@@ -106,12 +107,21 @@ export function player() {
                 }
             });
 
-            this.player.on('timeupdate', () => {
-                this.checkSkip();
+            this.player.on('play', () => {
+                this.playing = true;
+            });
+
+            this.player.on('pause', () => {
+                this.playing = false;
             });
 
             this.player.on('ended', () => {
+                this.playing = false;
                 this.handleEnded();
+            });
+
+            this.player.on('timeupdate', () => {
+                this.checkSkip();
             });
         },
 

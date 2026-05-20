@@ -33,7 +33,7 @@
                 <div class="player-control-bar">
                     <div class="ctrl-group">
                         <button class="ctrl-btn" @click="togglePlay()" title="Play/Pause (Space)">
-                            <i class="fa-solid fa-play"></i>
+                            <i class="fa-solid" :class="playing ? 'fa-pause' : 'fa-play'"></i>
                         </button>
                         <button class="ctrl-btn" @click="skip(-config.skipSeconds)" title="Rewind 10s (J)">
                             <i class="fa-solid fa-backward"></i> <span class="label">10s</span>
