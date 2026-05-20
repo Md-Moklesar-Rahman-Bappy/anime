@@ -18,6 +18,8 @@ class JikanService
 
     public ?string $lastError = null;
 
+    public ?array $lastPagination = null;
+
     public function __construct()
     {
         $this->baseUrl = config('services.jikan.base_url', 'https://api.jikan.moe/v4');
@@ -76,6 +78,8 @@ class JikanService
     public function searchAnime(string $query, int $page = 1): Collection
     {
         $data = $this->request('/anime', ['q' => $query, 'page' => $page, 'sfw' => true]);
+
+        $this->lastPagination = $data['pagination'] ?? null;
 
         return collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
     }
@@ -153,20 +157,20 @@ class JikanService
             'sfw' => true,
         ]);
 
+        $this->lastPagination = $data['pagination'] ?? null;
+
         return collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
     }
 
-    public function browsePagination(int $page = 1, string $orderBy = 'mal_id', string $sort = 'asc'): ?array
+    public function browsePagination(int $page = 1): ?array
     {
-        $data = $this->request('/anime', [
-            'page' => $page,
-            'limit' => 25,
-            'order_by' => $orderBy,
-            'sort' => $sort,
-            'sfw' => true,
-        ]);
+        if ($this->lastPagination !== null) {
+            $pagination = $this->lastPagination;
+            $this->lastPagination = null;
+            return $pagination;
+        }
 
-        return $data['pagination'] ?? null;
+        return null;
     }
 
     public function getAllEpisodes(int $malId): Collection
@@ -194,6 +198,7 @@ class JikanService
     protected function mapAnime(array $item): array
     {
         $images = $item['images']['jpg'] ?? [];
+        $trailerImages = $item['trailer']['images'] ?? [];
 
         $statusMap = [
             'Currently Airing' => 'Ongoing',
@@ -226,7 +231,7 @@ class JikanService
             'producers' => collect($item['producers'] ?? [])->pluck('name')->implode(', '),
             'licensors' => collect($item['licensors'] ?? [])->pluck('name')->implode(', '),
             'thumbnail' => $images['large_image_url'] ?? $images['image_url'] ?? null,
-            'banner' => $images['large_image_url'] ?? null,
+            'banner' => $trailerImages['maximum_image_url'] ?? $trailerImages['large_image_url'] ?? null,
             'genres' => collect($item['genres'] ?? [])->map(fn ($g) => [
                 'mal_id' => $g['mal_id'],
                 'name' => $g['name'],

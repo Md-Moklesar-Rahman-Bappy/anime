@@ -33,9 +33,42 @@
             </div>
 
             <div class="flex items-center space-x-4">
-                <form action="{{ route('filter') }}" method="GET" class="hidden md:block">
-                    <input type="text" name="q" placeholder="Search..." class="bg-gray-800 text-sm text-white rounded-lg px-4 py-2 w-48 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-700">
-                </form>
+                <div x-data="searchDropdown()" @click.outside="open = false" class="hidden md:block relative">
+                    <input type="text" x-model="query" @input.debounce.300ms="search()" @focus="if (results.anime.length || results.episodes.length) open = true" @keydown.escape="open = false" @keydown.enter="if (results.anime.length) window.location.href = results.anime[0].url" placeholder="Search anime..." class="bg-gray-800 text-sm text-white rounded-lg px-4 py-2 w-48 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-700">
+                    <div x-show="open && (results.anime.length || results.episodes.length)" class="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden" style="display: none;">
+                        <template x-if="results.anime.length">
+                            <div>
+                                <div class="px-4 py-2 text-xs text-gray-500 font-semibold uppercase tracking-wider bg-gray-900">Anime</div>
+                                <template x-for="item in results.anime" :key="item.id">
+                                    <a :href="item.url" class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-700/60 transition">
+                                        <img :src="item.thumbnail_url" class="w-8 h-11 object-cover rounded flex-shrink-0" alt="">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm text-white truncate" x-text="item.title"></p>
+                                            <p class="text-xs text-gray-500" x-text="item.type + (item.year ? ' | ' + item.year : '')"></p>
+                                        </div>
+                                    </a>
+                                </template>
+                            </div>
+                        </template>
+                        <template x-if="results.episodes.length">
+                            <div>
+                                <div class="px-4 py-2 text-xs text-gray-500 font-semibold uppercase tracking-wider bg-gray-900 border-t border-gray-700">Episodes</div>
+                                <template x-for="item in results.episodes" :key="item.id">
+                                    <a :href="item.url" class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-700/60 transition">
+                                        <img :src="item.thumbnail_url" class="w-12 h-7 object-cover rounded flex-shrink-0" alt="">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm text-white truncate" x-text="'Ep ' + item.number + ': ' + item.title"></p>
+                                            <p class="text-xs text-gray-500 truncate" x-text="item.anime_title"></p>
+                                        </div>
+                                    </a>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="open && loading" class="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 p-4 text-center text-sm text-gray-500">
+                        Searching...
+                    </div>
+                </div>
                 @auth
                     <div x-data="{ open: false }" class="relative">
                         <button @click="open = !open" class="flex items-center text-sm text-gray-300 hover:text-white">
@@ -61,3 +94,32 @@
         </div>
     </div>
 </header>
+
+@push('scripts')
+<script>
+    function searchDropdown() {
+        return {
+            query: '',
+            open: false,
+            loading: false,
+            results: { anime: [], episodes: [] },
+            search() {
+                if (this.query.length < 1) {
+                    this.results = { anime: [], episodes: [] };
+                    this.open = false;
+                    return;
+                }
+                this.loading = true;
+                this.open = true;
+                fetch('{{ route("search.ajax") }}?q=' + encodeURIComponent(this.query))
+                    .then(r => r.json())
+                    .then(data => {
+                        this.results = data;
+                        this.loading = false;
+                    })
+                    .catch(() => { this.loading = false; });
+            }
+        };
+    }
+</script>
+@endpush

@@ -33,5 +33,6 @@
             </tbody>
         </table>
     </div>
+    <div class="mt-4">{{ $genres->links() }}</div>
 </div>
 @endsection

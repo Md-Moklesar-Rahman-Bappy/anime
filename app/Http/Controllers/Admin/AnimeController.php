@@ -13,7 +13,7 @@ class AnimeController extends Controller
 {
     public function index()
     {
-        $animeList = Anime::latest()->paginate(20);
+        $animeList = Anime::latest('updated_at')->paginate(20);
 
         return view('admin.anime.index', compact('animeList'));
     }

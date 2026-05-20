@@ -36,7 +36,7 @@ class JikanController extends Controller
 
         $page = $request->integer('page', 1);
         $results = $this->jikan->searchAnime($request->q, $page);
-        $pagination = $this->jikan->searchPagination($request->q, $page);
+        $pagination = $this->jikan->lastPagination;
 
         if ($this->jikan->lastError) {
             return back()->withInput()->with('error', 'Jikan API error: '.$this->jikan->lastError);
@@ -153,7 +153,7 @@ class JikanController extends Controller
                 $existingMalIds[] = $malId;
             }
 
-            $pagination = $this->jikan->browsePagination($page + 1);
+            $pagination = $this->jikan->lastPagination;
             if (! ($pagination['has_next_page'] ?? false)) {
                 break;
             }

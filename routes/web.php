@@ -34,13 +34,6 @@ use App\Http\Controllers\StaticController;
 use App\Http\Controllers\TgStreamController;
 use App\Http\Controllers\WatchController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Cache\RateLimiting\Limit;
-
-RateLimiter::for('comments', fn ($request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
-RateLimiter::for('reports', fn ($request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
-RateLimiter::for('favorites', fn ($request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
-RateLimiter::for('scrapers', fn ($request) => Limit::perMinute(20)->by($request->user()?->id ?: $request->ip()));
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -64,6 +57,7 @@ Route::get('/anime/{slug}', AnimeController::class)->name('anime.detail');
 Route::get('/genre/{slug}', GenreController::class)->name('genre');
 Route::get('/az-list/{letter?}', [ListController::class, 'azList'])->name('az-list');
 Route::get('/filter', [ListController::class, 'filter'])->name('filter');
+Route::get('/search/ajax', [ListController::class, 'searchAjax'])->name('search.ajax');
 Route::get('/newest', [ListController::class, 'newest'])->name('newest');
 Route::get('/updated', [ListController::class, 'updated'])->name('updated');
 Route::get('/ongoing', [ListController::class, 'ongoing'])->name('ongoing');
