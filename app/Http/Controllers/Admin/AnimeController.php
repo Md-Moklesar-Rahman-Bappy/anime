@@ -13,7 +13,30 @@ class AnimeController extends Controller
 {
     public function index()
     {
-        $animeList = Anime::latest('updated_at')->paginate(20);
+        $search = request('search');
+        $query = Anime::latest('updated_at');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('type', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhere('studio', 'like', "%{$search}%");
+            });
+        }
+
+        $animeList = $query->paginate(20);
+
+        if (request()->wantsJson()) {
+            $html = view('admin.anime._table', compact('animeList'))->render();
+            $pagination = view('admin.anime._pagination', compact('animeList'))->render();
+
+            return response()->json([
+                'html' => $html,
+                'pagination' => $pagination,
+                'total' => $animeList->total(),
+            ]);
+        }
 
         return view('admin.anime.index', compact('animeList'));
     }

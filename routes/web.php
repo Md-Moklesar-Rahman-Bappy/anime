@@ -103,6 +103,7 @@ Route::get('/terms', [StaticController::class, 'terms'])->name('terms');
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('anime/search', [AdminAnimeController::class, 'index'])->name('anime.search');
     Route::resource('anime', AdminAnimeController::class);
     Route::prefix('anime/{anime}')->name('anime.')->group(function () {
         Route::resource('episodes', EpisodeController::class);
