@@ -168,7 +168,7 @@
                         </div>
                         <div class="bg-gray-900 rounded p-2">
                             <template x-if="telegramPreview.needs_streaming">
-                                <p class="text-yellow-400 text-xs font-medium">Large file detected — will stream via proxy (MadelineProto)</p>
+                                <p class="text-yellow-400 text-xs font-medium">Large file detected — will stream via proxy</p>
                             </template>
                             <template x-if="!telegramPreview.needs_streaming">
                                 <p class="text-green-400 text-xs font-medium">Video URL will be saved as Telegram source</p>
@@ -451,15 +451,15 @@ function episodeForm() {
             })
             .then(r => r.json().then(data => ({ ok: r.ok, data })))
             .then(({ ok, data }) => {
-                if (ok && data.file_id) {
+                if (ok && (data.file_id || data.message_id)) {
                     this.telegramPreview = data;
-                    this.telegramFileId = data.file_id;
+                    this.telegramFileId = data.file_id || '';
                     this.telegramFileSize = data.file_size || '';
                     this.telegramDuration = data.duration || '';
                     this.telegramThumb = data.thumbnail || '';
                     this.telegramType = data.type || 'mp4';
 
-                    if (data.needs_streaming && data.message_id) {
+                    if (data.message_id) {
                         this.telegramDirectUrl = '/tg/' + data.message_id;
                     } else if (data.direct_url) {
                         this.telegramDirectUrl = data.direct_url;

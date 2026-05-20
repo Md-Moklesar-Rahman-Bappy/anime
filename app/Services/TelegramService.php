@@ -34,13 +34,12 @@ class TelegramService
                 return null;
             }
 
-            // For large files, set needs_streaming flag and construct the proxy URL
-            $needsStreaming = ($info['file_size'] ?? 0) > 20 * 1024 * 1024; // > 20MB
-
+            // Always use streaming proxy for URL-based resolution
+            // (the Python Telethon streamer handles files of any size)
             return [
-                'file_id' => null, // Not available from Python streamer in preview context
+                'file_id' => null,
                 'file_unique_id' => null,
-                'direct_url' => $needsStreaming ? null : null, // No direct URL for large files
+                'direct_url' => null,
                 'file_path' => null,
                 'file_size' => $info['file_size'] ?? null,
                 'duration' => $info['duration'] ?? null,
@@ -52,7 +51,7 @@ class TelegramService
                 'message_id' => $parsed['message_id'],
                 'date' => null,
                 'type' => 'mp4',
-                'needs_streaming' => $needsStreaming,
+                'needs_streaming' => true,
             ];
         } catch (Exception $e) {
             Log::warning("Telegram resolveMessage failed: {$e->getMessage()}");
