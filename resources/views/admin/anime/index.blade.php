@@ -1,7 +1,29 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="animeSearch()">
+<div class="max-w-7xl mx-auto" x-data="{
+    search: '{{ request('search') }}',
+    fetchResults(page) {
+        const params = new URLSearchParams();
+        if (this.search) params.set('search', this.search);
+        params.set('page', page);
+
+        fetch('{{ route('admin.anime.search') }}?' + params.toString(), {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('anime-table-body').innerHTML = data.html;
+            document.getElementById('anime-pagination').innerHTML = data.pagination;
+        });
+    },
+    handleClick(e) {
+        const link = e.target.closest('.paginate-link');
+        if (link) {
+            this.fetchResults(link.dataset.page);
+        }
+    }
+}">
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">Anime</h1>
         <a href="{{ route('admin.anime.create') }}" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm">Add New</a>
@@ -47,33 +69,5 @@
             @include('admin.anime._pagination')
         </div>
     </div>
-
-    <script>
-        function animeSearch() {
-            return {
-                search: '{{ request('search') }}',
-                fetchResults(page) {
-                    const params = new URLSearchParams();
-                    if (this.search) params.set('search', this.search);
-                    params.set('page', page);
-
-                    fetch('{{ route('admin.anime.search') }}?' + params.toString(), {
-                        headers: { 'Accept': 'application/json' }
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        document.getElementById('anime-table-body').innerHTML = data.html;
-                        document.getElementById('anime-pagination').innerHTML = data.pagination;
-                    });
-                },
-                handleClick(e) {
-                    const link = e.target.closest('.paginate-link');
-                    if (link) {
-                        this.fetchResults(link.dataset.page);
-                    }
-                }
-            };
-        }
-    </script>
 </div>
 @endsection

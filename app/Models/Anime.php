@@ -13,7 +13,7 @@ class Anime extends Model
 
     protected $fillable = [
         'mal_id', 'title', 'slug', 'description', 'type', 'status', 'country',
-        'season', 'year', 'rating', 'score', 'episodes_count', 'duration',
+        'season', 'year', 'rating', 'score', 'age_rating', 'episodes_count', 'duration',
         'source', 'studio', 'producers', 'licensors', 'thumbnail', 'banner',
         'views', 'featured', 'jikan_synced_at',
     ];
