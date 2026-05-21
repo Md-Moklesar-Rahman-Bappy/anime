@@ -25,6 +25,12 @@
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.anime.episodes.index', $anime) }}" class="text-purple-500 hover:text-purple-400 text-sm">Episodes</a>
             <a href="{{ route('admin.anime.edit', $anime) }}" class="text-blue-500 hover:text-blue-400 text-sm">Edit</a>
+            @if($anime->mal_id)
+            <form action="{{ route('admin.jikan.refresh-episodes', $anime->mal_id) }}" method="POST" class="inline" onsubmit="return confirm('Refresh episodes from MAL for {{ $anime->title }}?')">
+                @csrf
+                <button type="submit" class="text-green-500 hover:text-green-400 text-sm">Refresh Eps</button>
+            </form>
+            @endif
             <form action="{{ route('admin.anime.destroy', $anime) }}" method="POST" onsubmit="return confirm('Delete this anime?')" class="inline">
                 @csrf @method('DELETE')
                 <button type="submit" class="text-red-500 hover:text-red-400 text-sm">Delete</button>

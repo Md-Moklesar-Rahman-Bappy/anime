@@ -25,7 +25,7 @@ class AnimeController extends Controller
             });
         }
 
-        $animeList = $query->paginate(20);
+        $animeList = $query->withCount('episodes')->paginate(20);
 
         if (request()->wantsJson()) {
             $html = view('admin.anime._table', compact('animeList'))->render();

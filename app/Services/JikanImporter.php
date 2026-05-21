@@ -105,13 +105,55 @@ class JikanImporter
         return $anime;
     }
 
-    public function upsertEpisodes(Anime $anime, array $episodes, bool $bulkInsert = false): int
+    public function upsertEpisodes(Anime $anime, array $episodes, bool $bulkInsert = false, bool $updateExisting = false): int
     {
+        if ($updateExisting) {
+            return $this->updateOrCreateEpisodes($anime, $episodes);
+        }
+
         if ($bulkInsert) {
             return $this->bulkInsertEpisodes($anime, $episodes);
         }
 
         return $this->individualInsertEpisodes($anime, $episodes);
+    }
+
+    protected function updateOrCreateEpisodes(Anime $anime, array $episodes): int
+    {
+        $count = 0;
+        $existingEpisodes = $anime->episodes()->get()->keyBy('number');
+
+        foreach ($episodes as $ep) {
+            if ($ep['filler'] || $ep['recap']) {
+                continue;
+            }
+
+            $existing = $existingEpisodes->get($ep['number']);
+
+            if ($existing) {
+                $existing->update([
+                    'title' => $ep['title'] ?: 'Episode '.$ep['number'],
+                    'description' => $ep['synopsis'],
+                    'thumbnail' => $ep['thumbnail'],
+                    'air_date' => $ep['air_date'],
+                    'duration' => $ep['duration'],
+                ]);
+            } else {
+                $anime->episodes()->create([
+                    'number' => $ep['number'],
+                    'title' => $ep['title'] ?: 'Episode '.$ep['number'],
+                    'description' => $ep['synopsis'],
+                    'thumbnail' => $ep['thumbnail'],
+                    'air_date' => $ep['air_date'],
+                    'duration' => $ep['duration'],
+                    'has_sub' => false,
+                    'has_dub' => false,
+                ]);
+            }
+            $count++;
+        }
+
+        return $count;
     }
 
     protected function bulkInsertEpisodes(Anime $anime, array $episodes): int

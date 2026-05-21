@@ -12,7 +12,7 @@ class AnimeController extends Controller
     {
         $anime = Anime::where('slug', $slug)->with(['genres', 'episodes' => function ($q) {
             $q->orderBy('number');
-        }])->firstOrFail();
+        }])->withCount('episodes')->firstOrFail();
 
         $related = Cache::remember('related_anime_'.$anime->id, 600, function () use ($anime) {
             $genreIds = $anime->genres->pluck('id')->toArray();

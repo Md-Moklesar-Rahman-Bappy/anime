@@ -149,6 +149,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
         Route::get('/preview/{malId}', [JikanController::class, 'preview'])->name('preview');
         Route::post('/import/{malId}', [JikanController::class, 'import'])->name('import');
         Route::post('/batch-import', [JikanController::class, 'batchImport'])->name('batch-import');
+        Route::post('/refresh-episodes/{malId}', [JikanController::class, 'refreshEpisodes'])->name('refresh-episodes');
         Route::post('/reset-progress', [JikanController::class, 'resetProgress'])->name('reset-progress');
     });
 

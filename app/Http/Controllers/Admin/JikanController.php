@@ -104,6 +104,34 @@ class JikanController extends Controller
             ->with('success', "{$action} \"{$anime->title}\" with {$episodeCount} episodes from MAL.");
     }
 
+    public function refreshEpisodes(int $malId)
+    {
+        $anime = Anime::where('mal_id', $malId)->first();
+
+        if (! $anime) {
+            return redirect()->route('admin.jikan.search')
+                ->with('error', 'Anime not found. Import it first from MAL Import.');
+        }
+
+        $count = $anime->episodes()->count();
+        $episodeData = $this->jikan->getAllEpisodes($malId);
+
+        if ($this->jikan->lastError) {
+            return back()->with('error', 'Jikan API error: '.$this->jikan->lastError);
+        }
+
+        $processed = $this->importer->upsertEpisodes($anime, $episodeData->toArray(), false, true);
+
+        $newCount = $anime->episodes()->count();
+        $anime->update(['episodes_count' => $newCount]);
+
+        $added = $newCount - $count;
+        $updated = $processed - $added;
+
+        return redirect()->route('admin.anime.episodes.index', $anime)
+            ->with('success', "Episodes refreshed for \"{$anime->title}\". {$added} new, {$updated} updated. Total: {$newCount} episodes.");
+    }
+
     public function batchImport(Request $request)
     {
         $request->validate([
