@@ -96,16 +96,17 @@ class JikanController extends Controller
                 ->with('error', 'Failed to fetch anime data from MyAnimeList.');
         }
 
-        $episodeData = $this->jikan->getAnimeEpisodes($malId);
+        $episodeData = $this->jikan->getAllEpisodes($malId);
 
         $genreIds = $this->importer->syncGenres($data['genres']);
         $anime = $this->importer->upsertAnime($data, $genreIds);
-        $this->importer->upsertEpisodes($anime, $episodeData);
+        $episodeCount = $this->importer->upsertEpisodes($anime, $episodeData);
+        $anime->update(['episodes_count' => $anime->episodes()->count()]);
 
         $action = $anime->wasRecentlyCreated ? 'Imported' : 'Updated';
 
         return redirect()->route('admin.anime.index')
-            ->with('success', "{$action} \"{$anime->title}\" with {$anime->episodes()->count()} episodes from MAL.");
+            ->with('success', "{$action} \"{$anime->title}\" with {$episodeCount} episodes from MAL.");
     }
 
     public function batchImport(Request $request)

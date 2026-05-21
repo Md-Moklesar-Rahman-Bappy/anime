@@ -40,12 +40,16 @@ class ImportAnimeJob implements ShouldQueue
 
         $episodes = $this->fetchEpisodes ? $jikan->getAllEpisodes($malId) : collect();
 
-        $this->storeAnime($data, $episodes);
+        $anime = $this->storeAnime($data, $episodes);
+
+        if ($anime) {
+            $anime->update(['episodes_count' => $anime->episodes()->count()]);
+        }
 
         Setting::updateOrCreate(['key' => 'jikan_last_mal_id'], ['value' => $malId]);
     }
 
-    protected function storeAnime(array $data, $episodes): void
+    protected function storeAnime(array $data, $episodes): ?Anime
     {
         $allGenres = Genre::all();
 
@@ -161,5 +165,7 @@ class ImportAnimeJob implements ShouldQueue
         if (! empty($newEpisodes)) {
             $anime->episodes()->insert($newEpisodes);
         }
+
+        return $anime;
     }
 }

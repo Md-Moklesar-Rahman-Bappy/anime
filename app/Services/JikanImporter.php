@@ -105,16 +105,16 @@ class JikanImporter
         return $anime;
     }
 
-    public function upsertEpisodes(Anime $anime, iterable $episodes, bool $bulkInsert = false): void
+    public function upsertEpisodes(Anime $anime, iterable $episodes, bool $bulkInsert = false): int
     {
         if ($bulkInsert) {
-            $this->bulkInsertEpisodes($anime, $episodes);
-        } else {
-            $this->individualInsertEpisodes($anime, $episodes);
+            return $this->bulkInsertEpisodes($anime, $episodes);
         }
+
+        return $this->individualInsertEpisodes($anime, $episodes);
     }
 
-    protected function bulkInsertEpisodes(Anime $anime, iterable $episodes): void
+    protected function bulkInsertEpisodes(Anime $anime, iterable $episodes): int
     {
         $existingNumbers = $anime->episodes()->pluck('number')->toArray();
 
@@ -144,10 +144,13 @@ class JikanImporter
         if (! empty($newEpisodes)) {
             $anime->episodes()->insert($newEpisodes);
         }
+
+        return count($newEpisodes);
     }
 
-    protected function individualInsertEpisodes(Anime $anime, iterable $episodes): void
+    protected function individualInsertEpisodes(Anime $anime, iterable $episodes): int
     {
+        $count = 0;
         foreach ($episodes as $ep) {
             if ($ep['filler'] || $ep['recap']) {
                 continue;
@@ -168,6 +171,9 @@ class JikanImporter
                 'has_sub' => false,
                 'has_dub' => false,
             ]);
+            $count++;
         }
+
+        return $count;
     }
 }

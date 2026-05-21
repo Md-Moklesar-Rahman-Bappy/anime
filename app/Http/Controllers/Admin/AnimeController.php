@@ -41,6 +41,11 @@ class AnimeController extends Controller
         return view('admin.anime.index', compact('animeList'));
     }
 
+    public function show(Anime $anime)
+    {
+        return redirect()->route('admin.anime.edit', $anime);
+    }
+
     public function create()
     {
         $genres = Genre::all();
