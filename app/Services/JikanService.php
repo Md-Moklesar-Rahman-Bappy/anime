@@ -197,7 +197,7 @@ class JikanService
 
     protected function mapAnime(array $item): array
     {
-        $images = $item['images']['jpg'] ?? [];
+        $images = $item['images']['jpg'] ?? $item['images']['webp'] ?? [];
         $trailerImages = $item['trailer']['images'] ?? [];
 
         $statusMap = [

@@ -46,6 +46,7 @@ class JikanImporter
             $existing->update([
                 'mal_id' => $data['mal_id'],
                 'title' => $data['title'],
+                'title_japanese' => $data['title_japanese'],
                 'description' => $data['description'],
                 'type' => $data['type'],
                 'status' => $data['status'],
@@ -78,6 +79,7 @@ class JikanImporter
         $anime = Anime::create([
             'mal_id' => $data['mal_id'],
             'title' => $data['title'],
+            'title_japanese' => $data['title_japanese'],
             'slug' => $slug,
             'description' => $data['description'],
             'type' => $data['type'],

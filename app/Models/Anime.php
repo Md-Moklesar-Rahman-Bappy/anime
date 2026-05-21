@@ -37,9 +37,12 @@ class Anime extends Model
 
     public function getThumbnailUrlAttribute(): string
     {
-        return $this->thumbnail
-            ? (str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail))
-            : 'https://via.placeholder.com/300x420/1a1a2e/7c3aed?text='.urlencode($this->title ?? 'Anime');
+        if ($this->thumbnail) {
+            return str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail);
+        }
+
+        $letter = mb_substr($this->title ?? 'A', 0, 1);
+        return 'data:image/svg+xml,' . rawurlencode("<svg xmlns='http://www.w3.org/2000/svg' width='300' height='420'><rect fill='%23374151' width='300' height='420'/><text x='150' y='210' text-anchor='middle' dominant-baseline='central' fill='white' font-size='80' font-family='sans-serif'>{$letter}</text></svg>");
     }
 
     public function getBannerUrlAttribute(): string

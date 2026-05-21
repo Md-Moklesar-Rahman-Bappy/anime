@@ -34,9 +34,15 @@ class Episode extends Model
 
     public function getThumbnailUrlAttribute(): string
     {
-        return $this->thumbnail
-            ? (str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail))
-            : ($this->anime->thumbnail_url ?? 'https://via.placeholder.com/80x45/1a1a2e/7c3aed');
+        if ($this->thumbnail) {
+            return str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail);
+        }
+
+        if ($this->anime) {
+            return $this->anime->thumbnail_url;
+        }
+
+        return 'data:image/svg+xml,' . rawurlencode("<svg xmlns='http://www.w3.org/2000/svg' width='300' height='168'><rect fill='%23374151' width='300' height='168'/><text x='150' y='84' text-anchor='middle' dominant-baseline='central' fill='white' font-size='20' font-family='sans-serif'>No Image</text></svg>");
     }
 
     public function anime(): BelongsTo
