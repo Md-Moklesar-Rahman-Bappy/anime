@@ -294,7 +294,7 @@ class JikanImportCommand extends Command
     {
         $genreIds = $this->importer->syncGenres($data['genres']);
         $anime = $this->importer->upsertAnime($data, $genreIds);
-        $this->importer->upsertEpisodes($anime, $episodes);
+        $this->importer->upsertEpisodes($anime, is_array($episodes) ? $episodes : $episodes->toArray());
 
         $this->info("Imported: {$anime->title} ({$anime->episodes()->count()} episodes)");
     }

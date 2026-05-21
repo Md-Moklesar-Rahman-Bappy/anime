@@ -100,7 +100,7 @@ class JikanController extends Controller
 
         $genreIds = $this->importer->syncGenres($data['genres']);
         $anime = $this->importer->upsertAnime($data, $genreIds);
-        $episodeCount = $this->importer->upsertEpisodes($anime, $episodeData);
+        $episodeCount = $this->importer->upsertEpisodes($anime, $episodeData->toArray());
         $anime->update(['episodes_count' => $anime->episodes()->count()]);
 
         $action = $anime->wasRecentlyCreated ? 'Imported' : 'Updated';
