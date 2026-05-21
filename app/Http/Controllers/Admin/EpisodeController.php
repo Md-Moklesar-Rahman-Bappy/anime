@@ -26,6 +26,11 @@ class EpisodeController extends Controller
         return view('admin.episodes.index', compact('anime', 'episodes'));
     }
 
+    public function show(Anime $anime, Episode $episode)
+    {
+        return redirect()->route('admin.anime.episodes.edit', [$anime, $episode]);
+    }
+
     public function create(Anime $anime)
     {
         $languages = ['english', 'japanese', 'hindi'];

@@ -61,7 +61,7 @@ class WatchController extends Controller
     protected function resolveEpisode(Anime $anime)
     {
         $episode = request('ep')
-            ? $anime->episodes->where('number', request('ep'))->first()
+            ? $anime->episodes->firstWhere('number', (int) request('ep'))
             : $anime->episodes->first();
 
         if (! $episode) {
