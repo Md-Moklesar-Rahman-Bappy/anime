@@ -13,10 +13,12 @@ class Episode extends Model
         'anime_id', 'number', 'title', 'description', 'video_path',
         'storage_disk', 'source_type', 'source_id', 'source_url',
         'duration', 'thumbnail', 'has_sub', 'has_dub',
-        'air_date', 'created_by',
+        'air_date', 'created_by', 'telegram_message_id',
     ];
 
     protected $appends = ['thumbnail_url'];
+
+    protected $with = ['anime'];
 
     protected function casts(): array
     {
@@ -26,6 +28,7 @@ class Episode extends Model
             'has_sub' => 'boolean',
             'has_dub' => 'boolean',
             'air_date' => 'date',
+            'telegram_message_id' => 'integer',
         ];
     }
 

@@ -10,5 +10,6 @@ class TgStreamController extends Controller
     {
         $service = new TelegramStreamService();
         $service->streamMessage($messageId);
+        exit;
     }
 }

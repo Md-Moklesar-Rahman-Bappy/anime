@@ -171,13 +171,4 @@ class JikanController extends Controller
         return redirect()->route('admin.jikan.search')
             ->with('success', 'Import progress has been reset.');
     }
-
-    protected function storeAnime(array $data, $episodes): Anime
-    {
-        $genreIds = $this->importer->syncGenres($data['genres']);
-        $anime = $this->importer->upsertAnime($data, $genreIds);
-        $this->importer->upsertEpisodes($anime, $episodes, true);
-
-        return $anime;
-    }
 }

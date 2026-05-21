@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Chapter;
 use App\Models\MangaComment;
 use Illuminate\Http\Request;
 

@@ -13,7 +13,7 @@ class Chapter extends Model
     protected function casts(): array
     {
         return [
-            'number' => 'decimal:2',
+            'number' => 'decimal:1',
             'pages_count' => 'integer',
         ];
     }

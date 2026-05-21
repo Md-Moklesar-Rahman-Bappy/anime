@@ -18,7 +18,7 @@ class ZoroScraper implements ScraperInterface
         $url = "{$this->baseUrl}/search?keyword=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
             return [];
@@ -45,7 +45,7 @@ class ZoroScraper implements ScraperInterface
         $url = "{$this->baseUrl}/anime/{$animeId}";
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
             return [];
@@ -78,10 +78,10 @@ class ZoroScraper implements ScraperInterface
         $url = "{$this->baseUrl}/watch/episode-{$episodeId}";
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
-            return null;
+            return [];
         }
 
         $html = $response->body();

@@ -162,7 +162,7 @@ class JikanService
         return collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
     }
 
-    public function browsePagination(int $page = 1): ?array
+    public function browsePagination(): ?array
     {
         if ($this->lastPagination !== null) {
             $pagination = $this->lastPagination;

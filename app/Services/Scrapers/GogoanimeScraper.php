@@ -18,7 +18,7 @@ class GogoanimeScraper implements ScraperInterface
         $url = "{$this->baseUrl}/search.html?keyword=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
             return [];
@@ -47,14 +47,15 @@ class GogoanimeScraper implements ScraperInterface
         $allEpisodes = [];
 
         do {
-            $url = "{$this->baseUrl}/{$animeId}?ep={$epStart}";
             if ($epStart === 0) {
                 $url = "{$this->baseUrl}/category/{$animeId}";
+            } else {
+                $url = "{$this->baseUrl}/category/{$animeId}?ep={$epStart}";
             }
 
             $response = Http::withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            ])->get($url);
+            ])->timeout(30)->get($url);
 
             if (! $response->successful()) {
                 break;
@@ -95,7 +96,7 @@ class GogoanimeScraper implements ScraperInterface
         $url = "{$this->baseUrl}/{$episodeId}";
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
             return null;

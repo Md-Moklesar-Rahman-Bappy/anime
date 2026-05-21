@@ -17,8 +17,15 @@ class SettingController extends Controller
 
     public function update(Request $request)
     {
+        $allowedKeys = [
+            'site_name', 'site_description', 'maintenance_mode',
+            'default_theme', 'items_per_page', 'max_upload_size',
+        ];
+
         foreach ($request->except('_token') as $key => $value) {
-            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+            if (in_array($key, $allowedKeys)) {
+                Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+            }
         }
 
         return back()->with('success', 'Settings updated.');

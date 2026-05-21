@@ -7,7 +7,6 @@ use App\Models\Episode;
 use App\Models\Genre;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 class ListController extends Controller
 {

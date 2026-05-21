@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Chapter;
 use App\Models\ChapterBookmark;
-use App\Models\Manga;
 use App\Models\MangaFavorite;
 use Illuminate\Http\Request;
 

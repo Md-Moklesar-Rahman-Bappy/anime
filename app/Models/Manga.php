@@ -26,7 +26,7 @@ class Manga extends Model
             'alternative_titles' => 'string',
             'year' => 'integer',
             'rating' => 'decimal:1',
-            'score' => 'decimal:2',
+            'score' => 'decimal:1',
             'chapters_count' => 'integer',
             'views' => 'integer',
             'featured' => 'boolean',

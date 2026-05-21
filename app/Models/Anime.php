@@ -15,7 +15,7 @@ class Anime extends Model
         'mal_id', 'title', 'slug', 'description', 'type', 'status', 'country',
         'season', 'year', 'rating', 'score', 'age_rating', 'episodes_count', 'duration',
         'source', 'studio', 'producers', 'licensors', 'thumbnail', 'banner',
-        'views', 'featured', 'jikan_synced_at',
+        'views', 'featured', 'featured_order', 'jikan_synced_at',
     ];
 
     protected $appends = ['thumbnail_url', 'banner_url'];
@@ -30,6 +30,7 @@ class Anime extends Model
             'duration' => 'integer',
             'views' => 'integer',
             'featured' => 'boolean',
+            'featured_order' => 'integer',
             'jikan_synced_at' => 'datetime',
         ];
     }

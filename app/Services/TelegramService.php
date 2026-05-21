@@ -82,7 +82,7 @@ class TelegramService
                 'file_unique_id' => $response['result']['file_unique_id'] ?? null,
                 'file_path' => $filePath,
                 'file_size' => $response['result']['file_size'] ?? null,
-                'direct_url' => "{$this->apiBase}/{$filePath}",
+                'direct_url' => "https://api.telegram.org/file/bot{$this->token}/{$filePath}",
                 'extension' => $ext,
                 'type' => in_array($ext, ['mp4', 'webm', 'mkv', 'm3u8']) ? $ext : 'mp4',
             ];

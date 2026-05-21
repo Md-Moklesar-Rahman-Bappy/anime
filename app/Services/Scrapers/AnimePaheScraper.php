@@ -18,10 +18,10 @@ class AnimePaheScraper implements ScraperInterface
         $url = "{$this->baseUrl}/api?m=search&q=".urlencode($query);
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
-            return [];
+            return null;
         }
 
         $data = $response->json();
@@ -45,7 +45,7 @@ class AnimePaheScraper implements ScraperInterface
         $url = "{$this->baseUrl}/api?m=release&id={$animeId}&sort=episode_asc";
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
             return [];
@@ -56,7 +56,7 @@ class AnimePaheScraper implements ScraperInterface
 
         foreach ($data['data'] ?? [] as $item) {
             $episodes[] = [
-                'id' => $item['session'] ?? $item['id'],
+                'id' => !empty($item['session']) ? $item['session'] : $item['id'],
                 'number' => (int) $item['episode'],
                 'title' => $item['title'] ?? null,
             ];
@@ -70,10 +70,10 @@ class AnimePaheScraper implements ScraperInterface
         $url = "{$this->baseUrl}/api?m=links&id={$episodeId}";
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        ])->get($url);
+        ])->timeout(30)->get($url);
 
         if (! $response->successful()) {
-            return null;
+            return [];
         }
 
         $data = $response->json();

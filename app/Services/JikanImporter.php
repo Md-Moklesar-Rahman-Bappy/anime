@@ -103,7 +103,7 @@ class JikanImporter
         return $anime;
     }
 
-    public function upsertEpisodes(Anime $anime, array $episodes, bool $bulkInsert = false): void
+    public function upsertEpisodes(Anime $anime, iterable $episodes, bool $bulkInsert = false): void
     {
         if ($bulkInsert) {
             $this->bulkInsertEpisodes($anime, $episodes);
@@ -112,7 +112,7 @@ class JikanImporter
         }
     }
 
-    protected function bulkInsertEpisodes(Anime $anime, array $episodes): void
+    protected function bulkInsertEpisodes(Anime $anime, iterable $episodes): void
     {
         $existingNumbers = $anime->episodes()->pluck('number')->toArray();
 
@@ -144,7 +144,7 @@ class JikanImporter
         }
     }
 
-    protected function individualInsertEpisodes(Anime $anime, array $episodes): void
+    protected function individualInsertEpisodes(Anime $anime, iterable $episodes): void
     {
         foreach ($episodes as $ep) {
             if ($ep['filler'] || $ep['recap']) {
