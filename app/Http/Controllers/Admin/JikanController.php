@@ -71,7 +71,7 @@ class JikanController extends Controller
                 ->with('error', 'Anime not found on MyAnimeList.');
         }
 
-        $episodes = $this->jikan->getAnimeEpisodes($malId);
+        $episodes = $this->jikan->getAllEpisodes($malId);
         $alreadyImported = Anime::where('mal_id', $malId)->exists();
 
         return view('admin.jikan.preview', compact('anime', 'episodes', 'alreadyImported'));
@@ -79,11 +79,6 @@ class JikanController extends Controller
 
     public function import(int $malId)
     {
-        if (Anime::where('mal_id', $malId)->exists()) {
-            return redirect()->route('admin.jikan.search')
-                ->with('error', 'This anime has already been imported.');
-        }
-
         $data = $this->jikan->getAnime($malId);
 
         if ($this->jikan->lastError) {

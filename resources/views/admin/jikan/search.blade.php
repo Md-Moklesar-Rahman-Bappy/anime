@@ -48,14 +48,15 @@
                     <br>Progress: <span class="text-purple-400">MAL #{{ $lastMalId }}</span>
                 @endif
             </p>
+            <p class="text-xs text-gray-500 mb-3">Each import includes anime metadata + all episodes.</p>
             <div class="space-y-2">
                 <form action="{{ route('admin.jikan.batch-import') }}" method="POST">
                     @csrf
-                    <input type="hidden" name="batch_size" value="10">
-                    <input type="hidden" name="with_episodes" value="0">
+                    <input type="hidden" name="batch_size" value="5">
+                    <input type="hidden" name="with_episodes" value="1">
                     <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm"
-                        onclick="return confirm('Import the next 10 anime (metadata only)?')">
-                        Import Next 10
+                        onclick="return confirm('Import the next 5 anime with all episodes?')">
+                        Import Next 5 + All Episodes
                     </button>
                 </form>
                 <form action="{{ route('admin.jikan.batch-import') }}" method="POST">
@@ -63,17 +64,17 @@
                     <input type="hidden" name="batch_size" value="10">
                     <input type="hidden" name="with_episodes" value="1">
                     <button type="submit" class="w-full bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm"
-                        onclick="return confirm('Import next 10 anime WITH episodes (slower)?')">
-                        Import Next 10 + Episodes
+                        onclick="return confirm('Import the next 10 anime with all episodes?')">
+                        Import Next 10 + All Episodes
                     </button>
                 </form>
                 <form action="{{ route('admin.jikan.batch-import') }}" method="POST">
                     @csrf
-                    <input type="hidden" name="batch_size" value="50">
-                    <input type="hidden" name="with_episodes" value="0">
+                    <input type="hidden" name="batch_size" value="25">
+                    <input type="hidden" name="with_episodes" value="1">
                     <button type="submit" class="w-full bg-purple-800 hover:bg-purple-900 text-white px-4 py-2 rounded-lg text-sm"
-                        onclick="return confirm('Import the next 50 anime? This may take a minute.')">
-                        Import Next 50
+                        onclick="return confirm('Import the next 25 anime with all episodes? This may take a while.')">
+                        Import Next 25 + All Episodes
                     </button>
                 </form>
                 @if(isset($lastMalId) && $lastMalId)
