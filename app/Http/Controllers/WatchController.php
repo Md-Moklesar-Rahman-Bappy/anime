@@ -112,6 +112,14 @@ class WatchController extends Controller
         return route('stream.proxy', ['url' => base64_encode($url)]);
     }
 
+    protected function extractYoutubeId(string $url): ?string
+    {
+        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $url, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
     protected function buildServerData($episode): array
     {
         $allServers = [];
@@ -123,10 +131,8 @@ class WatchController extends Controller
         $ytVideoId = null;
 
         if ($hasVideoPath && ! $youtubeServer) {
-            if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $episode->video_path, $m)) {
-                $ytInVideoPath = true;
-                $ytVideoId = $m[1];
-            }
+            $ytVideoId = $this->extractYoutubeId($episode->video_path);
+            $ytInVideoPath = $ytVideoId !== null;
         }
 
         if ($youtubeServer) {
@@ -174,9 +180,7 @@ class WatchController extends Controller
 
         $youtubeVideoId = null;
         if ($youtubeServer) {
-            if (preg_match('/(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $youtubeServer->url, $m)) {
-                $youtubeVideoId = $m[1];
-            }
+            $youtubeVideoId = $this->extractYoutubeId($youtubeServer->url);
         } elseif ($ytInVideoPath) {
             $youtubeVideoId = $ytVideoId;
         }

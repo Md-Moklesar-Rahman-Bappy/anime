@@ -49,10 +49,10 @@ Route::middleware('auth')->group(function () {
 });
 
 // Telegram streaming (public, used by Plyr player)
-Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream');
+Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream')->middleware('throttle:stream');
 
 // Stream proxy for external server URLs
-Route::get('/stream/proxy', [\App\Http\Controllers\StreamProxyController::class, 'stream'])->name('stream.proxy');
+Route::get('/stream/proxy', [\App\Http\Controllers\StreamProxyController::class, 'stream'])->name('stream.proxy')->middleware('throttle:stream');
 
 // Anime pages
 Route::get('/watch/{slug}', WatchController::class)->name('watch');

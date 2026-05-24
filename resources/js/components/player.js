@@ -51,6 +51,7 @@ export function player() {
         skipTimes: null,
 
         _keyboardHandler: null,
+        _loadId: 0,
 
         init() {
             this.servers = window.PLAYER_SERVERS || [];
@@ -77,6 +78,7 @@ export function player() {
         },
 
         destroy() {
+            this._loadId++;
             if (this._keyboardHandler) {
                 document.removeEventListener('keydown', this._keyboardHandler);
                 this._keyboardHandler = null;
@@ -258,14 +260,18 @@ export function player() {
         },
 
         loadServer(index) {
+            this._loadId++;
+            const loadId = this._loadId;
             const server = this.currentServers[index];
             if (!server) return;
 
             if (server.type === 'youtube') {
                 if (this.isEmbed) {
+                    this.destroyPlyr();
                     this.isEmbed = false;
                     this.embedUrl = null;
                     this.$nextTick(() => {
+                        if (loadId !== this._loadId) return;
                         this.initPlyr();
                         this.loadYoutubeSource(server);
                     });
@@ -276,10 +282,7 @@ export function player() {
             }
 
             if (server.type === 'embed') {
-                if (this.player) {
-                    this.player.destroy();
-                    this.player = null;
-                }
+                this.destroyPlyr();
                 this.isEmbed = true;
                 this.embedUrl = server.url;
                 return;
@@ -289,6 +292,7 @@ export function player() {
                 this.isEmbed = false;
                 this.embedUrl = null;
                 this.$nextTick(() => {
+                    if (loadId !== this._loadId) return;
                     this.initPlyr();
                     this.loadSource(server);
                 });
@@ -324,6 +328,18 @@ export function player() {
                 'm3u8': 'application/x-mpegURL',
             };
             return map[type] || '';
+        },
+
+        destroyPlyr() {
+            if (this._keyboardHandler) {
+                document.removeEventListener('keydown', this._keyboardHandler);
+                this._keyboardHandler = null;
+            }
+            if (this.player) {
+                this.player.destroy();
+                this.player = null;
+            }
+            this.setupKeyboard();
         },
 
         async updateList(category) {

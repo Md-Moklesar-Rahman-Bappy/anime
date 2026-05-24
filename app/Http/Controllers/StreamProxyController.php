@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StreamProxyController extends Controller
 {
@@ -29,6 +30,14 @@ class StreamProxyController extends Controller
         'webp' => 'image/webp',
     ];
 
+    protected array $blockedHosts = [
+        'localhost', '127.0.0.1', '::1', '0.0.0.0',
+        '10.', '172.16.', '172.17.', '172.18.', '172.19.',
+        '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
+        '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
+        '172.30.', '172.31.', '192.168.',
+    ];
+
     public function stream(Request $request)
     {
         $encoded = $request->query('url');
@@ -37,8 +46,13 @@ class StreamProxyController extends Controller
         }
 
         $url = base64_decode($encoded, true);
-        if ($url === false || !str_starts_with($url, 'http')) {
+        if ($url === false || (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://'))) {
             abort(400, 'Invalid url parameter');
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if ($this->isBlockedHost($host)) {
+            abort(403, 'Access to this resource is denied');
         }
 
         set_time_limit(0);
@@ -46,18 +60,17 @@ class StreamProxyController extends Controller
         $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
         $contentType = $this->mimeMap[$ext] ?? 'application/octet-stream';
 
-        $headers = get_headers($url, true);
-        if (!$headers || !isset($headers[0])) {
+        $responseHeaders = $this->getHeaders($url);
+        if (!$responseHeaders) {
             abort(502, 'Could not reach upstream server');
         }
 
-        $statusParts = explode(' ', $headers[0]);
-        $upstreamCode = (int) ($statusParts[1] ?? 500);
+        $upstreamCode = (int) explode(' ', $responseHeaders[0])[1] ?? 500;
         if ($upstreamCode >= 400) {
             abort(502, 'Upstream returned ' . $upstreamCode);
         }
 
-        $upstreamContentType = $headers['Content-Type'] ?? null;
+        $upstreamContentType = $responseHeaders['Content-Type'] ?? null;
         if (is_array($upstreamContentType)) {
             $upstreamContentType = end($upstreamContentType);
         }
@@ -65,7 +78,7 @@ class StreamProxyController extends Controller
             $contentType = $upstreamContentType;
         }
 
-        $fileSize = $headers['Content-Length'] ?? 0;
+        $fileSize = $responseHeaders['Content-Length'] ?? 0;
         if (is_array($fileSize)) {
             $fileSize = end($fileSize);
         }
@@ -80,62 +93,81 @@ class StreamProxyController extends Controller
             if (preg_match('/bytes=(\d+)-(\d*)/', $range, $matches)) {
                 $start = (int) $matches[1];
                 $end = $matches[2] !== '' ? (int) $matches[2] : $fileSize - 1;
-                $statusCode = 206;
+                $start = min($start, $fileSize - 1);
+                $end = min($end, $fileSize - 1);
+                if ($start <= $end) {
+                    $statusCode = 206;
+                }
             }
         }
 
         $length = $fileSize > 0 ? $end - $start + 1 : 0;
 
-        header('Content-Type: ' . $contentType);
-        header('Access-Control-Allow-Origin: *');
-        header('Accept-Ranges: bytes');
-        header('Cache-Control: no-cache, must-revalidate');
+        $headers = [
+            'Content-Type' => $contentType,
+            'Access-Control-Allow-Origin' => '*',
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ];
 
         if ($fileSize > 0) {
-            header('Content-Length: ' . $length);
+            $headers['Content-Length'] = $length;
         }
-
-        http_response_code($statusCode);
 
         if ($statusCode === 206 && $fileSize > 0) {
-            header("Content-Range: bytes $start-$end/$fileSize");
+            $headers['Content-Range'] = "bytes $start-$end/$fileSize";
         }
 
-        if ($request->method() === 'HEAD') {
-            return;
-        }
+        return new StreamedResponse(function () use ($url, $start, $end, $length, $fileSize) {
+            $ctx = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => "Range: bytes=$start-$end\r\n",
+                    'timeout' => 3600,
+                ],
+            ]);
 
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
+            $remote = @fopen($url, 'rb', false, $ctx);
+            if (!$remote) {
+                return;
+            }
 
+            $bytesRemaining = $length > 0 ? $length : PHP_INT_MAX;
+            while ($bytesRemaining > 0 && !feof($remote)) {
+                $chunkSize = min(65536, $bytesRemaining);
+                $chunk = fread($remote, $chunkSize);
+                if ($chunk === false) {
+                    break;
+                }
+                echo $chunk;
+                flush();
+                $bytesRemaining -= strlen($chunk);
+            }
+
+            fclose($remote);
+        }, $statusCode, $headers);
+    }
+
+    protected function getHeaders(string $url): ?array
+    {
         $ctx = stream_context_create([
             'http' => [
                 'method' => 'GET',
-                'header' => "Range: bytes=$start-$end\r\n",
-                'timeout' => 3600,
+                'timeout' => 15,
             ],
         ]);
 
-        $remote = @fopen($url, 'rb', false, $ctx);
-        if (!$remote) {
-            http_response_code(502);
-            echo 'Failed to connect to upstream server';
-            return;
-        }
+        $headers = @get_headers($url, true, $ctx);
+        return $headers ?: null;
+    }
 
-        $bytesRemaining = $length > 0 ? $length : PHP_INT_MAX;
-        while ($bytesRemaining > 0 && !feof($remote)) {
-            $chunkSize = min(65536, $bytesRemaining);
-            $chunk = fread($remote, $chunkSize);
-            if ($chunk === false) {
-                break;
+    protected function isBlockedHost(string $host): bool
+    {
+        foreach ($this->blockedHosts as $blocked) {
+            if (str_starts_with($host, $blocked)) {
+                return true;
             }
-            echo $chunk;
-            flush();
-            $bytesRemaining -= strlen($chunk);
         }
-
-        fclose($remote);
+        return false;
     }
 }

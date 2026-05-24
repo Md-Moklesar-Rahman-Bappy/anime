@@ -9,6 +9,14 @@ class Favorite extends Model
 {
     protected $fillable = ['user_id', 'anime_id', 'category'];
 
+    protected function casts(): array
+    {
+        return [
+            'user_id' => 'integer',
+            'anime_id' => 'integer',
+        ];
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
