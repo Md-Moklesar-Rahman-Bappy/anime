@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function () {
 // Telegram streaming (public, used by Plyr player)
 Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream');
 
+// Stream proxy for external server URLs
+Route::get('/stream/proxy', [\App\Http\Controllers\StreamProxyController::class, 'stream'])->name('stream.proxy');
+
 // Anime pages
 Route::get('/watch/{slug}', WatchController::class)->name('watch');
 Route::get('/anime/{slug}', AnimeController::class)->name('anime.detail');

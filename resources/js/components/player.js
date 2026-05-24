@@ -35,6 +35,8 @@ export function player() {
         currentLanguage: null,
         currentServers: [],
         currentIndex: 0,
+        isEmbed: false,
+        embedUrl: null,
         isFavorited: false,
         favoriteCategory: null,
         isYoutube: false,
@@ -61,6 +63,12 @@ export function player() {
             this.favoriteCategory = window.PLAYER_FAV_CATEGORY || null;
             this.skipTimes = window.PLAYER_SKIP_TIMES || null;
 
+            const initServer = this.currentServers[0] || this.servers[0] || null;
+            if (initServer && initServer.type === 'embed') {
+                this.isEmbed = true;
+                this.embedUrl = initServer.url;
+            }
+
             this.$nextTick(() => {
                 this.initPlyr();
                 this.setupKeyboard();
@@ -80,6 +88,7 @@ export function player() {
         },
 
         initPlyr() {
+            if (this.isEmbed) return;
             const video = this.$el.querySelector('video');
             if (!video) return;
 
@@ -93,15 +102,6 @@ export function player() {
             });
 
             this.player.on('ready', () => {
-                if (this.isYoutube && this.currentServers[0]) {
-                    const ytId = this.extractYoutubeId(this.currentServers[0].url);
-                    if (ytId) {
-                        this.player.source = {
-                            type: 'video',
-                            sources: [{ src: ytId, provider: 'youtube' }],
-                        };
-                    }
-                }
                 if (this.config.autoPlay) {
                     this.player.play();
                 }
@@ -262,23 +262,68 @@ export function player() {
             if (!server) return;
 
             if (server.type === 'youtube') {
-                const ytId = this.extractYoutubeId(server.url);
-                if (ytId && this.player) {
-                    this.player.source = {
-                        type: 'video',
-                        sources: [{ src: ytId, provider: 'youtube' }],
-                    };
+                if (this.isEmbed) {
+                    this.isEmbed = false;
+                    this.embedUrl = null;
+                    this.$nextTick(() => {
+                        this.initPlyr();
+                        this.loadYoutubeSource(server);
+                    });
+                    return;
                 }
+                this.loadYoutubeSource(server);
                 return;
             }
 
-            if (this.player) {
-                const mimeType = server.type === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4';
+            if (server.type === 'embed') {
+                if (this.player) {
+                    this.player.destroy();
+                    this.player = null;
+                }
+                this.isEmbed = true;
+                this.embedUrl = server.url;
+                return;
+            }
+
+            if (this.isEmbed) {
+                this.isEmbed = false;
+                this.embedUrl = null;
+                this.$nextTick(() => {
+                    this.initPlyr();
+                    this.loadSource(server);
+                });
+                return;
+            }
+
+            this.loadSource(server);
+        },
+
+        loadSource(server) {
+            if (!this.player) return;
+            const mimeType = this.getMimeType(server.type);
+            this.player.source = {
+                type: 'video',
+                sources: [{ src: server.url, type: mimeType }],
+            };
+        },
+
+        loadYoutubeSource(server) {
+            const ytId = this.extractYoutubeId(server.url);
+            if (ytId && this.player) {
                 this.player.source = {
                     type: 'video',
-                    sources: [{ src: server.url, type: mimeType }],
+                    sources: [{ src: ytId, provider: 'youtube' }],
                 };
             }
+        },
+
+        getMimeType(type) {
+            const map = {
+                'mp4': 'video/mp4',
+                'webm': 'video/webm',
+                'm3u8': 'application/x-mpegURL',
+            };
+            return map[type] || '';
         },
 
         async updateList(category) {

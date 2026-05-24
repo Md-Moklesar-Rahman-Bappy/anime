@@ -104,6 +104,14 @@ class WatchController extends Controller
         });
     }
 
+    protected function resolveUrl(string $url): string
+    {
+        if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
+            return $url;
+        }
+        return route('stream.proxy', ['url' => base64_encode($url)]);
+    }
+
     protected function buildServerData($episode): array
     {
         $allServers = [];
@@ -145,14 +153,14 @@ class WatchController extends Controller
             $allServers[] = [
                 'server_id' => 'video_'.$s->id,
                 'label' => $s->label ?? 'Server '.$idx,
-                'url' => $s->url,
+                'url' => $this->resolveUrl($s->url),
                 'type' => $s->type,
                 'language' => $s->language,
             ];
         }
 
         if (! $hasServers && $hasVideoPath && ! $ytInVideoPath) {
-            $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path);
+            $videoSrc = str_starts_with($episode->video_path, 'http') ? $this->resolveUrl($episode->video_path) : Storage::url($episode->video_path);
             $allServers[] = [
                 'server_id' => 'local',
                 'label' => 'Default',

@@ -9,13 +9,22 @@
             <div class="bg-black rounded-lg overflow-visible" x-data="player()" x-init="init()">
                 <div class="plyr-wrapper overflow-hidden rounded-t-lg">
                     @if($initialServer)
-                        <video id="videoPlayer" class="w-full aspect-video" playsinline
-                            {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}
-                            @if($isYoutubeInit) data-plyr-provider="youtube" data-plyr-embed-id="{{ $initialServer['url'] }}" @endif>
-                            @if(!$isYoutubeInit)
-                            <source src="{{ $initialServer['url'] }}" type="{{ $initialServer['type'] === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
-                            @endif
-                        </video>
+                        @php
+                            $_mimeMap = ['mp4'=>'video/mp4','webm'=>'video/webm','m3u8'=>'application/x-mpegURL'];
+                            $_mimeType = $_mimeMap[$initialServer['type']] ?? null;
+                            $_isEmbedInit = $initialServer['type'] === 'embed';
+                        @endphp
+                        <iframe x-show="isEmbed" :src="embedUrl"
+                                class="w-full aspect-video" frameborder="0" allowfullscreen></iframe>
+                        <div x-show="!isEmbed" class="w-full aspect-video">
+                            <video id="videoPlayer" class="w-full aspect-video" playsinline
+                                {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}
+                                @if($isYoutubeInit) data-plyr-provider="youtube" data-plyr-embed-id="{{ $youtubeVideoId ?? '' }}" @endif>
+                                @if(!$isYoutubeInit && !$_isEmbedInit)
+                                <source src="{{ $initialServer['url'] }}" @if($_mimeType) type="{{ $_mimeType }}" @endif>
+                                @endif
+                            </video>
+                        </div>
                     @else
                         <div class="w-full aspect-video flex items-center justify-center bg-gray-900 text-gray-500">
                             <div class="text-center">
@@ -239,6 +248,7 @@
 @push('scripts')
 <script>
 window.PLAYER_SERVERS = @json($allServers);
+window.PLAYER_LANGUAGES = @json($languages);
 window.PLAYER_IS_YOUTUBE = {{ $isYoutubeInit ? 'true' : 'false' }};
 window.PLAYER_IS_FAVORITED = {{ $isFavorited ? 'true' : 'false' }};
 window.PLAYER_FAV_CATEGORY = {{ $favCategory ? '"'.$favCategory.'"' : 'null' }};
