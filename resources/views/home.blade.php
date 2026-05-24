@@ -13,6 +13,7 @@
             progress: 0,
             total: {{ $featured->count() }},
             touchStartX: 0,
+            animKey: 0,
 
             init() {
                 this.startAutoplay();
@@ -41,18 +42,21 @@
             next() {
                 if (this.total <= 1) return;
                 this.current = (this.current + 1) % this.total;
+                this.animKey++;
                 if (this.autoplay) this.startAutoplay();
             },
 
             prev() {
                 if (this.total <= 1) return;
                 this.current = (this.current - 1 + this.total) % this.total;
+                this.animKey++;
                 if (this.autoplay) this.startAutoplay();
             },
 
             goTo(index) {
                 if (this.current === index) return;
                 this.current = index;
+                this.animKey++;
                 if (this.autoplay) this.startAutoplay();
             },
 
@@ -81,7 +85,7 @@
         @mouseleave="if (autoplay) startAutoplay()"
         @touchstart="handleTouchStart($event)"
         @touchend="handleTouchEnd($event)"
-        class="relative rounded-xl overflow-hidden mb-8 h-[400px] md:h-[500px] group focus:outline-none"
+        class="relative rounded-2xl overflow-hidden mb-12 min-h-[420px] sm:min-h-[500px] lg:min-h-[600px] group focus:outline-none bg-gray-900 shadow-2xl"
         tabindex="0"
         role="region"
         aria-label="Featured Anime"
@@ -99,53 +103,60 @@
             :aria-hidden="current !== {{ $i }}"
         >
             <img src="{{ $anime->banner_url }}" class="w-full h-full object-cover" alt="{{ $anime->title }} banner">
-            <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/60 to-transparent"></div>
-            <div class="absolute inset-0 bg-gradient-to-r from-gray-950/40 to-transparent"></div>
-            <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
-                <h2 class="text-2xl md:text-4xl font-bold text-white mb-2 drop-shadow-lg">{{ $anime->title }}</h2>
-                <div class="flex flex-wrap items-center gap-3 text-sm text-gray-300 mb-3">
-                    <span class="px-2 py-0.5 bg-purple-600/80 rounded text-xs font-semibold">{{ $anime->type }}</span>
-                    <span>{{ $anime->year }}</span>
-                    <span class="flex items-center">
-                        <svg class="w-4 h-4 text-yellow-500 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                        {{ $anime->rating ?? 'N/A' }}
-                    </span>
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/50 to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-gray-950/80 via-gray-950/20 to-transparent"></div>
+
+            <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10 lg:p-14">
+                <div :key="'c-' + animKey"
+                     x-transition:enter="transition ease-out duration-500"
+                     x-transition:enter-start="opacity-0 translate-y-8"
+                     x-transition:enter-end="opacity-100 translate-y-0">
+                    <div class="flex flex-wrap items-center gap-3 mb-4">
+                        <span class="px-3 py-1 bg-purple-600/80 backdrop-blur-sm rounded-full text-xs font-semibold tracking-wide uppercase">{{ $anime->type }}</span>
+                        <span class="text-sm text-gray-300">{{ $anime->year }}</span>
+                        <span class="flex items-center text-sm text-gray-300">
+                            <svg class="w-4 h-4 text-yellow-400 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            {{ $anime->rating ?? 'N/A' }}
+                        </span>
+                    </div>
+                    <h2 class="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white mb-3 leading-tight drop-shadow-2xl">{{ $anime->title }}</h2>
+                    <p class="text-gray-300 text-sm md:text-base max-w-xl line-clamp-2 mb-6 drop-shadow-lg">{{ Str::limit($anime->description, 200) }}</p>
+                    <a href="{{ route('watch', $anime->slug) }}" class="inline-flex items-center bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white px-8 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-lg shadow-purple-600/25 hover:shadow-xl hover:shadow-purple-600/40 hover:scale-[1.03] active:scale-95">
+                        <svg class="w-5 h-5 mr-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
+                        Watch Now
+                    </a>
                 </div>
-                <p class="text-gray-300 text-sm max-w-xl line-clamp-2 mb-4 drop-shadow-md">{{ Str::limit($anime->description, 200) }}</p>
-                <a href="{{ route('watch', $anime->slug) }}" class="inline-flex items-center bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95 shadow-lg shadow-purple-600/30">
-                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
-                    Play Now
-                </a>
             </div>
         </div>
         @endforeach
 
         @if($featured->count() > 1)
-        <div class="absolute top-0 left-0 right-0 z-30 flex space-x-1 p-3">
+        <div class="absolute top-0 left-0 right-0 z-30 flex gap-1 p-3">
             @foreach($featured as $i => $anime)
-            <div class="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500 rounded-full transition-all duration-100 ease-linear"
+            <div class="flex-1 h-[3px] bg-white/15 rounded-full overflow-hidden">
+                <div class="h-full bg-white/80 rounded-full transition-all duration-100 ease-linear"
                      :style="'width: ' + (current === {{ $i }} ? progress + '%' : (current > {{ $i }} ? '100%' : '0%'))"></div>
             </div>
             @endforeach
         </div>
 
-        <button @click="prev()" class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-purple-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Previous slide">
-            <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        <button @click="prev()" class="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-purple-600/70 hover:border-purple-500/50 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Previous slide">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
         </button>
-        <button @click="next()" class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-purple-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Next slide">
-            <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+        <button @click="next()" class="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-purple-600/70 hover:border-purple-500/50 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Next slide">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
         </button>
 
-        <div class="absolute bottom-4 left-0 right-0 z-30 flex items-center justify-center space-x-4">
-            <div class="flex items-center space-x-2">
+        <div class="absolute bottom-4 md:bottom-6 left-0 right-0 z-30 flex items-center justify-between px-6 md:px-10 lg:px-14">
+            <div class="flex items-center gap-2">
                 @foreach($featured as $i => $anime)
-                <button @click="goTo({{ $i }})" class="w-2.5 h-2.5 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        :class="current === {{ $i }} ? 'bg-purple-600 w-6 rounded-full' : 'bg-white/50 hover:bg-white/80'"
+                <button @click="goTo({{ $i }})"
+                        class="h-1.5 rounded-full transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        :class="current === {{ $i }} ? 'w-8 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'"
                         :aria-label="'Go to slide ' + ({{ $i }} + 1)"></button>
                 @endforeach
             </div>
-            <span class="text-xs text-white/60 font-mono hidden sm:block" x-text="(current + 1).toString().padStart(2, '0') + ' / ' + total.toString().padStart(2, '0')"></span>
+            <span class="text-xs text-white/40 font-mono tracking-widest" x-text="(current + 1).toString().padStart(2, '0') + ' / ' + total.toString().padStart(2, '0')"></span>
         </div>
         @endif
     </div>
