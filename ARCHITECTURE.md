@@ -43,19 +43,12 @@ app/
 
 **Frontend:** `HomeController`, `AnimeController`, `WatchController`, `GenreController`, `ListController`, `RandomController`, `StaticController`, `CommentsController`, `FavoritesController`, `ProfileController`
 
-**Admin:** `DashboardController`, `AnimeController`, `EpisodeController`, `GenreController`, `FeaturedController`, `UserController`, `ReportController`, `RequestController`, `SettingController`, `JikanController`, `ScraperController`, `UploadController`
+**Admin:** `DashboardController`, `AnimeController`, `EpisodeController`, `GenreController`, `FeaturedController`, `UserController`, `ReportController`, `RequestController`, `SettingController`, `JikanController`, `UploadController`
 
 ### Services
 
 - **`JikanService`** — Wraps the Jikan API v4 (MyAnimeList) for importing anime metadata and episodes with rate limiting and retry logic
 - **`YouTubeService`** — Fetches video metadata via oEmbed API (free) with optional duration via YouTube Data API v3
-- **`Scrapers\ScraperInterface`** — Interface for external source scrapers
-- **`Scrapers\ScraperManager`** — Registry and dispatch for scraper implementations
-- **`Scrapers\GogoanimeScraper`** — Scrapes gogoanime3.co
-- **`Scrapers\GogoanimeByScraper`** — Scrapes gogoanime.by via RSS
-- **`Scrapers\ZoroScraper`** — Scrapes aniwatch.to
-- **`Scrapers\ZoroTvScraper`** — Scrapes zorotv.com.ro via RSS
-- **`Scrapers\AnimePaheScraper`** — Scrapes animepahe.ru via JSON API
 
 ### Database
 

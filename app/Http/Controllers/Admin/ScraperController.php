@@ -33,19 +33,10 @@ class ScraperController extends Controller
         $info = $this->youtube->getVideoInfo($data['url']);
 
         if (! $info) {
-            return $request->expectsJson()
-                ? response()->json(['error' => 'Could not fetch YouTube video info.'], 422)
-                : back()->with('error', 'Could not fetch YouTube video info.');
+            return response()->json(['error' => 'Could not fetch YouTube video info.'], 422);
         }
 
-        if ($request->expectsJson()) {
-            return response()->json($info);
-        }
-
-        $anime = Anime::findOrFail($data['anime_id']);
-        $episodeNumber = $data['episode_number'] ?? null;
-
-        return view('admin.scrapers.youtube-preview', compact('info', 'anime', 'episodeNumber'));
+        return response()->json($info);
     }
 
     public function youtubeImport(Request $request)

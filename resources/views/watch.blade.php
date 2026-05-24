@@ -10,7 +10,8 @@
                 <div class="plyr-wrapper overflow-hidden rounded-t-lg">
                     @if($initialServer)
                         <video id="videoPlayer" class="w-full aspect-video" playsinline
-                            {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}>
+                            {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}
+                            @if($isYoutubeInit) data-plyr-provider="youtube" data-plyr-embed-id="{{ $initialServer['url'] }}" @endif>
                             @if(!$isYoutubeInit)
                             <source src="{{ $initialServer['url'] }}" type="{{ $initialServer['type'] === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
                             @endif

@@ -164,6 +164,15 @@ class WatchController extends Controller
 
         $skipTimes = $episode->skipTimes->first() ?: null;
 
+        $youtubeVideoId = null;
+        if ($youtubeServer) {
+            if (preg_match('/(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $youtubeServer->url, $m)) {
+                $youtubeVideoId = $m[1];
+            }
+        } elseif ($ytInVideoPath) {
+            $youtubeVideoId = $ytVideoId;
+        }
+
         $languageGroups = collect($allServers)->groupBy('language');
         $languages = $languageGroups->keys()->values()->toArray();
 
@@ -176,6 +185,7 @@ class WatchController extends Controller
             'languages' => $languages,
             'initialServer' => $initialServer,
             'isYoutubeInit' => $isYoutubeInit,
+            'youtubeVideoId' => $youtubeVideoId,
             'skipTimes' => $skipTimes,
         ];
     }
