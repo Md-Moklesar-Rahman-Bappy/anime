@@ -10,16 +10,7 @@ class FeaturedController extends Controller
 {
     public function index()
     {
-        $featured = Anime::where('featured', true)
-            ->orderBy('featured_order')
-            ->orderBy('updated_at', 'desc')
-            ->get();
-
-        $animeList = Anime::select('id', 'title', 'thumbnail')
-            ->orderBy('title')
-            ->get();
-
-        return view('admin.featured.index', compact('featured', 'animeList'));
+        return view('admin.featured.index');
     }
 
     public function update(Request $request)

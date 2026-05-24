@@ -98,7 +98,7 @@
             class="absolute inset-0"
             :aria-hidden="current !== {{ $i }}"
         >
-            <img src="{{ $anime->banner_url }}" class="w-full h-full object-cover" alt="{{ $anime->title }} banner">
+            <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ $anime->banner_url }}')"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/60 to-transparent"></div>
             <div class="absolute inset-0 bg-gradient-to-r from-gray-950/40 to-transparent"></div>
             <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
