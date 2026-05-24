@@ -30,14 +30,6 @@ class StreamProxyController extends Controller
         'webp' => 'image/webp',
     ];
 
-    protected array $blockedHosts = [
-        'localhost', '127.0.0.1', '::1', '0.0.0.0',
-        '10.', '172.16.', '172.17.', '172.18.', '172.19.',
-        '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
-        '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
-        '172.30.', '172.31.', '192.168.',
-    ];
-
     public function stream(Request $request)
     {
         $encoded = $request->query('url');
@@ -48,11 +40,6 @@ class StreamProxyController extends Controller
         $url = base64_decode($encoded, true);
         if ($url === false || (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://'))) {
             abort(400, 'Invalid url parameter');
-        }
-
-        $host = parse_url($url, PHP_URL_HOST);
-        if ($this->isBlockedHost($host)) {
-            abort(403, 'Access to this resource is denied');
         }
 
         set_time_limit(0);
@@ -152,7 +139,7 @@ class StreamProxyController extends Controller
     {
         $ctx = stream_context_create([
             'http' => [
-                'method' => 'GET',
+                'method' => 'HEAD',
                 'timeout' => 15,
             ],
         ]);
@@ -161,13 +148,4 @@ class StreamProxyController extends Controller
         return $headers ?: null;
     }
 
-    protected function isBlockedHost(string $host): bool
-    {
-        foreach ($this->blockedHosts as $blocked) {
-            if (str_starts_with($host, $blocked)) {
-                return true;
-            }
-        }
-        return false;
-    }
 }
