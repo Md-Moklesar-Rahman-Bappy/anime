@@ -50,14 +50,13 @@
 
             <div class="flex space-x-1 mb-4 bg-gray-800 rounded-lg p-1">
                 <button type="button" @click="tab = 'upload'; sourceType = 'upload'" :class="tab === 'upload' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Upload File</button>
-                <button type="button" @click="tab = 'url'; sourceType = 'direct_url'" :class="tab === 'url' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Direct URL</button>
                 <button type="button" @click="tab = 'youtube'; sourceType = 'youtube'" :class="tab === 'youtube' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">YouTube</button>
                 <button type="button" @click="tab = 'telegram'; sourceType = 'telegram'" :class="tab === 'telegram' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Telegram</button>
-                <button type="button" @click="tab = 'servers'; sourceType = 'servers'" :class="tab === 'servers' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">External Servers</button>
+                <button type="button" @click="tab = 'external'; sourceType = 'external'" :class="tab === 'external' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Server</button>
             </div>
             <input type="hidden" name="source_type" x-model="sourceType">
 
-            <div class="mb-4" x-show="tab !== 'servers'">
+            <div class="mb-4">
                 <label class="block text-sm text-gray-400 mb-1">Language</label>
                 <select name="language" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
                     @foreach($languages as $lang)
@@ -100,18 +99,11 @@
 
             <input type="hidden" name="storage_disk" x-model="storageDisk">
 
-            <div x-show="tab === 'url'" class="space-y-4">
+            <div x-show="tab === 'external'" class="space-y-4">
+                <p class="text-sm text-gray-500">Paste a direct video URL from an external media server.</p>
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Video URL</label>
-                    <input type="text" name="video_path" value="{{ old('video_path', $episode->video_path ?? '') }}" placeholder="https://..." class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">Storage Disk</label>
-                    <select x-model="storageDisk" class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
-                        <option value="local">Local</option>
-                        <option value="s3">S3</option>
-                        <option value="streaming">Streaming API</option>
-                    </select>
+                    <input type="text" name="video_path" value="{{ old('video_path', $episode->video_path ?? '') }}" placeholder="http://172.16.50.12/DHAKA-FLIX-12/..." class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700">
                 </div>
             </div>
 
@@ -178,31 +170,6 @@
                 </template>
             </div>
 
-            <div x-show="tab === 'servers'" class="space-y-4">
-                <p class="text-sm text-gray-500">Add external video servers (these play as fallback/alternative sources).</p>
-                <template x-for="(server, i) in servers" :key="i">
-                    <div class="grid grid-cols-4 gap-2 items-start">
-                        <input type="text" name="server_label[]" x-model="server.label" placeholder="Label" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                        <input type="url" name="server_url[]" x-model="server.url" placeholder="URL" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                        <select name="server_type[]" x-model="server.type" class="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                            <option value="mp4">MP4</option>
-                            <option value="m3u8">HLS</option>
-                            <option value="embed">Embed</option>
-                            <option value="youtube">YouTube</option>
-                        </select>
-                        <div class="flex space-x-1">
-                            <select name="server_language[]" x-model="server.language" class="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700">
-                                <option value="english">English</option>
-                                <option value="japanese">Japanese</option>
-                                <option value="hindi">Hindi</option>
-                            </select>
-                            <button type="button" @click="servers.splice(i, 1)" class="text-red-500 hover:text-red-400 px-2 py-2" title="Remove">&times;</button>
-                        </div>
-                    </div>
-                </template>
-                <button type="button" @click="servers.push({})" class="text-purple-500 text-sm">+ Add Server</button>
-            </div>
-
             <div class="mt-4">
                 <label class="block text-sm text-gray-400 mb-1">Thumbnail</label>
                 <input type="file" name="thumbnail" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-800 file:text-white">
@@ -253,25 +220,21 @@ function episodeForm() {
         telegramDuration: '',
         telegramThumb: '',
         telegramType: 'mp4',
-        servers: [],
 
         init() {
             const params = new URLSearchParams(window.location.search);
             if (params.get('source') === 'youtube') { this.tab = 'youtube'; this.sourceType = 'youtube'; }
             @if(isset($episode))
-                @foreach($episode->servers as $server)
-                    this.servers.push({ label: '{{ $server->label }}', url: '{{ $server->url }}', type: '{{ $server->type }}', language: '{{ $server->language }}' });
-                @endforeach
                 @if($episode->source_type === 'youtube')
                     this.tab = 'youtube'; this.sourceType = 'youtube';
                 @elseif($episode->source_type === 'telegram')
                     this.tab = 'telegram'; this.sourceType = 'telegram';
                     this.telegramDirectUrl = '{{ $episode->video_path }}';
                     this.telegramFileId = '{{ $episode->source_id }}';
-                @elseif($episode->source_type === 'direct_url' || ($episode->video_path && $episode->storage_disk !== 'local'))
-                    this.tab = 'url'; this.sourceType = 'direct_url';
-                @elseif($episode->servers->count() > 0)
-                    this.tab = 'servers'; this.sourceType = 'servers';
+                @elseif(in_array($episode->source_type, ['external', 'direct_url']))
+                    this.tab = 'external'; this.sourceType = 'external';
+                @elseif($episode->source_type === 'upload' || !$episode->source_type)
+                    this.tab = 'upload'; this.sourceType = 'upload';
                 @endif
             @endif
         },

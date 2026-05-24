@@ -47,7 +47,7 @@ class EpisodeController extends Controller
             'description' => 'nullable|string',
             'video_path' => 'nullable|string',
             'storage_disk' => 'nullable|string|in:local,s3,streaming',
-            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper,telegram',
+            'source_type' => 'nullable|string|in:upload,youtube,telegram,external,scraper',
             'source_id' => 'nullable|string',
             'source_url' => 'nullable|string',
             'duration' => 'nullable|integer',
@@ -58,6 +58,7 @@ class EpisodeController extends Controller
             'youtube_url' => 'nullable|url',
             'uploaded_video_path' => 'nullable|string',
             'language' => 'nullable|string|in:english,japanese,hindi',
+            'source_label' => 'nullable|string|max:255',
             'telegram_direct_url' => 'nullable|string',
             'telegram_file_id' => 'nullable|string',
             'telegram_file_size' => 'nullable|integer',
@@ -71,6 +72,11 @@ class EpisodeController extends Controller
         $data['has_dub'] = $request->has('has_dub');
         $data['created_by'] = auth()->id();
         $data['source_type'] = $data['source_type'] ?? 'upload';
+
+        // remap legacy source types
+        if ($data['source_type'] === 'direct_url') {
+            $data['source_type'] = 'external';
+        }
 
         if ($request->hasFile('thumbnail')) {
             $data['thumbnail'] = $request->file('thumbnail')
@@ -110,23 +116,13 @@ class EpisodeController extends Controller
             $data['thumbnail'] = $data['thumbnail'] ?? $request->telegram_thumb;
         }
 
+        if ($data['source_type'] === 'external' && $request->video_path) {
+            $data['storage_disk'] = 'streaming';
+        }
+
         $episode = Episode::create($data);
 
         $this->createServerForSource($episode, $data);
-
-        if ($request->server_label) {
-            foreach ($request->server_label as $i => $label) {
-                if (! empty($request->server_url[$i])) {
-                    Server::create([
-                        'episode_id' => $episode->id,
-                        'label' => $label,
-                        'url' => $request->server_url[$i],
-                        'type' => $request->server_type[$i] ?? 'mp4',
-                        'language' => $request->server_language[$i] ?? 'english',
-                    ]);
-                }
-            }
-        }
 
         return redirect()->route('admin.anime.episodes.index', $anime)
             ->with('success', 'Episode created.');
@@ -165,16 +161,17 @@ class EpisodeController extends Controller
                 ]);
                 break;
 
-            case 'direct_url':
+            case 'external':
                 $ext = strtolower(pathinfo($url, PATHINFO_EXTENSION));
                 $type = match ($ext) {
                     'm3u8' => 'm3u8',
                     'mp4', 'webm', 'mkv' => $ext,
                     default => 'embed',
                 };
+                $label = $data['source_label'] ?? 'Server';
                 Server::create([
                     'episode_id' => $episode->id,
-                    'label' => 'Direct URL',
+                    'label' => $label,
                     'url' => $url,
                     'type' => $type,
                     'language' => $language,
@@ -209,7 +206,7 @@ class EpisodeController extends Controller
             'description' => 'nullable|string',
             'video_path' => 'nullable|string',
             'storage_disk' => 'nullable|string|in:local,s3,streaming',
-            'source_type' => 'nullable|string|in:upload,direct_url,youtube,servers,scraper,telegram',
+            'source_type' => 'nullable|string|in:upload,youtube,telegram,external,scraper',
             'source_id' => 'nullable|string',
             'source_url' => 'nullable|string',
             'duration' => 'nullable|integer',
@@ -220,6 +217,7 @@ class EpisodeController extends Controller
             'youtube_url' => 'nullable|url',
             'uploaded_video_path' => 'nullable|string',
             'language' => 'nullable|string|in:english,japanese,hindi',
+            'source_label' => 'nullable|string|max:255',
             'telegram_direct_url' => 'nullable|string',
             'telegram_file_id' => 'nullable|string',
             'telegram_file_size' => 'nullable|integer',
@@ -231,6 +229,11 @@ class EpisodeController extends Controller
         $data['has_sub'] = $request->has('has_sub');
         $data['has_dub'] = $request->has('has_dub');
         $data['source_type'] = $data['source_type'] ?? $episode->source_type ?? 'upload';
+
+        // remap legacy source types
+        if ($data['source_type'] === 'direct_url') {
+            $data['source_type'] = 'external';
+        }
 
         if ($request->hasFile('thumbnail')) {
             $data['thumbnail'] = $request->file('thumbnail')
@@ -270,25 +273,15 @@ class EpisodeController extends Controller
             $data['thumbnail'] = $data['thumbnail'] ?? $request->telegram_thumb;
         }
 
+        if ($data['source_type'] === 'external' && $request->video_path) {
+            $data['storage_disk'] = 'streaming';
+        }
+
         $episode->update($data);
 
         $episode->servers()->delete();
 
         $this->createServerForSource($episode, $data);
-
-        if ($request->server_label) {
-            foreach ($request->server_label as $i => $label) {
-                if (! empty($request->server_url[$i])) {
-                    Server::create([
-                        'episode_id' => $episode->id,
-                        'label' => $label,
-                        'url' => $request->server_url[$i],
-                        'type' => $request->server_type[$i] ?? 'mp4',
-                        'language' => $request->server_language[$i] ?? 'english',
-                    ]);
-                }
-            }
-        }
 
         return redirect()->route('admin.anime.episodes.index', $anime)
             ->with('success', 'Episode updated.');

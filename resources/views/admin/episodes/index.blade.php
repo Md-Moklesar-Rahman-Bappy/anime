@@ -18,11 +18,10 @@
             </form>
             @endif
             <a href="{{ route('admin.anime.episodes.create', $anime) }}" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm">Add Episode</a>
-            <div class="relative" x-data="{ open: false }">
+                <div class="relative" x-data="{ open: false }">
                 <button @click="open = !open" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm border border-gray-700">Quick Import</button>
                 <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-lg shadow-lg z-50">
-                    <a href="{{ route('admin.scrapers.search') }}?anime_id={{ $anime->id }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-t-lg">From External Source</a>
-                    <a href="{{ route('admin.anime.episodes.create', $anime) }}?source=youtube" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-b-lg">From YouTube URL</a>
+                    <a href="{{ route('admin.anime.episodes.create', $anime) }}?source=youtube" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg">From YouTube URL</a>
                 </div>
             </div>
         </div>
@@ -43,11 +42,11 @@
                             @case('upload')
                                 <span class="text-green-500 text-xs font-semibold">Upload</span>
                                 @break
-                            @case('scraper')
-                                <span class="text-blue-500 text-xs font-semibold">Scraper</span>
-                                @break
                             @case('direct_url')
                                 <span class="text-yellow-500 text-xs font-semibold">URL</span>
+                                @break
+                            @case('external')
+                                <span class="text-cyan-500 text-xs font-semibold">External</span>
                                 @break
                             @default
                                 <span class="text-gray-500 text-xs">{{ $ep->source_type ?? '-' }}</span>

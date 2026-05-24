@@ -25,7 +25,6 @@
                 <a href="{{ route('admin.requests.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.requests.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Requests</a>
                 <a href="{{ route('admin.settings.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.settings.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Settings</a>
                 <a href="{{ route('admin.jikan.search') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.jikan.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">MAL Import</a>
-                <a href="{{ route('admin.scrapers.search') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.scrapers.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">External Sources</a>
             </nav>
             <a href="{{ route('home') }}" class="text-sm text-gray-500 hover:text-white mt-4">Back to Site</a>
         </aside>

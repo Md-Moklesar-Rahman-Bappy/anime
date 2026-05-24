@@ -153,14 +153,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
         Route::post('/reset-progress', [JikanController::class, 'resetProgress'])->name('reset-progress');
     });
 
-    // External Source Scrapers
-    Route::prefix('scrapers')->name('scrapers.')->middleware('throttle:scrapers')->group(function () {
-        Route::get('/', [ScraperController::class, 'searchForm'])->name('search');
-        Route::post('/search', [ScraperController::class, 'search'])->name('search.results');
-        Route::post('/preview', [ScraperController::class, 'previewEpisodes'])->name('preview');
-        Route::post('/import', [ScraperController::class, 'importEpisodes'])->name('import');
-    });
-
     // YouTube Import
     Route::prefix('youtube')->name('youtube.')->group(function () {
         Route::post('/preview', [ScraperController::class, 'youtubePreview'])->name('preview');
