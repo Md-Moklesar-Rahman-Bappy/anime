@@ -43,7 +43,6 @@
                         <div x-show="open" @click.outside="open = false" class="absolute left-0 mt-2 bg-gray-800 rounded-xl shadow-xl p-4 z-50 border border-gray-700/50 min-w-[180px]">
                             <a href="{{ route('manga.index') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Home</a>
                             <a href="{{ route('manga.browse') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">All Manga</a>
-                            <a href="{{ route('manga.az-list') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">A-Z List</a>
                             <a href="{{ route('manga.filter') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Filter</a>
                             <a href="{{ route('manga.newest') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Newest</a>
                             <a href="{{ route('manga.updated') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Updated</a>

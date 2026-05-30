@@ -76,7 +76,6 @@ Route::get('/manga/browse', [MangaListController::class, 'index'])->name('manga.
 Route::get('/manga/{slug}', MangaController::class)->name('manga.detail');
 Route::get('/read/{slug}', MangaReaderController::class)->name('manga.read');
 Route::get('/manga/genre/{slug}', MangaGenreController::class)->name('manga.genre');
-Route::get('/manga/az-list/{letter?}', [MangaListController::class, 'azList'])->name('manga.az-list');
 Route::get('/manga/filter', [MangaListController::class, 'filter'])->name('manga.filter');
 Route::get('/manga/newest', [MangaListController::class, 'newest'])->name('manga.newest');
 Route::get('/manga/updated', [MangaListController::class, 'updated'])->name('manga.updated');

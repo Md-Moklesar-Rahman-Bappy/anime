@@ -41,7 +41,6 @@ class SitemapController extends Controller
             ['loc' => $baseUrl . '/manga/ongoing', 'priority' => '0.8', 'changefreq' => 'daily'],
             ['loc' => $baseUrl . '/manga/trending', 'priority' => '0.7', 'changefreq' => 'daily'],
             ['loc' => $baseUrl . '/manga/completed', 'priority' => '0.7', 'changefreq' => 'daily'],
-            ['loc' => $baseUrl . '/manga/az-list', 'priority' => '0.6', 'changefreq' => 'weekly'],
             ['loc' => $baseUrl . '/manga/filter', 'priority' => '0.5', 'changefreq' => 'weekly'],
             ['loc' => $baseUrl . '/faq', 'priority' => '0.4', 'changefreq' => 'monthly'],
             ['loc' => $baseUrl . '/about', 'priority' => '0.4', 'changefreq' => 'monthly'],
@@ -83,7 +82,6 @@ class SitemapController extends Controller
         // A-Z list letter pages
         foreach (range('A', 'Z') as $letter) {
             $urls[] = $this->makeEntry($baseUrl . '/az-list/' . $letter, '0.4', 'weekly', now());
-            $urls[] = $this->makeEntry($baseUrl . '/manga/az-list/' . $letter, '0.4', 'weekly', now());
         }
 
         // Manga detail pages

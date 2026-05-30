@@ -7,13 +7,6 @@
             @endforeach
             <a href="{{ route('az-list', 'all') }}" class="text-gray-400 hover:text-purple-500 text-sm px-1">All</a>
         </div>
-        <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 mb-6">
-            <span class="text-gray-400 text-sm mr-2">Manga A-Z:</span>
-            @foreach(range('A', 'Z') as $letter)
-                <a href="{{ route('manga.az-list', $letter) }}" class="text-gray-400 hover:text-purple-500 text-sm px-1">{{ $letter }}</a>
-            @endforeach
-            <a href="{{ route('manga.az-list', 'all') }}" class="text-gray-400 hover:text-purple-500 text-sm px-1">All</a>
-        </div>
         <div class="flex flex-wrap justify-center gap-4 mb-6 text-sm">
             <a href="{{ route('faq') }}" class="text-gray-400 hover:text-white">FAQ</a>
             <a href="{{ route('about') }}" class="text-gray-400 hover:text-white">About</a>
