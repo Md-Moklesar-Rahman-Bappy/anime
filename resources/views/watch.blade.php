@@ -188,10 +188,19 @@
                     @foreach($comments as $comment)
                     <div class="flex space-x-3">
                         <img src="https://ui-avatars.com/api/?name={{ urlencode($comment->user->name) }}&background=7c3aed&color=fff" class="w-8 h-8 rounded-full" alt="">
-                        <div>
+                        <div class="flex-1">
                             <div class="flex items-center space-x-2">
                                 <span class="text-sm font-semibold">{{ $comment->user->name }}</span>
                                 <span class="text-xs text-gray-500">{{ $comment->created_at->diffForHumans() }}</span>
+                                @auth
+                                @if(auth()->user()->isSuperAdmin())
+                                <form action="{{ route('comments.destroy', $comment) }}" method="POST" class="ml-auto" onsubmit="return confirm('Delete this comment?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-xs text-red-500 hover:text-red-400">Delete</button>
+                                </form>
+                                @endif
+                                @endauth
                             </div>
                             <p class="text-sm text-gray-300 mt-1">{{ $comment->body }}</p>
                         </div>

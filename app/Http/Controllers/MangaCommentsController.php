@@ -22,4 +22,15 @@ class MangaCommentsController extends Controller
 
         return back()->with('success', 'Comment posted.');
     }
+
+    public function destroy(MangaComment $mangaComment)
+    {
+        if (!auth()->user()->isSuperAdmin()) {
+            abort(403);
+        }
+
+        $mangaComment->delete();
+
+        return back()->with('success', 'Comment deleted.');
+    }
 }

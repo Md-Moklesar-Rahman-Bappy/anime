@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\MangaChapterController;
 use App\Http\Controllers\Admin\MangaController as AdminMangaController;
 use App\Http\Controllers\Admin\MangaDashboardController;
 use App\Http\Controllers\Admin\MangaGenreController as AdminMangaGenreController;
+use App\Http\Controllers\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RequestController as AdminRequestController;
 use App\Http\Controllers\Admin\ScraperController;
@@ -87,6 +88,7 @@ Route::get('/manga/random', MangaRandomController::class)->name('manga.random');
 // Comments & Favorites (auth required)
 Route::middleware('auth')->group(function () {
     Route::post('/comments', [CommentsController::class, 'store'])->name('comments.store')->middleware('throttle:comments');
+    Route::delete('/comments/{comment}', [CommentsController::class, 'destroy'])->name('comments.destroy');
     Route::post('/favorites/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle')->middleware('throttle:favorites');
     Route::post('/favorites/list', [FavoritesController::class, 'updateList'])->name('favorites.list')->middleware('throttle:favorites');
     Route::post('/reports/submit', [ReportController::class, 'store'])->name('reports.submit')->middleware('throttle:reports');
@@ -95,6 +97,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/manga/favorites/toggle', [MangaFavoritesController::class, 'toggle'])->name('manga.favorites.toggle')->middleware('throttle:favorites');
     Route::post('/manga/favorites/list', [MangaFavoritesController::class, 'updateList'])->name('manga.favorites.list')->middleware('throttle:favorites');
     Route::post('/manga/comments', [MangaCommentsController::class, 'store'])->name('manga.comments.store')->middleware('throttle:comments');
+    Route::delete('/manga/comments/{mangaComment}', [MangaCommentsController::class, 'destroy'])->name('manga.comments.destroy');
     Route::post('/manga/bookmark', [MangaFavoritesController::class, 'bookmark'])->name('manga.bookmark');
 });
 
@@ -142,6 +145,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::put('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+    Route::get('/comments', [AdminCommentController::class, 'index'])->name('comments.index');
+    Route::delete('/comments/anime/{comment}', [AdminCommentController::class, 'destroyAnime'])->name('comments.destroy.anime');
+    Route::delete('/comments/manga/{mangaComment}', [AdminCommentController::class, 'destroyManga'])->name('comments.destroy.manga');
 
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::put('/reports/{report}', [ReportController::class, 'update'])->name('reports.update');

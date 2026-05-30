@@ -44,6 +44,7 @@
                 <a href="{{ route('admin.jikan.search') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.jikan.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">MAL Import</a>
                 <div class="border-t border-gray-800 my-2 pt-2">
                     <a href="{{ route('admin.users.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.users.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Users</a>
+                    <a href="{{ route('admin.comments.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.comments.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Comments</a>
                     <a href="{{ route('admin.reports.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.reports.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Reports</a>
                     <a href="{{ route('admin.requests.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.requests.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Requests</a>
                     <a href="{{ route('admin.settings.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.settings.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Settings</a>
@@ -54,6 +55,7 @@
                 <a href="{{ route('admin.manga.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.manga.*') && !request()->routeIs('admin.manga.dashboard') && !request()->routeIs('admin.manga.genres.*') ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Manga</a>
                 <a href="{{ route('admin.manga.genres.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.manga.genres.*') ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Manga Genres</a>
                 <div class="border-t border-gray-800 my-2 pt-2">
+                    <a href="{{ route('admin.comments.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.comments.*') ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Comments</a>
                     <a href="{{ route('admin.users.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.users.*') ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Users</a>
                     <a href="{{ route('admin.settings.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.settings.*') ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Settings</a>
                 </div>
