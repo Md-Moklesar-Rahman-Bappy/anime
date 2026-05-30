@@ -100,6 +100,7 @@
                         </button>
                         <div x-show="open" @click.outside="open = false" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-2 z-50">
                             <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Profile</a>
+                            <a href="{{ route('favorites.my-list') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">My List</a>
                             @if(auth()->user()->isAdmin())
                                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin</a>
                             @endif

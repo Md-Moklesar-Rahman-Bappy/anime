@@ -372,7 +372,6 @@ export function player() {
         },
 
         async submitReport() {
-            if (!this.reportDesc.trim() && this.reportType !== 'skip_time_wrong') return;
             this.submitting = true;
 
             try {

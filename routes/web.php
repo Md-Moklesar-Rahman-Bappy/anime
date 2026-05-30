@@ -90,6 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/comments/{comment}', [CommentsController::class, 'destroy'])->name('comments.destroy');
     Route::post('/favorites/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle')->middleware('throttle:favorites');
     Route::post('/favorites/list', [FavoritesController::class, 'updateList'])->name('favorites.list')->middleware('throttle:favorites');
+    Route::get('/my-list', [FavoritesController::class, 'myList'])->name('favorites.my-list');
     Route::post('/reports/submit', [ReportController::class, 'store'])->name('reports.submit')->middleware('throttle:reports');
 
     // Manga auth routes
