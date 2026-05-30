@@ -7,12 +7,27 @@
     <title>Admin - {{ config('app.name', 'AniWaves') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
+    @php
+        $faviconPath = \Illuminate\Support\Facades\Cache::remember('setting_favicon', 1800, fn() => \App\Models\Setting::where('key', 'favicon')->value('value'));
+        $faviconUrl = $faviconPath ? (\Illuminate\Support\Str::startsWith($faviconPath, 'http') ? $faviconPath : \Illuminate\Support\Facades\Storage::url($faviconPath)) : null;
+    @endphp
+    <link rel="icon" type="image/x-icon" href="{{ $faviconUrl ?: asset('favicon.ico') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-sans antialiased bg-gray-950 text-white">
     <div class="flex h-screen">
         <aside class="w-64 bg-gray-900 border-r border-gray-800 p-4 flex flex-col">
-            <a href="{{ route('admin.dashboard') }}" class="text-2xl font-bold text-purple-500 mb-8">AniWaves Admin</a>
+            @php
+                $logoPath = \Illuminate\Support\Facades\Cache::remember('setting_logo', 1800, fn() => \App\Models\Setting::where('key', 'logo')->value('value'));
+                $logoUrl = $logoPath ? (\Illuminate\Support\Str::startsWith($logoPath, 'http') ? $logoPath : \Illuminate\Support\Facades\Storage::url($logoPath)) : null;
+            @endphp
+            <a href="{{ route('admin.dashboard') }}" class="flex items-center mb-8">
+                @if($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="{{ config('app.name', 'AniWaves') }}" class="max-h-8">
+                @else
+                    <span class="text-2xl font-bold text-purple-500">AniWaves Admin</span>
+                @endif
+            </a>
             <nav class="space-y-2 flex-1">
                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.dashboard') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Dashboard</a>
                 <a href="{{ route('admin.anime.index') }}" class="block px-4 py-2 rounded-lg text-sm {{ request()->routeIs('admin.anime.*') ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">Anime</a>

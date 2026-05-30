@@ -20,6 +20,7 @@
             <a href="{{ route('contact') }}" class="text-gray-400 hover:text-white">Contact</a>
             <a href="{{ route('dmca') }}" class="text-gray-400 hover:text-white">DMCA</a>
             <a href="{{ route('terms') }}" class="text-gray-400 hover:text-white">Terms</a>
+            <a href="{{ url('/sitemap.xml') }}" class="text-gray-400 hover:text-white">Sitemap</a>
         </div>
         <p class="text-center text-gray-500 text-sm">&copy; {{ date('Y') }} {{ config('app.name', 'AniWaves') }}. All rights reserved.</p>
     </div>

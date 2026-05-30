@@ -2,7 +2,17 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="flex items-center justify-between h-16">
             <div class="flex items-center space-x-8">
-                <a href="{{ route('home') }}" class="text-2xl font-bold text-purple-500">AniWaves</a>
+                @php
+                    $logoPath = \Illuminate\Support\Facades\Cache::remember('setting_logo', 1800, fn() => \App\Models\Setting::where('key', 'logo')->value('value'));
+                    $logoUrl = $logoPath ? (\Illuminate\Support\Str::startsWith($logoPath, 'http') ? $logoPath : \Illuminate\Support\Facades\Storage::url($logoPath)) : null;
+                @endphp
+                <a href="{{ route('home') }}" class="flex items-center">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ config('app.name', 'AniWaves') }}" class="max-h-10">
+                    @else
+                        <span class="text-2xl font-bold text-purple-500">{{ config('app.name', 'AniWaves') }}</span>
+                    @endif
+                </a>
                 <nav class="hidden md:flex items-center space-x-6 text-sm">
                     <a href="{{ route('home') }}" class="text-gray-300 hover:text-white transition">Home</a>
                     <div x-data="{ open: false }" class="relative">
