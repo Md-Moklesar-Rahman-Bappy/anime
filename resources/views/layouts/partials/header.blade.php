@@ -38,7 +38,21 @@
                     <a href="{{ route('ongoing') }}" class="text-gray-300 hover:text-white transition">Ongoing</a>
                     <a href="{{ route('trending') }}" class="text-gray-300 hover:text-white transition">Trending</a>
                     <a href="{{ route('random') }}" class="text-gray-300 hover:text-white transition">Random</a>
-                    <a href="{{ route('manga.index') }}" class="text-gray-300 hover:text-white transition">Manga</a>
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open" class="text-gray-300 hover:text-white transition flex items-center">Manga <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></button>
+                        <div x-show="open" @click.outside="open = false" class="absolute left-0 mt-2 bg-gray-800 rounded-xl shadow-xl p-4 z-50 border border-gray-700/50 min-w-[180px]">
+                            <a href="{{ route('manga.index') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Home</a>
+                            <a href="{{ route('manga.browse') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">All Manga</a>
+                            <a href="{{ route('manga.az-list') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">A-Z List</a>
+                            <a href="{{ route('manga.filter') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Filter</a>
+                            <a href="{{ route('manga.newest') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Newest</a>
+                            <a href="{{ route('manga.updated') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Updated</a>
+                            <a href="{{ route('manga.ongoing') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Ongoing</a>
+                            <a href="{{ route('manga.trending') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Trending</a>
+                            <a href="{{ route('manga.completed') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Completed</a>
+                            <a href="{{ route('manga.random') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Random</a>
+                        </div>
+                    </div>
                 </nav>
             </div>
 

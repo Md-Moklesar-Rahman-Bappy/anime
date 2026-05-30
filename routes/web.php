@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\GenreController as AdminGenreController;
 use App\Http\Controllers\Admin\JikanController;
 use App\Http\Controllers\Admin\MangaChapterController;
 use App\Http\Controllers\Admin\MangaController as AdminMangaController;
+use App\Http\Controllers\Admin\MangaDashboardController;
 use App\Http\Controllers\Admin\MangaGenreController as AdminMangaGenreController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RequestController as AdminRequestController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\MangaCommentsController;
 use App\Http\Controllers\MangaController;
 use App\Http\Controllers\MangaFavoritesController;
 use App\Http\Controllers\MangaGenreController;
+use App\Http\Controllers\MangaHomeController;
 use App\Http\Controllers\MangaListController;
 use App\Http\Controllers\MangaRandomController;
 use App\Http\Controllers\MangaReaderController;
@@ -68,7 +70,8 @@ Route::get('/trending', [ListController::class, 'trending'])->name('trending');
 Route::get('/random', RandomController::class)->name('random');
 
 // Manga pages
-Route::get('/manga', [MangaListController::class, 'index'])->name('manga.index');
+Route::get('/manga', [MangaHomeController::class, 'index'])->name('manga.index');
+Route::get('/manga/browse', [MangaListController::class, 'index'])->name('manga.browse');
 Route::get('/manga/{slug}', MangaController::class)->name('manga.detail');
 Route::get('/read/{slug}', MangaReaderController::class)->name('manga.read');
 Route::get('/manga/genre/{slug}', MangaGenreController::class)->name('manga.genre');
@@ -108,6 +111,7 @@ Route::get('/terms', [StaticController::class, 'terms'])->name('terms');
 // Admin routes
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/manga/dashboard', [MangaDashboardController::class, 'index'])->name('manga.dashboard');
 
     Route::get('anime/search', [AdminAnimeController::class, 'index'])->name('anime.search');
     Route::resource('anime', AdminAnimeController::class);

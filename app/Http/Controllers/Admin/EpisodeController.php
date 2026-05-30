@@ -82,8 +82,8 @@ class EpisodeController extends Controller
             $data['storage_disk'] = 'local';
         }
 
-        if ($data['source_type'] === 'youtube' && ($request->youtube_url || $data['source_url'])) {
-            $url = $request->youtube_url ?? $data['source_url'];
+        if ($data['source_type'] === 'youtube' && ($request->youtube_url || ($data['source_url'] ?? null))) {
+            $url = $request->youtube_url ?? ($data['source_url'] ?? null);
             $info = $this->youtube->getVideoInfo($url);
             if ($info) {
                 $data['source_id'] = $info['id'];
@@ -239,8 +239,8 @@ class EpisodeController extends Controller
             $data['storage_disk'] = 'local';
         }
 
-        if ($data['source_type'] === 'youtube' && ($request->youtube_url || $data['source_url'])) {
-            $url = $request->youtube_url ?? $data['source_url'];
+        if ($data['source_type'] === 'youtube' && ($request->youtube_url || ($data['source_url'] ?? null))) {
+            $url = $request->youtube_url ?? ($data['source_url'] ?? null);
             $info = $this->youtube->getVideoInfo($url);
             if ($info) {
                 $data['source_id'] = $info['id'];
