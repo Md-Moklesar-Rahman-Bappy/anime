@@ -95,6 +95,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/manga/bookmark', [MangaFavoritesController::class, 'bookmark'])->name('manga.bookmark');
 });
 
+// Sitemap
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index']);
+
 // Static pages
 Route::get('/faq', [StaticController::class, 'faq'])->name('faq');
 Route::get('/about', [StaticController::class, 'about'])->name('about');
