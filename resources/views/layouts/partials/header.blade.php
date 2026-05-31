@@ -2,11 +2,12 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="flex items-center justify-between h-16">
             <div class="flex items-center space-x-8">
-                @php
-                    $logoPath = \Illuminate\Support\Facades\Cache::remember('setting_logo', 1800, fn() => \App\Models\Setting::where('key', 'logo')->value('value'));
-                    $logoUrl = $logoPath ? (\Illuminate\Support\Str::startsWith($logoPath, 'http') ? $logoPath : \Illuminate\Support\Facades\Storage::url($logoPath)) : null;
-                @endphp
                 <a href="{{ route('home') }}" class="flex items-center">
+                    @php
+                        $logoUrl = \App\Services\CacheService::class;
+                        $logoPath = cache()->remember('setting_logo', 1800, fn() => \App\Models\Setting::where('key', 'logo')->value('value'));
+                        $logoUrl = $logoPath ? (str_starts_with($logoPath, 'http') ? $logoPath : \Illuminate\Support\Facades\Storage::url($logoPath)) : null;
+                    @endphp
                     @if($logoUrl)
                         <img src="{{ $logoUrl }}" alt="{{ config('app.name', 'AniWaves') }}" class="max-h-10">
                     @else
@@ -18,7 +19,7 @@
                     <div x-data="{ open: false }" class="relative">
                         <button @click="open = !open" class="text-gray-300 hover:text-white transition flex items-center">Genre <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></button>
                         <div x-show="open" @click.outside="open = false" class="absolute left-0 mt-2 bg-gray-800 rounded-xl shadow-xl p-5 z-50 flex gap-6 border border-gray-700/50">
-                            @php $genres = \Illuminate\Support\Facades\Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all()); @endphp
+                            @php $genres = cache()->remember('genres_list', 1800, fn() => \App\Models\Genre::all()); @endphp
                             @foreach($genres->chunk(10) as $chunk)
                                 <div class="flex flex-col gap-1">
                                     @foreach($chunk as $genre)
@@ -64,7 +65,7 @@
                                 <div class="px-4 py-2 text-xs text-gray-500 font-semibold uppercase tracking-wider bg-gray-900">Anime</div>
                                 <template x-for="item in results.anime" :key="item.id">
                                     <a :href="item.url" class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-700/60 transition">
-                                        <img :src="item.thumbnail_url" class="w-8 h-11 object-cover rounded flex-shrink-0" alt="">
+                                        <img :src="item.thumbnail_url" class="w-8 h-11 object-cover rounded flex-shrink-0" alt="" loading="lazy">
                                         <div class="min-w-0 flex-1">
                                             <p class="text-sm text-white truncate" x-text="item.title"></p>
                                             <p class="text-xs text-gray-500" x-text="item.type + (item.year ? ' | ' + item.year : '')"></p>
@@ -78,7 +79,7 @@
                                 <div class="px-4 py-2 text-xs text-gray-500 font-semibold uppercase tracking-wider bg-gray-900 border-t border-gray-700">Episodes</div>
                                 <template x-for="item in results.episodes" :key="item.id">
                                     <a :href="item.url" class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-700/60 transition">
-                                        <img :src="item.thumbnail_url" class="w-12 h-7 object-cover rounded flex-shrink-0" alt="">
+                                        <img :src="item.thumbnail_url" class="w-12 h-7 object-cover rounded flex-shrink-0" alt="" loading="lazy">
                                         <div class="min-w-0 flex-1">
                                             <p class="text-sm text-white truncate" x-text="'Ep ' + item.number + ': ' + item.title"></p>
                                             <p class="text-xs text-gray-500 truncate" x-text="item.anime_title"></p>
@@ -121,29 +122,29 @@
 
 @push('scripts')
 <script>
-    function searchDropdown() {
-        return {
-            query: '',
-            open: false,
-            loading: false,
-            results: { anime: [], episodes: [] },
-            search() {
-                if (this.query.length < 1) {
-                    this.results = { anime: [], episodes: [] };
-                    this.open = false;
-                    return;
-                }
-                this.loading = true;
-                this.open = true;
-                fetch('{{ route("search.ajax") }}?q=' + encodeURIComponent(this.query))
-                    .then(r => r.json())
-                    .then(data => {
-                        this.results = data;
-                        this.loading = false;
-                    })
-                    .catch(() => { this.loading = false; });
+function searchDropdown() {
+    return {
+        query: '',
+        open: false,
+        loading: false,
+        results: { anime: [], episodes: [] },
+        search() {
+            if (this.query.length < 1) {
+                this.results = { anime: [], episodes: [] };
+                this.open = false;
+                return;
             }
-        };
-    }
+            this.loading = true;
+            this.open = true;
+            fetch('{{ route("search.ajax") }}?q=' + encodeURIComponent(this.query))
+                .then(r => r.json())
+                .then(data => {
+                    this.results = data;
+                    this.loading = false;
+                })
+                .catch(() => { this.loading = false; });
+        }
+    };
+}
 </script>
 @endpush

@@ -18,8 +18,6 @@ class Episode extends Model
 
     protected $appends = ['thumbnail_url'];
 
-    protected $with = ['anime'];
-
     protected function casts(): array
     {
         return [
@@ -38,7 +36,7 @@ class Episode extends Model
             return str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail);
         }
 
-        return $this->anime->thumbnail_url;
+        return $this->anime?->thumbnail_url ?? '';
     }
 
     public function anime(): BelongsTo

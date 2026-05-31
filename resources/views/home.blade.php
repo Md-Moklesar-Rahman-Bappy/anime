@@ -7,74 +7,7 @@
 
     @if($featured->count())
     <div
-        x-data="{
-            current: 0,
-            autoplay: true,
-            interval: null,
-            progress: 0,
-            total: {{ $featured->count() }},
-            touchStartX: 0,
-
-            init() {
-                this.startAutoplay();
-            },
-
-            startAutoplay() {
-                if (this.interval) clearInterval(this.interval);
-                this.progress = 0;
-                this.interval = setInterval(() => {
-                    this.progress += 1;
-                    if (this.progress >= 100) {
-                        this.progress = 0;
-                        this.next();
-                    }
-                }, 50);
-            },
-
-            stopAutoplay() {
-                if (this.interval) {
-                    clearInterval(this.interval);
-                    this.interval = null;
-                }
-                this.progress = 0;
-            },
-
-            next() {
-                if (this.total <= 1) return;
-                this.current = (this.current + 1) % this.total;
-                if (this.autoplay) this.startAutoplay();
-            },
-
-            prev() {
-                if (this.total <= 1) return;
-                this.current = (this.current - 1 + this.total) % this.total;
-                if (this.autoplay) this.startAutoplay();
-            },
-
-            goTo(index) {
-                if (this.current === index) return;
-                this.current = index;
-                if (this.autoplay) this.startAutoplay();
-            },
-
-            toggleAutoplay() {
-                this.autoplay = !this.autoplay;
-                if (this.autoplay) this.startAutoplay();
-                else this.stopAutoplay();
-            },
-
-            handleTouchStart(e) {
-                this.touchStartX = e.touches[0].clientX;
-            },
-
-            handleTouchEnd(e) {
-                let diff = this.touchStartX - e.changedTouches[0].clientX;
-                if (Math.abs(diff) > 50) {
-                    if (diff > 0) this.next();
-                    else this.prev();
-                }
-            }
-        }"
+        x-data="featuredCarousel({{ $featured->count() }})"
         x-init="init()"
         @keydown.left.window="prev()"
         @keydown.right.window="next()"
@@ -163,7 +96,7 @@
                     @foreach($latestEpisodes as $episode)
                     <a href="{{ route('watch', ['slug' => $episode->anime->slug, 'ep' => $episode->number]) }}" class="group">
                         <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                            <img src="{{ $episode->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                            <img src="{{ $episode->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="" loading="lazy">
                             <div class="absolute top-2 left-2 bg-purple-600 text-xs font-bold px-2 py-1 rounded">Ep {{ $episode->number }}</div>
                             @if($episode->has_sub)<div class="absolute top-2 right-2 bg-blue-600 text-xs px-2 py-1 rounded">SUB</div>@endif
                             @if($episode->has_dub)<div class="absolute top-8 right-2 bg-green-600 text-xs px-2 py-1 rounded">DUB</div>@endif
@@ -187,7 +120,7 @@
                     @foreach($trending as $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
                         <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                            <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                            <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="" loading="lazy">
                             <div class="absolute top-2 left-2 bg-gray-900/80 text-xs px-2 py-1 rounded">{{ $anime->type }}</div>
                             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-3">
                                 <span class="text-white text-sm font-semibold">View Details</span>
@@ -212,7 +145,7 @@
                     @foreach($ongoing as $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
                         <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                            <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                            <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="" loading="lazy">
                             <div class="absolute top-2 left-2 bg-red-600 text-xs px-2 py-1 rounded">ONGOING</div>
                         </div>
                         <h3 class="text-sm text-gray-300 mt-2 line-clamp-1 group-hover:text-white">{{ $anime->title }}</h3>
@@ -223,27 +156,27 @@
         </div>
 
         <div class="space-y-6">
-            <div x-data="{ tab: 'day' }" class="bg-gray-900 rounded-lg p-4">
+            <div x-data="{ tab: 'day', animeList: @json($trending->take(5)->values()) }" class="bg-gray-900 rounded-lg p-4">
                 <h3 class="font-bold text-lg mb-3">Top Anime</h3>
                 <div class="flex space-x-2 mb-4">
-                    <button @click="tab = 'day'" :class="tab === 'day' ? 'bg-purple-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Day</button>
-                    <button @click="tab = 'week'" :class="tab === 'week' ? 'bg-purple-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Week</button>
-                    <button @click="tab = 'month'" :class="tab === 'month' ? 'bg-purple-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Month</button>
+                    <button @click="tab = 'day'; animeList = @json($trending->take(5)->values())" :class="tab === 'day' ? 'bg-purple-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Day</button>
+                    <button @click="tab = 'week'; animeList = @json($trending->take(5)->values())" :class="tab === 'week' ? 'bg-purple-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Week</button>
+                    <button @click="tab = 'month'; animeList = @json($trending->take(5)->values())" :class="tab === 'month' ? 'bg-purple-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Month</button>
                 </div>
                 <div class="space-y-3">
-                    @foreach($trending->take(5) as $i => $anime)
-                    <a href="{{ route('anime.detail', $anime->slug) }}" class="flex items-center space-x-3 group">
-                        <span class="text-lg font-bold text-gray-600 w-6">{{ $i + 1 }}</span>
-                        <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm text-gray-300 truncate group-hover:text-white">{{ $anime->title }}</p>
-                            <div class="flex items-center text-xs text-gray-500">
-                                <svg class="w-3 h-3 text-yellow-500 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                {{ $anime->rating ?? 'N/A' }}
+                    <template x-for="(anime, i) in animeList" :key="anime.id">
+                        <a :href="anime.url" class="flex items-center space-x-3 group">
+                            <span class="text-lg font-bold text-gray-600 w-6" x-text="i + 1"></span>
+                            <img :src="anime.thumbnail_url" class="w-10 h-14 object-cover rounded" alt="" loading="lazy">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-gray-300 truncate group-hover:text-white" x-text="anime.title"></p>
+                                <div class="flex items-center text-xs text-gray-500">
+                                    <svg class="w-3 h-3 text-yellow-500 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <span x-text="anime.rating || 'N/A'"></span>
+                                </div>
                             </div>
-                        </div>
-                    </a>
-                    @endforeach
+                        </a>
+                    </template>
                 </div>
             </div>
 
@@ -252,7 +185,7 @@
                 <div class="space-y-3">
                     @foreach($newAnime->take(5) as $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="flex items-center space-x-3 group">
-                        <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
+                        <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="" loading="lazy">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm text-gray-300 truncate group-hover:text-white">{{ $anime->title }}</p>
                             <p class="text-xs text-gray-500">{{ $anime->year }}</p>
@@ -265,3 +198,72 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function featuredCarousel(total) {
+    return {
+        current: 0,
+        autoplay: true,
+        interval: null,
+        progress: 0,
+        total: total,
+        touchStartX: 0,
+
+        init() {
+            this.startAutoplay();
+        },
+
+        startAutoplay() {
+            if (this.interval) clearInterval(this.interval);
+            this.progress = 0;
+            this.interval = setInterval(() => {
+                this.progress += 1;
+                if (this.progress >= 100) {
+                    this.progress = 0;
+                    this.next();
+                }
+            }, 50);
+        },
+
+        stopAutoplay() {
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
+            }
+            this.progress = 0;
+        },
+
+        next() {
+            if (this.total <= 1) return;
+            this.current = (this.current + 1) % this.total;
+            if (this.autoplay) this.startAutoplay();
+        },
+
+        prev() {
+            if (this.total <= 1) return;
+            this.current = (this.current - 1 + this.total) % this.total;
+            if (this.autoplay) this.startAutoplay();
+        },
+
+        goTo(index) {
+            if (this.current === index) return;
+            this.current = index;
+            if (this.autoplay) this.startAutoplay();
+        },
+
+        handleTouchStart(e) {
+            this.touchStartX = e.touches[0].clientX;
+        },
+
+        handleTouchEnd(e) {
+            const diff = this.touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) this.next();
+                else this.prev();
+            }
+        }
+    };
+}
+</script>
+@endpush

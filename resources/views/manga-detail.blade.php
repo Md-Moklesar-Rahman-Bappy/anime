@@ -11,7 +11,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div class="lg:col-span-1">
-            <img src="{{ $manga->thumbnail_url }}" class="w-full rounded-lg shadow-lg" alt="">
+            <img src="{{ $manga->thumbnail_url }}" class="w-full rounded-lg shadow-lg" alt="" loading="lazy">
             <a href="{{ route('manga.read', $manga->slug) }}" class="block w-full bg-purple-600 hover:bg-purple-700 text-white text-center py-3 rounded-lg font-semibold mt-4 transition">
                 Read Now
             </a>

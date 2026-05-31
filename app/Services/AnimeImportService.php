@@ -10,28 +10,26 @@ class AnimeImportService
 {
     public function syncGenres(array $genreData): array
     {
-        $genreIds = [];
+        $allGenres = Genre::all();
 
-        foreach ($genreData as $data) {
+        return collect($genreData)->map(function ($data) use ($allGenres) {
             $slug = Str::slug($data['name']);
-            $genre = Genre::where('mal_id', $data['mal_id'])
-                ->orWhere('slug', $slug)
-                ->first();
+            $genre = $allGenres->firstWhere('mal_id', $data['mal_id'])
+                ?? $allGenres->firstWhere('slug', $slug);
 
-            if (! $genre) {
+            if (!$genre) {
                 $genre = Genre::create([
                     'mal_id' => $data['mal_id'],
                     'name' => $data['name'],
                     'slug' => $slug,
                 ]);
-            } elseif (! $genre->mal_id) {
+                $allGenres->push($genre);
+            } elseif (!$genre->mal_id) {
                 $genre->update(['mal_id' => $data['mal_id']]);
             }
 
-            $genreIds[] = $genre->id;
-        }
-
-        return $genreIds;
+            return $genre->id;
+        })->toArray();
     }
 
     public function upsertAnime(array $data, array $genreIds): Anime
@@ -103,31 +101,5 @@ class AnimeImportService
         $anime->genres()->sync($genreIds);
 
         return $anime;
-    }
-
-    public function getGenreIdsUsingCache(array $genreData): array
-    {
-        $genreIds = [];
-        $allGenres = Genre::all();
-
-        foreach ($genreData as $data) {
-            $genre = $allGenres->firstWhere('mal_id', $data['mal_id'])
-                ?? $allGenres->firstWhere('slug', Str::slug($data['name']));
-
-            if (! $genre) {
-                $genre = Genre::create([
-                    'mal_id' => $data['mal_id'],
-                    'name' => $data['name'],
-                    'slug' => Str::slug($data['name']),
-                ]);
-                $allGenres->push($genre);
-            } elseif (! $genre->mal_id) {
-                $genre->update(['mal_id' => $data['mal_id']]);
-            }
-
-            $genreIds[] = $genre->id;
-        }
-
-        return $genreIds;
     }
 }

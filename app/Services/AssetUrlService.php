@@ -8,7 +8,7 @@ class AssetUrlService
 {
     public function resolve(?string $path, ?string $fallback = null): ?string
     {
-        if (! $path) {
+        if (!$path) {
             return $fallback;
         }
 

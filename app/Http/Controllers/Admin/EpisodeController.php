@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreEpisodeRequest;
 use App\Models\Anime;
 use App\Models\Episode;
 use App\Services\ServerBuilderService;
@@ -19,9 +20,10 @@ class EpisodeController extends Controller
 
     public function index(Anime $anime)
     {
-        $episodes = $anime->episodes()->orderBy('number')->paginate(20);
-
-        return view('admin.episodes.index', compact('anime', 'episodes'));
+        return view('admin.episodes.index', [
+            'anime' => $anime,
+            'episodes' => $anime->episodes()->orderBy('number')->paginate(20),
+        ]);
     }
 
     public function show(Anime $anime, Episode $episode)
@@ -31,38 +33,16 @@ class EpisodeController extends Controller
 
     public function create(Anime $anime)
     {
-        $languages = ['english', 'japanese', 'hindi'];
-        $episode = null;
-
-        return view('admin.episodes.form', compact('anime', 'episode', 'languages'));
+        return view('admin.episodes.form', [
+            'anime' => $anime,
+            'episode' => null,
+            'languages' => ['english', 'japanese', 'hindi'],
+        ]);
     }
 
-    public function store(Request $request, Anime $anime)
+    public function store(StoreEpisodeRequest $request, Anime $anime)
     {
-        $data = $request->validate([
-            'number' => 'required|integer',
-            'title' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'video_path' => 'nullable|string',
-            'storage_disk' => 'nullable|string|in:local,s3,streaming',
-            'source_type' => 'nullable|string|in:upload,youtube,telegram,external',
-            'source_id' => 'nullable|string',
-            'source_url' => 'nullable|string',
-            'duration' => 'nullable|integer',
-            'thumbnail' => 'nullable|image|max:2048',
-            'has_sub' => 'nullable|boolean',
-            'has_dub' => 'nullable|boolean',
-            'air_date' => 'nullable|date',
-            'language' => 'nullable|string',
-            'youtube_url' => 'nullable|url',
-            'uploaded_video_path' => 'nullable|string',
-            'telegram_direct_url' => 'nullable|string',
-            'telegram_file_id' => 'nullable|string',
-            'telegram_duration' => 'nullable|integer',
-            'telegram_thumb' => 'nullable|string',
-            'source_label' => 'nullable|string|max:255',
-        ]);
-
+        $data = $request->validated();
         $data['anime_id'] = $anime->id;
         $data['has_sub'] = $request->has('has_sub');
         $data['has_dub'] = $request->has('has_dub');
@@ -74,11 +54,9 @@ class EpisodeController extends Controller
         }
 
         $this->handleFileUploads($request, $anime, $data);
-
         $this->enrichWithSourceMetadata($request, $data);
 
         $episode = Episode::create($data);
-
         $this->serverBuilder->createForSource($episode, $data);
 
         return redirect()->route('admin.anime.episodes.index', $anime)
@@ -88,39 +66,17 @@ class EpisodeController extends Controller
     public function edit(Anime $anime, Episode $episode)
     {
         $episode->load('servers');
-        $languages = ['english', 'japanese', 'hindi'];
 
-        return view('admin.episodes.form', compact('anime', 'episode', 'languages'));
+        return view('admin.episodes.form', [
+            'anime' => $anime,
+            'episode' => $episode,
+            'languages' => ['english', 'japanese', 'hindi'],
+        ]);
     }
 
-    public function update(Request $request, Anime $anime, Episode $episode)
+    public function update(StoreEpisodeRequest $request, Anime $anime, Episode $episode)
     {
-        $data = $request->validate([
-            'number' => 'required|integer',
-            'title' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'video_path' => 'nullable|string',
-            'storage_disk' => 'nullable|string|in:local,s3,streaming',
-            'source_type' => 'nullable|string|in:upload,youtube,telegram,external',
-            'source_id' => 'nullable|string',
-            'source_url' => 'nullable|string',
-            'duration' => 'nullable|integer',
-            'thumbnail' => 'nullable|image|max:2048',
-            'has_sub' => 'nullable|boolean',
-            'has_dub' => 'nullable|boolean',
-            'air_date' => 'nullable|date',
-            'youtube_url' => 'nullable|url',
-            'uploaded_video_path' => 'nullable|string',
-            'language' => 'nullable|string|in:english,japanese,hindi',
-            'source_label' => 'nullable|string|max:255',
-            'telegram_direct_url' => 'nullable|string',
-            'telegram_file_id' => 'nullable|string',
-            'telegram_file_size' => 'nullable|integer',
-            'telegram_duration' => 'nullable|integer',
-            'telegram_thumb' => 'nullable|string',
-            'telegram_type' => 'nullable|string',
-        ]);
-
+        $data = $request->validated();
         $data['has_sub'] = $request->has('has_sub');
         $data['has_dub'] = $request->has('has_dub');
         $data['source_type'] = $data['source_type'] ?? $episode->source_type ?? 'upload';
@@ -130,13 +86,10 @@ class EpisodeController extends Controller
         }
 
         $this->handleFileUploads($request, $anime, $data);
-
         $this->enrichWithSourceMetadata($request, $data);
 
         $episode->update($data);
-
         $episode->servers()->delete();
-
         $this->serverBuilder->createForSource($episode, $data);
 
         return redirect()->route('admin.anime.episodes.index', $anime)

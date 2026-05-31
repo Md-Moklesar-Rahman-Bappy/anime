@@ -219,7 +219,7 @@
                 <div class="space-y-2 max-h-[500px] overflow-y-auto">
                     @foreach($anime->episodes as $ep)
                     <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $ep->number]) }}" class="flex items-center space-x-3 p-2 rounded-lg transition {{ $ep->id === $episode->id ? 'bg-purple-600/20 border border-purple-600' : 'hover:bg-gray-800' }}">
-                        <img src="{{ $ep->thumbnail_url }}" class="w-20 h-12 object-cover rounded" alt="">
+                        <img src="{{ $ep->thumbnail_url }}" class="w-20 h-12 object-cover rounded" alt="" loading="lazy">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm truncate">Episode {{ $ep->number }}</p>
                             @if($ep->title)<p class="text-xs text-gray-500 truncate">{{ $ep->title }}</p>@endif
@@ -241,7 +241,7 @@
                 <div class="space-y-2">
                     @foreach($related as $rel)
                     <a href="{{ route('anime.detail', $rel->slug) }}" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800 transition">
-                        <img src="{{ $rel->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
+                        <img src="{{ $rel->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="" loading="lazy">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm truncate">{{ $rel->title }}</p>
                             <p class="text-xs text-gray-500">{{ $rel->type }} | {{ $rel->year }}</p>

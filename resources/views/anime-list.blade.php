@@ -224,7 +224,7 @@
                 @forelse($animeList as $anime)
                 <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
                     <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                        <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                        <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="" loading="lazy">
                         <div class="absolute top-2 left-2 bg-gray-900/80 text-xs px-2 py-1 rounded">{{ $anime->type }}</div>
                         @if($anime->episodes_count > 0)
                             <div class="absolute top-2 right-2 bg-purple-600/90 text-xs px-2 py-1 rounded">{{ $anime->episodes_count }}</div>

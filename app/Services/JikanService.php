@@ -124,20 +124,34 @@ class JikanService
         $page = 1;
 
         while (true) {
-            $data = $this->request("/anime/{$malId}/episodes", ['page' => $page, 'limit' => 100]);
-            $episodes = collect($data['data'] ?? [])->map(fn ($item) => $this->mapEpisode($item));
-
-            if ($episodes->isEmpty()) {
-                break;
+            try {
+                $data = $this->request("/anime/{$malId}/episodes", ['page' => $page, 'limit' => 100]);
+            } catch (JikanApiException $e) {
+                if ($page > 1 && $all->isNotEmpty()) {
+                    break;
+                }
+                throw $e;
             }
 
-            $all = $all->merge($episodes);
+            $episodes = collect($data['data'] ?? [])->map(fn ($item) => $this->mapEpisode($item));
 
-            if (! ($data['pagination']['has_next_page'] ?? false)) {
-                break;
+            if ($page === 1) {
+                $maxPage = $data['pagination']['last_visible_page'] ?? 1;
+
+                if (! ($data['pagination']['has_next_page'] ?? false)) {
+                    return $all->merge($episodes);
+                }
+            }
+
+            if ($episodes->isNotEmpty()) {
+                $all = $all->merge($episodes);
             }
 
             $page++;
+
+            if ($page > $maxPage) {
+                break;
+            }
         }
 
         return $all;
