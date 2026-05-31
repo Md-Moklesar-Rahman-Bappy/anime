@@ -8,31 +8,20 @@ use Illuminate\Support\Facades\Cache;
 
 class MangaHomeController extends Controller
 {
+    protected const CACHE_TTL = 300;
+
     public function index()
     {
-        $featured = Cache::remember('manga_home_featured', 600, function () {
-            return Manga::where('featured', true)->orderBy('featured_order')->take(5)->get();
+        $data = Cache::remember('manga_home_page_data', self::CACHE_TTL, function () {
+            $featured = Manga::where('featured', true)->orderBy('featured_order')->take(5)->get();
+            $trending = Manga::orderBy('views', 'desc')->take(12)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'chapters_count', 'views']);
+            $recentChapters = Chapter::with('manga:id,title,slug,thumbnail')->latest()->take(24)->get();
+            $newManga = Manga::latest()->take(20)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'chapters_count', 'views']);
+            $mostViewed = Manga::orderBy('views', 'desc')->take(10)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'chapters_count', 'views']);
+
+            return compact('featured', 'trending', 'recentChapters', 'newManga', 'mostViewed');
         });
 
-        $trending = Cache::remember('manga_home_trending', 600, function () {
-            return Manga::orderBy('views', 'desc')->take(12)->get();
-        });
-
-        $recentChapters = Cache::remember('manga_home_recent_chapters', 300, function () {
-            return Chapter::with(['manga'])
-                ->latest()
-                ->take(24)
-                ->get();
-        });
-
-        $newManga = Cache::remember('manga_home_new', 300, function () {
-            return Manga::latest()->take(20)->get();
-        });
-
-        $mostViewed = Cache::remember('manga_home_most_viewed', 600, function () {
-            return Manga::orderBy('views', 'desc')->take(10)->get();
-        });
-
-        return view('manga-home', compact('featured', 'trending', 'recentChapters', 'newManga', 'mostViewed'));
+        return view('manga-home', $data);
     }
 }

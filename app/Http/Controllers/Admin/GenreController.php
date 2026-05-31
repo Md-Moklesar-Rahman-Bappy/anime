@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\JikanApiException;
 use App\Http\Controllers\Controller;
 use App\Models\Genre;
 use App\Services\JikanService;
@@ -44,10 +45,10 @@ class GenreController extends Controller
 
     public function importFromMal(JikanService $jikan)
     {
-        $malGenres = $jikan->getGenres();
-
-        if ($jikan->lastError) {
-            return back()->with('error', 'Failed to fetch genres from MAL: '.$jikan->lastError);
+        try {
+            $malGenres = $jikan->getGenres();
+        } catch (JikanApiException $e) {
+            return back()->with('error', 'Failed to fetch genres from MAL: '.$e->getMessage());
         }
 
         $created = 0;

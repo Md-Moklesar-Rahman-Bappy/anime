@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use Exception;
+use App\Exceptions\JikanApiException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -16,9 +16,7 @@ class JikanService
 
     protected int $retryDelay;
 
-    public ?string $lastError = null;
-
-    public ?array $lastPagination = null;
+    protected ?array $pagination = null;
 
     public function __construct()
     {
@@ -28,70 +26,27 @@ class JikanService
         $this->retryDelay = config('services.jikan.retry_delay', 100);
     }
 
-    protected function request(string $endpoint, array $params = []): array
+    public function getPagination(): ?array
     {
-        $this->lastError = null;
-
-        try {
-            $response = Http::baseUrl($this->baseUrl)
-                ->timeout($this->timeout)
-                ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
-                ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
-                ->acceptJson()
-                ->get($endpoint, $params);
-
-            $this->rateLimit();
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            if ($response->status() === 429) {
-                $retryAfter = min((int) $response->header('Retry-After', 5), 10);
-                $this->lastError = "Rate limited. Retrying after {$retryAfter}s...";
-                sleep($retryAfter);
-                $response = Http::baseUrl($this->baseUrl)
-                    ->timeout($this->timeout)
-                    ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
-                    ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
-                    ->acceptJson()
-                    ->get($endpoint, $params);
-                if ($response->successful()) {
-                    $this->lastError = null;
-                    return $response->json();
-                }
-            }
-
-            $body = $response->json();
-            $this->lastError = $body['message'] ?? $body['error'] ?? "Jikan API returned HTTP {$response->status()}";
-
-            return [];
-        } catch (Exception $e) {
-            $this->lastError = 'Failed to connect to Jikan API: '.$e->getMessage();
-
-            return [];
-        }
-    }
-
-    protected function rateLimit(): void
-    {
-        usleep(1200000);
+        return $this->pagination;
     }
 
     public function searchAnime(string $query, int $page = 1): Collection
     {
         $data = $this->request('/anime', ['q' => $query, 'page' => $page, 'sfw' => true]);
 
-        $this->lastPagination = $data['pagination'] ?? null;
-
         return collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
     }
 
-    public function getAnime(int $malId): ?array
+    public function getAnime(int $malId): array
     {
         $data = $this->request("/anime/{$malId}/full");
 
-        return isset($data['data']) ? $this->mapAnime($data['data']) : null;
+        if (! isset($data['data'])) {
+            throw JikanApiException::notFound();
+        }
+
+        return $this->mapAnime($data['data']);
     }
 
     public function getAnimeEpisodes(int $malId, int $page = 1): Collection
@@ -112,7 +67,7 @@ class JikanService
 
         $results = collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
 
-        if ($limit > 25 && isset($data['pagination']['has_next_page']) && $data['pagination']['has_next_page']) {
+        if ($limit > 25 && ($data['pagination']['has_next_page'] ?? false)) {
             $remaining = $limit - 25;
             if ($remaining > 0) {
                 $results = $results->merge($this->getTopAnime($filter, $page + 1, $remaining));
@@ -136,20 +91,6 @@ class JikanService
         return collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
     }
 
-    public function getPaginationInfo(string $endpoint, array $params = []): ?array
-    {
-        $data = $this->request($endpoint, $params);
-
-        return $data['pagination'] ?? null;
-    }
-
-    public function searchPagination(string $query, int $page = 1): ?array
-    {
-        $data = $this->request('/anime', ['q' => $query, 'page' => $page, 'sfw' => true]);
-
-        return $data['pagination'] ?? null;
-    }
-
     public function browseAnime(int $page = 1, string $orderBy = 'mal_id', string $sort = 'asc'): Collection
     {
         $data = $this->request('/anime', [
@@ -159,8 +100,6 @@ class JikanService
             'sort' => $sort,
             'sfw' => true,
         ]);
-
-        $this->lastPagination = $data['pagination'] ?? null;
 
         return collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
     }
@@ -175,37 +114,80 @@ class JikanService
         ]);
     }
 
-    public function browsePagination(): ?array
-    {
-        if ($this->lastPagination !== null) {
-            $pagination = $this->lastPagination;
-            $this->lastPagination = null;
-            return $pagination;
-        }
-
-        return null;
-    }
-
     public function getAllEpisodes(int $malId): Collection
     {
         $all = collect();
         $page = 1;
 
         while (true) {
-            $data = $this->request("/anime/{$malId}/episodes", ['page' => $page]);
+            $data = $this->request("/anime/{$malId}/episodes", ['page' => $page, 'limit' => 100]);
             $episodes = collect($data['data'] ?? [])->map(fn ($item) => $this->mapEpisode($item));
+
             if ($episodes->isEmpty()) {
                 break;
             }
+
             $all = $all->merge($episodes);
 
             if (! ($data['pagination']['has_next_page'] ?? false)) {
                 break;
             }
+
             $page++;
         }
 
         return $all;
+    }
+
+    protected function request(string $endpoint, array $params = []): array
+    {
+        $response = Http::baseUrl($this->baseUrl)
+            ->timeout($this->timeout)
+            ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
+            ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
+            ->acceptJson()
+            ->get($endpoint, $params);
+
+        $this->rateLimit();
+        $this->pagination = null;
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $this->pagination = $data['pagination'] ?? null;
+
+            return $data;
+        }
+
+        if ($response->status() === 429) {
+            $retryAfter = min((int) $response->header('Retry-After', 5), 10);
+
+            sleep($retryAfter);
+
+            $retryResponse = Http::baseUrl($this->baseUrl)
+                ->timeout($this->timeout)
+                ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
+                ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
+                ->acceptJson()
+                ->get($endpoint, $params);
+
+            if ($retryResponse->successful()) {
+                $data = $retryResponse->json();
+                $this->pagination = $data['pagination'] ?? null;
+
+                return $data;
+            }
+
+            throw JikanApiException::rateLimited($retryAfter);
+        }
+
+        $body = $response->json();
+        $message = $body['message'] ?? $body['error'] ?? "HTTP {$response->status()}";
+        throw JikanApiException::badResponse($response->status(), $message);
+    }
+
+    protected function rateLimit(): void
+    {
+        usleep(1200000);
     }
 
     protected function mapAnime(array $item): array

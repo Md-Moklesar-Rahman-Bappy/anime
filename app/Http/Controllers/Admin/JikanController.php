@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\JikanApiException;
 use App\Http\Controllers\Controller;
 use App\Jobs\ImportAnimeJob;
 use App\Models\Anime;
@@ -12,14 +13,10 @@ use Illuminate\Http\Request;
 
 class JikanController extends Controller
 {
-    protected JikanService $jikan;
-    protected JikanImporter $importer;
-
-    public function __construct(JikanService $jikan, JikanImporter $importer)
-    {
-        $this->jikan = $jikan;
-        $this->importer = $importer;
-    }
+    public function __construct(
+        protected JikanService $jikan,
+        protected JikanImporter $importer,
+    ) {}
 
     public function searchForm()
     {
@@ -34,12 +31,12 @@ class JikanController extends Controller
     {
         $request->validate(['q' => 'required|string|max:255']);
 
-        $page = $request->integer('page', 1);
-        $results = $this->jikan->searchAnime($request->q, $page);
-        $pagination = $this->jikan->lastPagination;
-
-        if ($this->jikan->lastError) {
-            return back()->withInput()->with('error', 'Jikan API error: '.$this->jikan->lastError);
+        try {
+            $page = $request->integer('page', 1);
+            $results = $this->jikan->searchAnime($request->q, $page);
+            $pagination = $this->jikan->getPagination();
+        } catch (JikanApiException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
         }
 
         $existingMalIds = Anime::whereIn('mal_id', $results->pluck('mal_id')->filter())
@@ -59,23 +56,14 @@ class JikanController extends Controller
 
     public function preview(int $malId)
     {
-        $anime = $this->jikan->getAnime($malId);
+        set_time_limit(0);
 
-        if ($this->jikan->lastError) {
+        try {
+            $anime = $this->jikan->getAnime($malId);
+            $episodes = $this->jikan->getAllEpisodes($malId);
+        } catch (JikanApiException $e) {
             return redirect()->route('admin.jikan.search')
-                ->with('error', 'Jikan API error: '.$this->jikan->lastError);
-        }
-
-        if (! $anime) {
-            return redirect()->route('admin.jikan.search')
-                ->with('error', 'Anime not found on MyAnimeList.');
-        }
-
-        $this->jikan->lastError = null;
-        $episodes = $this->jikan->getAllEpisodes($malId);
-        if ($this->jikan->lastError) {
-            return redirect()->route('admin.jikan.search')
-                ->with('error', 'Failed to fetch episodes: '.$this->jikan->lastError);
+                ->with('error', $e->getMessage());
         }
 
         $alreadyImported = Anime::where('mal_id', $malId)->exists();
@@ -85,29 +73,23 @@ class JikanController extends Controller
 
     public function import(int $malId)
     {
-        $data = $this->jikan->getAnime($malId);
+        set_time_limit(0);
 
-        if ($this->jikan->lastError) {
+        try {
+            $data = $this->jikan->getAnime($malId);
+            $episodeData = $this->jikan->getAllEpisodes($malId);
+
+            $genreIds = $this->importer->syncGenres($data['genres']);
+            $anime = $this->importer->upsertAnime($data, $genreIds);
+            $episodeCount = $this->importer->upsertEpisodes($anime, $episodeData->toArray());
+            $anime->update(['episodes_count' => $anime->episodes()->count()]);
+        } catch (JikanApiException $e) {
             return redirect()->route('admin.jikan.search')
-                ->with('error', 'Jikan API error: '.$this->jikan->lastError);
-        }
-
-        if (! $data) {
+                ->with('error', $e->getMessage());
+        } catch (\Exception $e) {
             return redirect()->route('admin.jikan.search')
-                ->with('error', 'Failed to fetch anime data from MyAnimeList.');
+                ->with('error', 'Import failed: ' . $e->getMessage());
         }
-
-        $this->jikan->lastError = null;
-        $episodeData = $this->jikan->getAllEpisodes($malId);
-        if ($this->jikan->lastError) {
-            return redirect()->route('admin.jikan.search')
-                ->with('error', 'Failed to fetch episodes: '.$this->jikan->lastError);
-        }
-
-        $genreIds = $this->importer->syncGenres($data['genres']);
-        $anime = $this->importer->upsertAnime($data, $genreIds);
-        $episodeCount = $this->importer->upsertEpisodes($anime, $episodeData->toArray());
-        $anime->update(['episodes_count' => $anime->episodes()->count()]);
 
         $action = $anime->wasRecentlyCreated ? 'Imported' : 'Updated';
 
@@ -117,6 +99,8 @@ class JikanController extends Controller
 
     public function refreshEpisodes(int $malId)
     {
+        set_time_limit(0);
+
         $anime = Anime::where('mal_id', $malId)->first();
 
         if (! $anime) {
@@ -124,20 +108,20 @@ class JikanController extends Controller
                 ->with('error', 'Anime not found. Import it first from MAL Import.');
         }
 
-        $this->jikan->lastError = null;
-        $count = $anime->episodes()->count();
-        $episodeData = $this->jikan->getAllEpisodes($malId);
+        try {
+            $oldCount = $anime->episodes()->count();
+            $episodeData = $this->jikan->getAllEpisodes($malId);
 
-        if ($this->jikan->lastError) {
-            return back()->with('error', 'Jikan API error: '.$this->jikan->lastError);
+            $processed = $this->importer->upsertEpisodes($anime, $episodeData->toArray(), false, true);
+            $newCount = $anime->episodes()->count();
+            $anime->update(['episodes_count' => $newCount]);
+        } catch (JikanApiException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to save episodes: ' . $e->getMessage());
         }
 
-        $processed = $this->importer->upsertEpisodes($anime, $episodeData->toArray(), false, true);
-
-        $newCount = $anime->episodes()->count();
-        $anime->update(['episodes_count' => $newCount]);
-
-        $added = $newCount - $count;
+        $added = $newCount - $oldCount;
         $updated = $processed - $added;
 
         return redirect()->route('admin.anime.episodes.index', $anime)
@@ -161,7 +145,12 @@ class JikanController extends Controller
         $existingMalIds = Anime::whereNotNull('mal_id')->pluck('mal_id')->toArray();
 
         while ($dispatched < $batchSize) {
-            $results = $this->jikan->browseAnime($page);
+            try {
+                $results = $this->jikan->browseAnime($page);
+            } catch (JikanApiException $e) {
+                return redirect()->route('admin.jikan.search')
+                    ->with('error', $e->getMessage());
+            }
 
             if ($results->isEmpty()) {
                 break;
@@ -189,7 +178,7 @@ class JikanController extends Controller
                 $existingMalIds[] = $malId;
             }
 
-            $pagination = $this->jikan->lastPagination;
+            $pagination = $this->jikan->getPagination();
             if (! ($pagination['has_next_page'] ?? false)) {
                 break;
             }
@@ -202,6 +191,8 @@ class JikanController extends Controller
 
     public function refreshAnime(int $malId)
     {
+        set_time_limit(0);
+
         $anime = Anime::where('mal_id', $malId)->first();
 
         if (! $anime) {
@@ -209,24 +200,22 @@ class JikanController extends Controller
                 ->with('error', 'Anime not found. Import it first from MAL Import.');
         }
 
-        $data = $this->jikan->getAnime($malId);
-        if ($this->jikan->lastError || ! $data) {
-            return back()->with('error', 'Failed to fetch anime data from MAL: '.($this->jikan->lastError ?: 'Unknown error'));
+        try {
+            $data = $this->jikan->getAnime($malId);
+            $episodeData = $this->jikan->getAllEpisodes($malId);
+
+            $oldEpCount = $anime->episodes()->count();
+
+            $genreIds = $this->importer->syncGenres($data['genres']);
+            $this->importer->upsertAnime($data, $genreIds);
+            $processed = $this->importer->upsertEpisodes($anime, $episodeData->toArray(), false, true);
+            $newEpCount = $anime->episodes()->count();
+            $anime->update(['episodes_count' => $newEpCount]);
+        } catch (JikanApiException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            return back()->with('error', 'Refresh failed: ' . $e->getMessage());
         }
-
-        $episodeData = $this->jikan->getAllEpisodes($malId);
-        if ($this->jikan->lastError) {
-            return back()->with('error', 'Failed to fetch episodes: '.$this->jikan->lastError);
-        }
-
-        $oldEpCount = $anime->episodes()->count();
-
-        $genreIds = $this->importer->syncGenres($data['genres']);
-        $this->importer->upsertAnime($data, $genreIds);
-        $processed = $this->importer->upsertEpisodes($anime, $episodeData->toArray(), false, true);
-
-        $newEpCount = $anime->episodes()->count();
-        $anime->update(['episodes_count' => $newEpCount]);
 
         $added = $newEpCount - $oldEpCount;
         $updated = $processed - $added;

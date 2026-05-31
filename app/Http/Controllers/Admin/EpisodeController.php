@@ -5,19 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Anime;
 use App\Models\Episode;
-use App\Models\Server;
+use App\Services\ServerBuilderService;
 use App\Services\YouTubeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class EpisodeController extends Controller
 {
-    protected YouTubeService $youtube;
-
-    public function __construct(YouTubeService $youtube)
-    {
-        $this->youtube = $youtube;
-    }
+    public function __construct(
+        protected YouTubeService $youtube,
+        protected ServerBuilderService $serverBuilder,
+    ) {}
 
     public function index(Anime $anime)
     {
@@ -55,6 +53,14 @@ class EpisodeController extends Controller
             'has_sub' => 'nullable|boolean',
             'has_dub' => 'nullable|boolean',
             'air_date' => 'nullable|date',
+            'language' => 'nullable|string',
+            'youtube_url' => 'nullable|url',
+            'uploaded_video_path' => 'nullable|string',
+            'telegram_direct_url' => 'nullable|string',
+            'telegram_file_id' => 'nullable|string',
+            'telegram_duration' => 'nullable|integer',
+            'telegram_thumb' => 'nullable|string',
+            'source_label' => 'nullable|string|max:255',
         ]);
 
         $data['anime_id'] = $anime->id;
@@ -63,121 +69,20 @@ class EpisodeController extends Controller
         $data['created_by'] = auth()->id();
         $data['source_type'] = $data['source_type'] ?? 'upload';
 
-        // remap legacy source types
         if ($data['source_type'] === 'direct_url') {
             $data['source_type'] = 'external';
         }
 
-        if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')
-                ->store("anime/{$anime->slug}/episodes", 'public');
-        }
+        $this->handleFileUploads($request, $anime, $data);
 
-        if ($request->hasFile('video')) {
-            $data['video_path'] = $request->file('video')
-                ->store("anime/{$anime->slug}/videos", 'public');
-            $data['storage_disk'] = 'local';
-        } elseif ($request->uploaded_video_path) {
-            $data['video_path'] = $request->uploaded_video_path;
-            $data['storage_disk'] = 'local';
-        }
-
-        if ($data['source_type'] === 'youtube' && ($request->youtube_url || ($data['source_url'] ?? null))) {
-            $url = $request->youtube_url ?? ($data['source_url'] ?? null);
-            $info = $this->youtube->getVideoInfo($url);
-            if ($info) {
-                $data['source_id'] = $info['id'];
-                $data['source_url'] = $info['watch_url'];
-                $data['video_path'] = $info['embed_url'];
-                $data['storage_disk'] = 'streaming';
-                $data['duration'] = $data['duration'] ?? (int) round($info['duration'] / 60);
-                $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
-            } else {
-                return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
-            }
-        }
-
-        if ($data['source_type'] === 'telegram' && $request->telegram_direct_url) {
-            $data['video_path'] = $request->telegram_direct_url;
-            $data['source_url'] = $request->telegram_direct_url;
-            $data['source_id'] = $request->telegram_file_id;
-            $data['storage_disk'] = 'streaming';
-            $data['duration'] = $data['duration'] ?? ($request->telegram_duration ? (int) round($request->telegram_duration / 60) : null);
-            $data['thumbnail'] = $data['thumbnail'] ?? $request->telegram_thumb;
-        }
-
-        if ($data['source_type'] === 'external' && $request->video_path) {
-            $data['storage_disk'] = 'streaming';
-        }
+        $this->enrichWithSourceMetadata($request, $data);
 
         $episode = Episode::create($data);
 
-        $this->createServerForSource($episode, $data);
+        $this->serverBuilder->createForSource($episode, $data);
 
         return redirect()->route('admin.anime.episodes.index', $anime)
             ->with('success', 'Episode created.');
-    }
-
-    protected function createServerForSource(Episode $episode, array $data): void
-    {
-        if (empty($data['video_path']) && empty($data['source_url'])) {
-            return;
-        }
-
-        $sourceType = $data['source_type'] ?? 'upload';
-        $url = $data['video_path'] ?? $data['source_url'];
-        $language = $data['language'] ?? 'english';
-
-        switch ($sourceType) {
-            case 'youtube':
-                Server::create([
-                    'episode_id' => $episode->id,
-                    'label' => 'YouTube',
-                    'url' => $url,
-                    'type' => 'youtube',
-                    'language' => $language,
-                ]);
-                break;
-
-            case 'upload':
-                $ext = strtolower(pathinfo($data['video_path'], PATHINFO_EXTENSION));
-                $type = in_array($ext, ['mp4', 'webm', 'mkv']) ? $ext : 'mp4';
-                Server::create([
-                    'episode_id' => $episode->id,
-                    'label' => 'Upload',
-                    'url' => url('storage/'.$data['video_path']),
-                    'type' => $type,
-                    'language' => $language,
-                ]);
-                break;
-
-            case 'external':
-                $ext = strtolower(pathinfo($url, PATHINFO_EXTENSION));
-                $type = match ($ext) {
-                    'm3u8' => 'm3u8',
-                    'mp4', 'webm', 'mkv' => $ext,
-                    default => 'embed',
-                };
-                $label = $data['source_label'] ?? 'Server';
-                Server::create([
-                    'episode_id' => $episode->id,
-                    'label' => $label,
-                    'url' => $url,
-                    'type' => $type,
-                    'language' => $language,
-                ]);
-                break;
-
-            case 'telegram':
-                Server::create([
-                    'episode_id' => $episode->id,
-                    'label' => 'Telegram',
-                    'url' => $url,
-                    'type' => 'mp4',
-                    'language' => $language,
-                ]);
-                break;
-        }
     }
 
     public function edit(Anime $anime, Episode $episode)
@@ -220,58 +125,19 @@ class EpisodeController extends Controller
         $data['has_dub'] = $request->has('has_dub');
         $data['source_type'] = $data['source_type'] ?? $episode->source_type ?? 'upload';
 
-        // remap legacy source types
         if ($data['source_type'] === 'direct_url') {
             $data['source_type'] = 'external';
         }
 
-        if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')
-                ->store("anime/{$anime->slug}/episodes", 'public');
-        }
+        $this->handleFileUploads($request, $anime, $data);
 
-        if ($request->hasFile('video')) {
-            $data['video_path'] = $request->file('video')
-                ->store("anime/{$anime->slug}/videos", 'public');
-            $data['storage_disk'] = 'local';
-        } elseif ($request->uploaded_video_path) {
-            $data['video_path'] = $request->uploaded_video_path;
-            $data['storage_disk'] = 'local';
-        }
-
-        if ($data['source_type'] === 'youtube' && ($request->youtube_url || ($data['source_url'] ?? null))) {
-            $url = $request->youtube_url ?? ($data['source_url'] ?? null);
-            $info = $this->youtube->getVideoInfo($url);
-            if ($info) {
-                $data['source_id'] = $info['id'];
-                $data['source_url'] = $info['watch_url'];
-                $data['video_path'] = $info['embed_url'];
-                $data['storage_disk'] = 'streaming';
-                $data['duration'] = $data['duration'] ?? (int) round($info['duration'] / 60);
-                $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
-            } else {
-                return back()->withInput()->with('error', 'Could not fetch YouTube video info. Check the URL and try again.');
-            }
-        }
-
-        if ($data['source_type'] === 'telegram' && $request->telegram_direct_url) {
-            $data['video_path'] = $request->telegram_direct_url;
-            $data['source_url'] = $request->telegram_direct_url;
-            $data['source_id'] = $request->telegram_file_id;
-            $data['storage_disk'] = 'streaming';
-            $data['duration'] = $data['duration'] ?? ($request->telegram_duration ? (int) round($request->telegram_duration / 60) : null);
-            $data['thumbnail'] = $data['thumbnail'] ?? $request->telegram_thumb;
-        }
-
-        if ($data['source_type'] === 'external' && $request->video_path) {
-            $data['storage_disk'] = 'streaming';
-        }
+        $this->enrichWithSourceMetadata($request, $data);
 
         $episode->update($data);
 
         $episode->servers()->delete();
 
-        $this->createServerForSource($episode, $data);
+        $this->serverBuilder->createForSource($episode, $data);
 
         return redirect()->route('admin.anime.episodes.index', $anime)
             ->with('success', 'Episode updated.');
@@ -297,5 +163,53 @@ class EpisodeController extends Controller
         $episode->servers()->delete();
 
         return back()->with('success', 'Video deleted.');
+    }
+
+    protected function handleFileUploads(Request $request, Anime $anime, array &$data): void
+    {
+        if ($request->hasFile('thumbnail')) {
+            $data['thumbnail'] = $request->file('thumbnail')
+                ->store("anime/{$anime->slug}/episodes", 'public');
+        }
+
+        if ($request->hasFile('video')) {
+            $data['video_path'] = $request->file('video')
+                ->store("anime/{$anime->slug}/videos", 'public');
+            $data['storage_disk'] = 'local';
+        } elseif ($request->uploaded_video_path) {
+            $data['video_path'] = $request->uploaded_video_path;
+            $data['storage_disk'] = 'local';
+        }
+    }
+
+    protected function enrichWithSourceMetadata(Request $request, array &$data): void
+    {
+        $sourceType = $data['source_type'] ?? 'upload';
+
+        if ($sourceType === 'youtube' && ($request->youtube_url || ($data['source_url'] ?? null))) {
+            $url = $request->youtube_url ?? ($data['source_url'] ?? null);
+            $info = $this->youtube->getVideoInfo($url);
+            if ($info) {
+                $data['source_id'] = $info['id'];
+                $data['source_url'] = $info['watch_url'];
+                $data['video_path'] = $info['embed_url'];
+                $data['storage_disk'] = 'streaming';
+                $data['duration'] = $data['duration'] ?? (int) round($info['duration'] / 60);
+                $data['thumbnail'] = $data['thumbnail'] ?? $info['thumbnail'];
+            }
+        }
+
+        if ($sourceType === 'telegram' && $request->telegram_direct_url) {
+            $data['video_path'] = $request->telegram_direct_url;
+            $data['source_url'] = $request->telegram_direct_url;
+            $data['source_id'] = $request->telegram_file_id;
+            $data['storage_disk'] = 'streaming';
+            $data['duration'] = $data['duration'] ?? ($request->telegram_duration ? (int) round($request->telegram_duration / 60) : null);
+            $data['thumbnail'] = $data['thumbnail'] ?? $request->telegram_thumb;
+        }
+
+        if ($sourceType === 'external' && isset($data['video_path'])) {
+            $data['storage_disk'] = 'streaming';
+        }
     }
 }

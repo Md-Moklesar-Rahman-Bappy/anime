@@ -5,15 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\Anime;
 use App\Models\Comment;
 use App\Models\Favorite;
-use Illuminate\Support\Facades\Cache;
+use App\Services\RelatedContentService;
+use App\Services\ViewCounterService;
+use App\Services\YouTubeService;
 use Illuminate\Support\Facades\Storage;
 
 class WatchController extends Controller
 {
+    public function __construct(
+        protected ViewCounterService $viewCounter,
+        protected RelatedContentService $relatedContent,
+        protected YouTubeService $youtube,
+    ) {}
+
     public function __invoke($slug)
     {
         $anime = $this->loadAnime($slug);
-        $this->incrementViews($anime);
+        $this->viewCounter->increment($anime, 'anime');
 
         $episode = $this->resolveEpisode($anime);
         $episode->load(['servers', 'skipTimes']);
@@ -24,7 +32,7 @@ class WatchController extends Controller
             'prevEpisode' => $this->prevEpisode($anime, $episode),
             'nextEpisode' => $this->nextEpisode($anime, $episode),
             'comments' => $this->loadComments($episode),
-            'related' => $this->loadRelated($anime),
+            'related' => $this->relatedContent->byGenres($anime, $anime->genres, 'genres'),
             'isFavorited' => false,
             'favCategory' => null,
         ];
@@ -44,18 +52,7 @@ class WatchController extends Controller
 
     protected function loadAnime(string $slug): Anime
     {
-        return Anime::where('slug', $slug)->with(['episodes' => function ($q) {
-            $q->orderBy('number');
-        }, 'genres'])->firstOrFail();
-    }
-
-    protected function incrementViews(Anime $anime): void
-    {
-        $key = "anime_view_{$anime->id}";
-        if (! session()->has($key)) {
-            $anime->increment('views');
-            session()->put($key, true);
-        }
+        return Anime::where('slug', $slug)->with(['episodes' => fn($q) => $q->orderBy('number'), 'genres'])->firstOrFail();
     }
 
     protected function resolveEpisode(Anime $anime)
@@ -87,37 +84,13 @@ class WatchController extends Controller
             ->with('user')->latest()->paginate(20);
     }
 
-    protected function loadRelated(Anime $anime)
-    {
-        return Cache::remember('related_anime_'.$anime->id, 600, function () use ($anime) {
-            $genreIds = $anime->genres->pluck('id')->toArray();
-            if (empty($genreIds)) {
-                return collect();
-            }
-            return Anime::whereHas('genres', function ($q) use ($genreIds) {
-                $q->whereIn('genres.id', $genreIds);
-            }, '>=', count($genreIds))
-                ->where('id', '!=', $anime->id)
-                ->orderBy('views', 'desc')
-                ->take(8)
-                ->get();
-        });
-    }
-
     protected function resolveUrl(string $url): string
     {
         if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
             return $url;
         }
-        return route('stream.proxy', ['url' => base64_encode($url)]);
-    }
 
-    protected function extractYoutubeId(string $url): ?string
-    {
-        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $url, $m)) {
-            return $m[1];
-        }
-        return null;
+        return route('stream.proxy', ['url' => base64_encode($url)]);
     }
 
     protected function buildServerData($episode): array
@@ -131,56 +104,40 @@ class WatchController extends Controller
         $ytVideoId = null;
 
         if ($hasVideoPath && ! $youtubeServer) {
-            $ytVideoId = $this->extractYoutubeId($episode->video_path);
+            $ytVideoId = $this->youtube->extractVideoId($episode->video_path);
             $ytInVideoPath = $ytVideoId !== null;
         }
 
         if ($youtubeServer) {
-            $allServers[] = [
-                'server_id' => 'youtube',
-                'label' => 'YouTube',
-                'url' => $youtubeServer->url,
-                'type' => 'youtube',
-                'language' => $youtubeServer->language,
-            ];
+            $allServers[] = $this->serverEntry('youtube', 'YouTube', $youtubeServer->url, 'youtube', $youtubeServer->language);
         } elseif ($ytInVideoPath) {
-            $allServers[] = [
-                'server_id' => 'youtube',
-                'label' => 'YouTube',
-                'url' => 'https://www.youtube.com/watch?v='.$ytVideoId,
-                'type' => 'youtube',
-                'language' => 'english',
-            ];
+            $allServers[] = $this->serverEntry('youtube', 'YouTube', "https://www.youtube.com/watch?v={$ytVideoId}", 'youtube', 'english');
         }
 
         $idx = 0;
         foreach ($videoServers as $s) {
             $idx++;
-            $allServers[] = [
-                'server_id' => 'video_'.$s->id,
-                'label' => $s->label ?? 'Server '.$idx,
-                'url' => $this->resolveUrl($s->url),
-                'type' => $s->type,
-                'language' => $s->language,
-            ];
+            $allServers[] = $this->serverEntry(
+                "video_{$s->id}",
+                $s->label ?? "Server {$idx}",
+                $this->resolveUrl($s->url),
+                $s->type,
+                $s->language
+            );
         }
 
         if (! $hasServers && $hasVideoPath && ! $ytInVideoPath) {
-            $videoSrc = str_starts_with($episode->video_path, 'http') ? $this->resolveUrl($episode->video_path) : Storage::url($episode->video_path);
-            $allServers[] = [
-                'server_id' => 'local',
-                'label' => 'Default',
-                'url' => $videoSrc,
-                'type' => 'mp4',
-                'language' => 'english',
-            ];
+            $videoSrc = str_starts_with($episode->video_path, 'http')
+                ? $this->resolveUrl($episode->video_path)
+                : Storage::url($episode->video_path);
+            $allServers[] = $this->serverEntry('local', 'Default', $videoSrc, 'mp4', 'english');
         }
 
         $skipTimes = $episode->skipTimes->first() ?: null;
 
         $youtubeVideoId = null;
         if ($youtubeServer) {
-            $youtubeVideoId = $this->extractYoutubeId($youtubeServer->url);
+            $youtubeVideoId = $this->youtube->extractVideoId($youtubeServer->url);
         } elseif ($ytInVideoPath) {
             $youtubeVideoId = $ytVideoId;
         }
@@ -199,6 +156,17 @@ class WatchController extends Controller
             'isYoutubeInit' => $isYoutubeInit,
             'youtubeVideoId' => $youtubeVideoId,
             'skipTimes' => $skipTimes,
+        ];
+    }
+
+    protected function serverEntry(string $id, string $label, string $url, string $type, ?string $language): array
+    {
+        return [
+            'server_id' => $id,
+            'label' => $label,
+            'url' => $url,
+            'type' => $type,
+            'language' => $language,
         ];
     }
 }
