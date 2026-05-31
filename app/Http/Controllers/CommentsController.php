@@ -22,4 +22,15 @@ class CommentsController extends Controller
 
         return back()->with('success', 'Comment posted.');
     }
+
+    public function destroy(Comment $comment)
+    {
+        if (!auth()->user()->isSuperAdmin()) {
+            abort(403);
+        }
+
+        $comment->delete();
+
+        return back()->with('success', 'Comment deleted.');
+    }
 }

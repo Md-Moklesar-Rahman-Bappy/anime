@@ -6,16 +6,25 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-4">
-            <div class="bg-black rounded-lg overflow-visible" x-data="player()" x-init="init()">
+            <div class="bg-black rounded-lg overflow-visible" x-data="player()" x-init="init()" x-cloak>
                 <div class="plyr-wrapper overflow-hidden rounded-t-lg">
                     @if($initialServer)
-                        <video id="videoPlayer" class="w-full aspect-video" playsinline
-                            {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}
-                            @if($isYoutubeInit) data-plyr-provider="youtube" data-plyr-embed-id="{{ $initialServer['url'] }}" @endif>
-                            @if(!$isYoutubeInit)
-                            <source src="{{ $initialServer['url'] }}" type="{{ $initialServer['type'] === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
-                            @endif
-                        </video>
+                        @php
+                            $_mimeMap = ['mp4'=>'video/mp4','webm'=>'video/webm','m3u8'=>'application/x-mpegURL'];
+                            $_mimeType = $_mimeMap[$initialServer['type']] ?? null;
+                            $_isEmbedInit = $initialServer['type'] === 'embed';
+                        @endphp
+                        <iframe x-show="isEmbed" :src="embedUrl"
+                                class="w-full aspect-video" frameborder="0" allowfullscreen></iframe>
+                        <div x-show="!isEmbed" class="w-full aspect-video">
+                            <video id="videoPlayer" class="w-full aspect-video" playsinline
+                                {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}
+                                @if($isYoutubeInit) data-plyr-provider="youtube" data-plyr-embed-id="{{ $youtubeVideoId ?? '' }}" @endif>
+                                @if(!$isYoutubeInit && !$_isEmbedInit)
+                                <source src="{{ $initialServer['url'] }}" @if($_mimeType) type="{{ $_mimeType }}" @endif>
+                                @endif
+                            </video>
+                        </div>
                     @else
                         <div class="w-full aspect-video flex items-center justify-center bg-gray-900 text-gray-500">
                             <div class="text-center">
@@ -179,10 +188,19 @@
                     @foreach($comments as $comment)
                     <div class="flex space-x-3">
                         <img src="https://ui-avatars.com/api/?name={{ urlencode($comment->user->name) }}&background=7c3aed&color=fff" class="w-8 h-8 rounded-full" alt="">
-                        <div>
+                        <div class="flex-1">
                             <div class="flex items-center space-x-2">
                                 <span class="text-sm font-semibold">{{ $comment->user->name }}</span>
                                 <span class="text-xs text-gray-500">{{ $comment->created_at->diffForHumans() }}</span>
+                                @auth
+                                @if(auth()->user()->isSuperAdmin())
+                                <form action="{{ route('comments.destroy', $comment) }}" method="POST" class="ml-auto" onsubmit="return confirm('Delete this comment?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-xs text-red-500 hover:text-red-400">Delete</button>
+                                </form>
+                                @endif
+                                @endauth
                             </div>
                             <p class="text-sm text-gray-300 mt-1">{{ $comment->body }}</p>
                         </div>
@@ -239,6 +257,7 @@
 @push('scripts')
 <script>
 window.PLAYER_SERVERS = @json($allServers);
+window.PLAYER_LANGUAGES = @json($languages);
 window.PLAYER_IS_YOUTUBE = {{ $isYoutubeInit ? 'true' : 'false' }};
 window.PLAYER_IS_FAVORITED = {{ $isFavorited ? 'true' : 'false' }};
 window.PLAYER_FAV_CATEGORY = {{ $favCategory ? '"'.$favCategory.'"' : 'null' }};

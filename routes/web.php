@@ -8,7 +8,9 @@ use App\Http\Controllers\Admin\GenreController as AdminGenreController;
 use App\Http\Controllers\Admin\JikanController;
 use App\Http\Controllers\Admin\MangaChapterController;
 use App\Http\Controllers\Admin\MangaController as AdminMangaController;
+use App\Http\Controllers\Admin\MangaDashboardController;
 use App\Http\Controllers\Admin\MangaGenreController as AdminMangaGenreController;
+use App\Http\Controllers\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RequestController as AdminRequestController;
 use App\Http\Controllers\Admin\ScraperController;
@@ -25,6 +27,7 @@ use App\Http\Controllers\MangaCommentsController;
 use App\Http\Controllers\MangaController;
 use App\Http\Controllers\MangaFavoritesController;
 use App\Http\Controllers\MangaGenreController;
+use App\Http\Controllers\MangaHomeController;
 use App\Http\Controllers\MangaListController;
 use App\Http\Controllers\MangaRandomController;
 use App\Http\Controllers\MangaReaderController;
@@ -49,7 +52,10 @@ Route::middleware('auth')->group(function () {
 });
 
 // Telegram streaming (public, used by Plyr player)
-Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream');
+Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream')->middleware('throttle:stream');
+
+// Stream proxy for external server URLs
+Route::get('/stream/proxy', [\App\Http\Controllers\StreamProxyController::class, 'stream'])->name('stream.proxy')->middleware('throttle:stream');
 
 // Anime pages
 Route::get('/watch/{slug}', WatchController::class)->name('watch');
@@ -65,11 +71,11 @@ Route::get('/trending', [ListController::class, 'trending'])->name('trending');
 Route::get('/random', RandomController::class)->name('random');
 
 // Manga pages
-Route::get('/manga', [MangaListController::class, 'index'])->name('manga.index');
+Route::get('/manga', [MangaHomeController::class, 'index'])->name('manga.index');
+Route::get('/manga/browse', [MangaListController::class, 'index'])->name('manga.browse');
 Route::get('/manga/{slug}', MangaController::class)->name('manga.detail');
 Route::get('/read/{slug}', MangaReaderController::class)->name('manga.read');
 Route::get('/manga/genre/{slug}', MangaGenreController::class)->name('manga.genre');
-Route::get('/manga/az-list/{letter?}', [MangaListController::class, 'azList'])->name('manga.az-list');
 Route::get('/manga/filter', [MangaListController::class, 'filter'])->name('manga.filter');
 Route::get('/manga/newest', [MangaListController::class, 'newest'])->name('manga.newest');
 Route::get('/manga/updated', [MangaListController::class, 'updated'])->name('manga.updated');
@@ -81,16 +87,22 @@ Route::get('/manga/random', MangaRandomController::class)->name('manga.random');
 // Comments & Favorites (auth required)
 Route::middleware('auth')->group(function () {
     Route::post('/comments', [CommentsController::class, 'store'])->name('comments.store')->middleware('throttle:comments');
+    Route::delete('/comments/{comment}', [CommentsController::class, 'destroy'])->name('comments.destroy');
     Route::post('/favorites/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle')->middleware('throttle:favorites');
     Route::post('/favorites/list', [FavoritesController::class, 'updateList'])->name('favorites.list')->middleware('throttle:favorites');
+    Route::get('/my-list', [FavoritesController::class, 'myList'])->name('favorites.my-list');
     Route::post('/reports/submit', [ReportController::class, 'store'])->name('reports.submit')->middleware('throttle:reports');
 
     // Manga auth routes
     Route::post('/manga/favorites/toggle', [MangaFavoritesController::class, 'toggle'])->name('manga.favorites.toggle')->middleware('throttle:favorites');
     Route::post('/manga/favorites/list', [MangaFavoritesController::class, 'updateList'])->name('manga.favorites.list')->middleware('throttle:favorites');
     Route::post('/manga/comments', [MangaCommentsController::class, 'store'])->name('manga.comments.store')->middleware('throttle:comments');
+    Route::delete('/manga/comments/{mangaComment}', [MangaCommentsController::class, 'destroy'])->name('manga.comments.destroy');
     Route::post('/manga/bookmark', [MangaFavoritesController::class, 'bookmark'])->name('manga.bookmark');
 });
+
+// Sitemap
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index']);
 
 // Static pages
 Route::get('/faq', [StaticController::class, 'faq'])->name('faq');
@@ -102,6 +114,7 @@ Route::get('/terms', [StaticController::class, 'terms'])->name('terms');
 // Admin routes
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/manga/dashboard', [MangaDashboardController::class, 'index'])->name('manga.dashboard');
 
     Route::get('anime/search', [AdminAnimeController::class, 'index'])->name('anime.search');
     Route::resource('anime', AdminAnimeController::class);
@@ -132,6 +145,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::put('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+    Route::get('/comments', [AdminCommentController::class, 'index'])->name('comments.index');
+    Route::delete('/comments/anime/{comment}', [AdminCommentController::class, 'destroyAnime'])->name('comments.destroy.anime');
+    Route::delete('/comments/manga/{mangaComment}', [AdminCommentController::class, 'destroyManga'])->name('comments.destroy.manga');
 
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::put('/reports/{report}', [ReportController::class, 'update'])->name('reports.update');

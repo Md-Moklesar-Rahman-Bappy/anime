@@ -74,19 +74,6 @@ class MangaListController extends Controller
         return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
 
-    public function azList($letter = null)
-    {
-        $query = Manga::query();
-        if ($letter && $letter !== 'all') {
-            $query->where('title', 'like', $letter . '%');
-        }
-        $mangaList = $query->orderBy('title')->paginate(24);
-        $title = $letter ? "Manga starting with $letter" : 'All Manga';
-        $genres = $this->getCachedGenres();
-
-        return view('manga-list', compact('mangaList', 'title', 'genres'));
-    }
-
     public function filter(Request $request)
     {
         $query = Manga::query();

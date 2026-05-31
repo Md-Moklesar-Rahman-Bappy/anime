@@ -2,7 +2,17 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="flex items-center justify-between h-16">
             <div class="flex items-center space-x-8">
-                <a href="{{ route('home') }}" class="text-2xl font-bold text-purple-500">AniWaves</a>
+                @php
+                    $logoPath = \Illuminate\Support\Facades\Cache::remember('setting_logo', 1800, fn() => \App\Models\Setting::where('key', 'logo')->value('value'));
+                    $logoUrl = $logoPath ? (\Illuminate\Support\Str::startsWith($logoPath, 'http') ? $logoPath : \Illuminate\Support\Facades\Storage::url($logoPath)) : null;
+                @endphp
+                <a href="{{ route('home') }}" class="flex items-center">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ config('app.name', 'AniWaves') }}" class="max-h-10">
+                    @else
+                        <span class="text-2xl font-bold text-purple-500">{{ config('app.name', 'AniWaves') }}</span>
+                    @endif
+                </a>
                 <nav class="hidden md:flex items-center space-x-6 text-sm">
                     <a href="{{ route('home') }}" class="text-gray-300 hover:text-white transition">Home</a>
                     <div x-data="{ open: false }" class="relative">
@@ -28,7 +38,20 @@
                     <a href="{{ route('ongoing') }}" class="text-gray-300 hover:text-white transition">Ongoing</a>
                     <a href="{{ route('trending') }}" class="text-gray-300 hover:text-white transition">Trending</a>
                     <a href="{{ route('random') }}" class="text-gray-300 hover:text-white transition">Random</a>
-                    <a href="{{ route('manga.index') }}" class="text-gray-300 hover:text-white transition">Manga</a>
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open" class="text-gray-300 hover:text-white transition flex items-center">Manga <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></button>
+                        <div x-show="open" @click.outside="open = false" class="absolute left-0 mt-2 bg-gray-800 rounded-xl shadow-xl p-4 z-50 border border-gray-700/50 min-w-[180px]">
+                            <a href="{{ route('manga.index') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Home</a>
+                            <a href="{{ route('manga.browse') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">All Manga</a>
+                            <a href="{{ route('manga.filter') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Filter</a>
+                            <a href="{{ route('manga.newest') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Newest</a>
+                            <a href="{{ route('manga.updated') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Updated</a>
+                            <a href="{{ route('manga.ongoing') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Ongoing</a>
+                            <a href="{{ route('manga.trending') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Trending</a>
+                            <a href="{{ route('manga.completed') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Completed</a>
+                            <a href="{{ route('manga.random') }}" class="block text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 px-3 py-2 rounded-lg transition">Random</a>
+                        </div>
+                    </div>
                 </nav>
             </div>
 
@@ -77,6 +100,7 @@
                         </button>
                         <div x-show="open" @click.outside="open = false" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-2 z-50">
                             <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Profile</a>
+                            <a href="{{ route('favorites.my-list') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">My List</a>
                             @if(auth()->user()->isAdmin())
                                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin</a>
                             @endif

@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
     @if($featured->count())
     <div
         x-data="{
