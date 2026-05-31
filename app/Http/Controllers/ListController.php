@@ -46,7 +46,7 @@ class ListController extends Controller
     {
         $query = Anime::query();
         if ($letter && $letter !== 'all') {
-            $query->where('title', 'like', $letter . '%');
+            $query->where('title', 'like', $letter.'%');
         }
         $list = $query->orderBy('title')->paginate(24);
         $title = $letter ? "Anime starting with $letter" : 'All Anime';
@@ -68,7 +68,7 @@ class ListController extends Controller
             ->orderBy('views', 'desc')
             ->take(6)
             ->get()
-            ->map(fn($a) => [
+            ->map(fn ($a) => [
                 'id' => $a->id,
                 'title' => $a->title,
                 'slug' => $a->slug,
@@ -84,7 +84,7 @@ class ListController extends Controller
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get()
-            ->map(fn($e) => [
+            ->map(fn ($e) => [
                 'id' => $e->id,
                 'title' => $e->title,
                 'number' => $e->number,

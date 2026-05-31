@@ -17,7 +17,7 @@ class UpdateFavoriteListRequest extends FormRequest
     {
         return [
             'anime_id' => 'required|exists:anime,id',
-            'category' => 'nullable|string|in:' . implode(',', self::CATEGORIES),
+            'category' => 'nullable|string|in:'.implode(',', self::CATEGORIES),
         ];
     }
 }

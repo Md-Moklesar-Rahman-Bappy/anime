@@ -62,7 +62,7 @@ class ImportAnimeJob implements ShouldQueue
             $newEpisodes[] = [
                 'anime_id' => $anime->id,
                 'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                 'description' => $ep['synopsis'],
                 'thumbnail' => $ep['thumbnail'],
                 'air_date' => $ep['air_date'],

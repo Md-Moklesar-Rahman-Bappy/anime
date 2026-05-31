@@ -16,7 +16,7 @@ class MangaController extends Controller
     public function __invoke($slug)
     {
         $manga = Manga::where('slug', $slug)
-            ->with(['genres', 'chapters' => fn($q) => $q->orderBy('number', 'desc')])
+            ->with(['genres', 'chapters' => fn ($q) => $q->orderBy('number', 'desc')])
             ->firstOrFail();
 
         $this->viewCounter->increment($manga, 'manga');

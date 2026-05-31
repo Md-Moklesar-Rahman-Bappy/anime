@@ -54,7 +54,7 @@ class WatchController extends Controller
     {
         return Anime::where('slug', $slug)
             ->with(['genres'])
-            ->with(['episodes' => fn($q) => $q->select('id', 'anime_id', 'number', 'title', 'thumbnail', 'has_sub', 'has_dub')
+            ->with(['episodes' => fn ($q) => $q->select('id', 'anime_id', 'number', 'title', 'thumbnail', 'has_sub', 'has_dub')
                 ->orderBy('number')])
             ->firstOrFail();
     }
@@ -65,7 +65,7 @@ class WatchController extends Controller
             ? $anime->episodes->firstWhere('number', (int) request('ep'))
             : $anime->episodes->first();
 
-        abort_if(!$episode, 404);
+        abort_if(! $episode, 404);
 
         return $episode;
     }

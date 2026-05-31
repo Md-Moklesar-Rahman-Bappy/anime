@@ -8,7 +8,7 @@ class AssetUrlService
 {
     public function resolve(?string $path, ?string $fallback = null): ?string
     {
-        if (!$path) {
+        if (! $path) {
             return $fallback;
         }
 
@@ -23,9 +23,9 @@ class AssetUrlService
 
         $letter = mb_substr($title, 0, 1);
 
-        return 'data:image/svg+xml,' . rawurlencode(
-            "<svg xmlns='http://www.w3.org/2000/svg' width='300' height='420'>" .
-            "<rect fill='%23374151' width='300' height='420'/>" .
+        return 'data:image/svg+xml,'.rawurlencode(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='300' height='420'>".
+            "<rect fill='%23374151' width='300' height='420'/>".
             "<text x='150' y='210' text-anchor='middle' dominant-baseline='central' fill='white' font-size='80' font-family='sans-serif'>{$letter}</text></svg>"
         );
     }

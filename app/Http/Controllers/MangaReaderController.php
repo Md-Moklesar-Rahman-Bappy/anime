@@ -24,7 +24,7 @@ class MangaReaderController extends Controller
 
         $chapter = Chapter::where('manga_id', $manga->id)
             ->where('number', $chapterNumber)
-            ->with(['pages' => fn($q) => $q->orderBy('page_number')])
+            ->with(['pages' => fn ($q) => $q->orderBy('page_number')])
             ->firstOrFail();
 
         $prevChapter = Chapter::where('manga_id', $manga->id)

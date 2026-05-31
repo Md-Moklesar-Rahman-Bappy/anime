@@ -17,7 +17,7 @@ class AnimeController extends Controller
     public function __invoke($slug)
     {
         $anime = Anime::where('slug', $slug)
-            ->with(['genres', 'episodes' => fn($q) => $q->orderBy('number')])
+            ->with(['genres', 'episodes' => fn ($q) => $q->orderBy('number')])
             ->withCount('episodes')
             ->firstOrFail();
 

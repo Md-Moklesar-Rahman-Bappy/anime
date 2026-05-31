@@ -11,7 +11,7 @@ class MangaRandomController extends Controller
     {
         $randomId = DB::table('manga')->inRandomOrder()->limit(1)->value('id');
 
-        if (!$randomId) {
+        if (! $randomId) {
             return redirect()->route('manga.index')->with('error', 'No manga found.');
         }
 

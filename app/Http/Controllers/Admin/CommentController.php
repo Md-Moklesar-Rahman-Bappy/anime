@@ -18,12 +18,12 @@ class CommentController extends Controller
         $animeQuery = Comment::with(['episode.anime', 'user'])->latest();
         $animeTotal = $animeQuery->count();
         $animeComments = $animeQuery->skip(($page - 1) * $perPage)->take($perPage)->get()
-            ->map(fn($comment) => $this->mapAnimeComment($comment));
+            ->map(fn ($comment) => $this->mapAnimeComment($comment));
 
         $mangaQuery = MangaComment::with(['chapter.manga', 'user'])->latest();
         $mangaTotal = $mangaQuery->count();
         $mangaComments = $mangaQuery->skip(($page - 1) * $perPage)->take($perPage)->get()
-            ->map(fn($comment) => $this->mapMangaComment($comment));
+            ->map(fn ($comment) => $this->mapMangaComment($comment));
 
         $all = collect($animeComments)->merge($mangaComments)->sortByDesc('created_at');
 
@@ -47,7 +47,7 @@ class CommentController extends Controller
             'body' => $comment->body,
             'source' => $comment->episode->anime->title,
             'source_url' => route('watch', ['slug' => $comment->episode->anime->slug, 'ep' => $comment->episode->number]),
-            'episode' => 'Ep ' . $comment->episode->number,
+            'episode' => 'Ep '.$comment->episode->number,
             'created_at' => $comment->created_at,
         ];
     }
@@ -61,7 +61,7 @@ class CommentController extends Controller
             'body' => $comment->body,
             'source' => $comment->chapter->manga->title,
             'source_url' => route('manga.read', ['slug' => $comment->chapter->manga->slug, 'chapter' => $comment->chapter->number]),
-            'episode' => 'Ch. ' . rtrim(rtrim($comment->chapter->number, '0'), '.'),
+            'episode' => 'Ch. '.rtrim(rtrim($comment->chapter->number, '0'), '.'),
             'created_at' => $comment->created_at,
         ];
     }

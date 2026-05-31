@@ -20,7 +20,7 @@ class DashboardController extends Controller
 
     public function index()
     {
-        $stats = Cache::remember('admin_dashboard_stats', self::CACHE_TTL, fn() => [
+        $stats = Cache::remember('admin_dashboard_stats', self::CACHE_TTL, fn () => [
             'totalAnime' => Anime::count(),
             'totalEpisodes' => Episode::count(),
             'totalUsers' => User::count(),
@@ -32,61 +32,53 @@ class DashboardController extends Controller
             'totalViews' => Anime::sum('views') + Manga::sum('views'),
         ]);
 
-        $recentAnime = Cache::remember('admin_dashboard_recent_anime', self::CACHE_TTL, fn() =>
-            Anime::latest()->take(5)->get()
+        $recentAnime = Cache::remember('admin_dashboard_recent_anime', self::CACHE_TTL, fn () => Anime::latest()->take(5)->get()
         );
 
-        $recentEpisodes = Cache::remember('admin_dashboard_recent_episodes', self::CACHE_TTL / 2, fn() =>
-            Episode::with('anime:id,title,slug')->latest()->take(5)->get()
+        $recentEpisodes = Cache::remember('admin_dashboard_recent_episodes', self::CACHE_TTL / 2, fn () => Episode::with('anime:id,title,slug')->latest()->take(5)->get()
         );
 
-        $recentUsers = Cache::remember('admin_dashboard_recent_users', self::CACHE_TTL, fn() =>
-            User::latest()->take(5)->get()
+        $recentUsers = Cache::remember('admin_dashboard_recent_users', self::CACHE_TTL, fn () => User::latest()->take(5)->get()
         );
 
-        $userGrowth = Cache::remember('admin_dashboard_user_growth', self::CACHE_TTL, fn() =>
-            User::select(
-                DB::raw('YEAR(created_at) as year'),
-                DB::raw('MONTH(created_at) as month'),
-                DB::raw('COUNT(*) as count')
-            )
-                ->where('created_at', '>=', now()->subMonths(12))
-                ->groupBy('year', 'month')
-                ->orderBy('year')
-                ->orderBy('month')
-                ->get()
-                ->map(fn($item) => tap($item, fn($i) => $i->label = date('M Y', mktime(0, 0, 0, $i->month, 1, $i->year))))
+        $userGrowth = Cache::remember('admin_dashboard_user_growth', self::CACHE_TTL, fn () => User::select(
+            DB::raw('YEAR(created_at) as year'),
+            DB::raw('MONTH(created_at) as month'),
+            DB::raw('COUNT(*) as count')
+        )
+            ->where('created_at', '>=', now()->subMonths(12))
+            ->groupBy('year', 'month')
+            ->orderBy('year')
+            ->orderBy('month')
+            ->get()
+            ->map(fn ($item) => tap($item, fn ($i) => $i->label = date('M Y', mktime(0, 0, 0, $i->month, 1, $i->year))))
         );
 
-        $animeByType = Cache::remember('admin_dashboard_anime_by_type', self::CACHE_TTL, fn() =>
-            Anime::select('type', DB::raw('COUNT(*) as count'))
-                ->whereNotNull('type')
-                ->groupBy('type')
-                ->orderByDesc('count')
-                ->get()
-                ->pluck('count', 'type')
+        $animeByType = Cache::remember('admin_dashboard_anime_by_type', self::CACHE_TTL, fn () => Anime::select('type', DB::raw('COUNT(*) as count'))
+            ->whereNotNull('type')
+            ->groupBy('type')
+            ->orderByDesc('count')
+            ->get()
+            ->pluck('count', 'type')
         );
 
-        $animeByStatus = Cache::remember('admin_dashboard_anime_by_status', self::CACHE_TTL, fn() =>
-            Anime::select('status', DB::raw('COUNT(*) as count'))
-                ->whereNotNull('status')
-                ->groupBy('status')
-                ->orderByDesc('count')
-                ->get()
-                ->pluck('count', 'status')
+        $animeByStatus = Cache::remember('admin_dashboard_anime_by_status', self::CACHE_TTL, fn () => Anime::select('status', DB::raw('COUNT(*) as count'))
+            ->whereNotNull('status')
+            ->groupBy('status')
+            ->orderByDesc('count')
+            ->get()
+            ->pluck('count', 'status')
         );
 
-        $popularAnime = Cache::remember('admin_dashboard_popular_anime', self::CACHE_TTL, fn() =>
-            Anime::orderByDesc('views')->take(5)->get()
+        $popularAnime = Cache::remember('admin_dashboard_popular_anime', self::CACHE_TTL, fn () => Anime::orderByDesc('views')->take(5)->get()
         );
 
-        $reportsByType = Cache::remember('admin_dashboard_reports_by_type', self::CACHE_TTL, fn() =>
-            Report::select('issue_type', DB::raw('COUNT(*) as count'))
-                ->where('status', 'pending')
-                ->groupBy('issue_type')
-                ->orderByDesc('count')
-                ->get()
-                ->pluck('count', 'issue_type')
+        $reportsByType = Cache::remember('admin_dashboard_reports_by_type', self::CACHE_TTL, fn () => Report::select('issue_type', DB::raw('COUNT(*) as count'))
+            ->where('status', 'pending')
+            ->groupBy('issue_type')
+            ->orderByDesc('count')
+            ->get()
+            ->pluck('count', 'issue_type')
         );
 
         return view('admin.dashboard', $stats + compact(

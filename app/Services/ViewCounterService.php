@@ -27,6 +27,6 @@ class ViewCounterService
     {
         $class = $type ?? class_basename($model);
 
-        return self::SESSION_PREFIX . strtolower($class) . "_{$model->getKey()}";
+        return self::SESSION_PREFIX.strtolower($class)."_{$model->getKey()}";
     }
 }

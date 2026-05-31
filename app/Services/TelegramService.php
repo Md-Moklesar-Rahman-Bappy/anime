@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class TelegramService
 {
@@ -27,7 +27,7 @@ class TelegramService
             }
 
             // Use Python streamer to get message info for the preview
-            $streamService = new TelegramStreamService();
+            $streamService = new TelegramStreamService;
             $info = $streamService->getMessageInfo($parsed['message_id']);
 
             if (! $info) {
@@ -55,6 +55,7 @@ class TelegramService
             ];
         } catch (Exception $e) {
             Log::warning("Telegram resolveMessage failed: {$e->getMessage()}");
+
             return null;
         }
     }
@@ -88,6 +89,7 @@ class TelegramService
             ];
         } catch (Exception $e) {
             Log::warning("Telegram resolveFileId failed: {$e->getMessage()}");
+
             return null;
         }
     }
@@ -108,6 +110,7 @@ class TelegramService
             return $response['result'] ?? [];
         } catch (Exception $e) {
             Log::warning("Telegram getChannelUpdates failed: {$e->getMessage()}");
+
             return [];
         }
     }
@@ -187,4 +190,3 @@ class TelegramService
         ];
     }
 }
-

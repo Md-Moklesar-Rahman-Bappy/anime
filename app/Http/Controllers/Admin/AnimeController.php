@@ -7,7 +7,6 @@ use App\Http\Requests\Admin\StoreAnimeRequest;
 use App\Models\Anime;
 use App\Models\Genre;
 use App\Services\ContentCrudService;
-use Illuminate\Http\Request;
 
 class AnimeController extends Controller
 {
@@ -23,9 +22,9 @@ class AnimeController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhere('studio', 'like', "%{$search}%");
+                    ->orWhere('type', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('studio', 'like', "%{$search}%");
             });
         }
 

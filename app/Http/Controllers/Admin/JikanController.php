@@ -88,7 +88,7 @@ class JikanController extends Controller
                 ->with('error', $e->getMessage());
         } catch (\Exception $e) {
             return redirect()->route('admin.jikan.search')
-                ->with('error', 'Import failed: ' . $e->getMessage());
+                ->with('error', 'Import failed: '.$e->getMessage());
         }
 
         $action = $anime->wasRecentlyCreated ? 'Imported' : 'Updated';
@@ -118,7 +118,7 @@ class JikanController extends Controller
         } catch (JikanApiException $e) {
             return back()->with('error', $e->getMessage());
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to save episodes: ' . $e->getMessage());
+            return back()->with('error', 'Failed to save episodes: '.$e->getMessage());
         }
 
         $added = $newCount - $oldCount;
@@ -165,11 +165,13 @@ class JikanController extends Controller
 
                 if ($resumeMalId && $malId <= (int) $resumeMalId) {
                     $skipped++;
+
                     continue;
                 }
 
                 if (in_array($malId, $existingMalIds)) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -214,7 +216,7 @@ class JikanController extends Controller
         } catch (JikanApiException $e) {
             return back()->with('error', $e->getMessage());
         } catch (\Exception $e) {
-            return back()->with('error', 'Refresh failed: ' . $e->getMessage());
+            return back()->with('error', 'Refresh failed: '.$e->getMessage());
         }
 
         $added = $newEpCount - $oldEpCount;

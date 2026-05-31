@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AnimeController as AdminAnimeController;
+use App\Http\Controllers\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EpisodeController;
 use App\Http\Controllers\Admin\FeaturedController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\Admin\MangaChapterController;
 use App\Http\Controllers\Admin\MangaController as AdminMangaController;
 use App\Http\Controllers\Admin\MangaDashboardController;
 use App\Http\Controllers\Admin\MangaGenreController as AdminMangaGenreController;
-use App\Http\Controllers\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RequestController as AdminRequestController;
 use App\Http\Controllers\Admin\ScraperController;
@@ -33,7 +33,9 @@ use App\Http\Controllers\MangaRandomController;
 use App\Http\Controllers\MangaReaderController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RandomController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StaticController;
+use App\Http\Controllers\StreamProxyController;
 use App\Http\Controllers\TgStreamController;
 use App\Http\Controllers\WatchController;
 use Illuminate\Support\Facades\Route;
@@ -55,7 +57,7 @@ Route::middleware('auth')->group(function () {
 Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream')->middleware('throttle:stream');
 
 // Stream proxy for external server URLs
-Route::get('/stream/proxy', [\App\Http\Controllers\StreamProxyController::class, 'stream'])->name('stream.proxy')->middleware('throttle:stream');
+Route::get('/stream/proxy', [StreamProxyController::class, 'stream'])->name('stream.proxy')->middleware('throttle:stream');
 
 // Anime pages
 Route::get('/watch/{slug}', WatchController::class)->name('watch');
@@ -102,7 +104,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Sitemap
-Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index']);
+Route::get('/sitemap.xml', [SitemapController::class, 'index']);
 
 // Static pages
 Route::get('/faq', [StaticController::class, 'faq'])->name('faq');

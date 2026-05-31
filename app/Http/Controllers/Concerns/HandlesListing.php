@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Models\Anime;
+use App\Models\Chapter;
+use App\Models\Episode;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -22,7 +25,7 @@ trait HandlesListing
 
     protected function getCachedGenres()
     {
-        return Cache::remember($this->cachePrefix() . '_genres_list', 1800, fn() => ($this->genreClass())::all());
+        return Cache::remember($this->cachePrefix().'_genres_list', 1800, fn () => ($this->genreClass())::all());
     }
 
     protected function baseQuery(): Builder
@@ -51,10 +54,10 @@ trait HandlesListing
 
     public function updated()
     {
-        $recentIds = Cache::remember($this->cachePrefix() . '_recently_updated_ids', 300, function () {
+        $recentIds = Cache::remember($this->cachePrefix().'_recently_updated_ids', 300, function () {
             $class = $this->modelClass();
-            $foreignKey = $class === \App\Models\Anime::class ? 'anime_id' : 'manga_id';
-            $recentModel = $class === \App\Models\Anime::class ? \App\Models\Episode::class : \App\Models\Chapter::class;
+            $foreignKey = $class === Anime::class ? 'anime_id' : 'manga_id';
+            $recentModel = $class === Anime::class ? Episode::class : Chapter::class;
 
             return $recentModel::where('created_at', '>=', now()->subWeek())
                 ->distinct()

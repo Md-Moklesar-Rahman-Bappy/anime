@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 
 class CacheService
 {
     const DEFAULT_TTL = 300;
+
     const LONG_TTL = 1800;
 
     public function remember(string $key, int $ttl, callable $callback): mixed
@@ -26,19 +28,20 @@ class CacheService
 
     public function getGenres(string $modelClass): mixed
     {
-        $cacheKey = class_basename($modelClass) . '_genres_list';
-        return Cache::remember($cacheKey, self::LONG_TTL, fn() => $modelClass::all());
+        $cacheKey = class_basename($modelClass).'_genres_list';
+
+        return Cache::remember($cacheKey, self::LONG_TTL, fn () => $modelClass::all());
     }
 
     public function flushGenreCache(string $modelClass): void
     {
-        Cache::forget(class_basename($modelClass) . '_genres_list');
+        Cache::forget(class_basename($modelClass).'_genres_list');
     }
 
     public function getSetting(string $key): ?string
     {
         return Cache::remember("setting_{$key}", self::LONG_TTL, function () use ($key) {
-            return \App\Models\Setting::where('key', $key)->value('value');
+            return Setting::where('key', $key)->value('value');
         });
     }
 

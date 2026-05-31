@@ -14,7 +14,7 @@ class RandomController extends Controller
             ->limit(1)
             ->value('id');
 
-        abort_if(!$randomId, 404);
+        abort_if(! $randomId, 404);
 
         return redirect()->route('anime.detail', Anime::findOrFail($randomId)->slug);
     }

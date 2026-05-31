@@ -20,7 +20,7 @@ class CommentsController extends Controller
 
     public function destroy(Comment $comment)
     {
-        if (!auth()->user()->isSuperAdmin()) {
+        if (! auth()->user()->isSuperAdmin()) {
             abort(403);
         }
 

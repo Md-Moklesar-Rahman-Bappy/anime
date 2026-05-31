@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Models\Episode;
 use App\Models\Server;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class ServerBuilderService
 {
@@ -47,7 +45,7 @@ class ServerBuilderService
         Server::create([
             'episode_id' => $episode->id,
             'label' => 'Upload',
-            'url' => url('storage/' . $videoPath),
+            'url' => url('storage/'.$videoPath),
             'type' => $type,
             'language' => $language,
         ]);

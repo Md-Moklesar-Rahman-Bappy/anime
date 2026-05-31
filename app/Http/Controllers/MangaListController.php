@@ -58,9 +58,10 @@ class MangaListController extends Controller
     {
         if ($sort === 'chapters') {
             $query->orderBy('chapters_count', 'desc');
+
             return;
         }
-        \App\Http\Controllers\Concerns\HandlesListing::applySort($query, $sort);
+        HandlesListing::applySort($query, $sort);
     }
 
     public function filter(Request $request)
@@ -91,7 +92,7 @@ class MangaListController extends Controller
         if ($request->genres) {
             $genreSlugs = (array) $request->genres;
             $genreIds = MangaGenre::whereIn('slug', $genreSlugs)->pluck('id');
-            $query->whereHas('genres', fn($q) => $q->whereIn('manga_genre_relation.manga_genre_id', $genreIds));
+            $query->whereHas('genres', fn ($q) => $q->whereIn('manga_genre_relation.manga_genre_id', $genreIds));
         }
 
         $this->applySort($query, $request->sort);

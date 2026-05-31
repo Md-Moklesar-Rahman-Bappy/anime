@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Episode;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class ServerResolverService
@@ -24,10 +23,10 @@ class ServerResolverService
         $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
         $videoServers = $episode->servers->where('type', '!=', 'youtube');
         $hasServers = $videoServers->isNotEmpty();
-        $hasVideoPath = !empty($episode->video_path);
+        $hasVideoPath = ! empty($episode->video_path);
 
         $ytVideoId = null;
-        if ($hasVideoPath && !$youtubeServer) {
+        if ($hasVideoPath && ! $youtubeServer) {
             $ytVideoId = $this->youtube->extractVideoId($episode->video_path);
         }
 
@@ -50,7 +49,7 @@ class ServerResolverService
             );
         }
 
-        if (!$hasServers && $hasVideoPath && !$ytVideoId) {
+        if (! $hasServers && $hasVideoPath && ! $ytVideoId) {
             $videoSrc = str_starts_with($episode->video_path, 'http')
                 ? $this->resolveUrl($episode->video_path)
                 : Storage::url($episode->video_path);
@@ -72,7 +71,7 @@ class ServerResolverService
 
     private function resolveUrl(string $url): string
     {
-        if (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://')) {
+        if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
             return $url;
         }
 

@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TelegramStreamService
 {
@@ -15,8 +15,8 @@ class TelegramStreamService
     protected function runStreamer(array $args): ?string
     {
         $script = $this->streamerScript();
-        if (!file_exists($script)) {
-            throw new \RuntimeException('Streamer script not found: ' . $script);
+        if (! file_exists($script)) {
+            throw new \RuntimeException('Streamer script not found: '.$script);
         }
 
         $cmd = [
@@ -38,7 +38,7 @@ class TelegramStreamService
             $env
         );
 
-        if (!is_resource($process)) {
+        if (! is_resource($process)) {
             throw new \RuntimeException('Failed to start streamer process');
         }
 
@@ -50,7 +50,7 @@ class TelegramStreamService
         $exitCode = proc_close($process);
 
         if ($exitCode !== 0) {
-            throw new \RuntimeException('Streamer failed: ' . $error);
+            throw new \RuntimeException('Streamer failed: '.$error);
         }
 
         return $output;
@@ -75,7 +75,7 @@ class TelegramStreamService
     public function streamMessage(int $messageId, Request $request): StreamedResponse
     {
         $info = $this->getMessageInfo($messageId);
-        if (!$info) {
+        if (! $info) {
             abort(404, 'Message not found');
         }
 
@@ -121,8 +121,8 @@ class TelegramStreamService
     protected function streamMediaRange(int $messageId, int $offset, int $length): void
     {
         $script = $this->streamerScript();
-        if (!file_exists($script)) {
-            throw new \RuntimeException('Streamer script not found: ' . $script);
+        if (! file_exists($script)) {
+            throw new \RuntimeException('Streamer script not found: '.$script);
         }
 
         $cmd = [
@@ -147,11 +147,11 @@ class TelegramStreamService
             $env
         );
 
-        if (!is_resource($process)) {
+        if (! is_resource($process)) {
             throw new \RuntimeException('Failed to start streamer process');
         }
 
-        while (!feof($pipes[1])) {
+        while (! feof($pipes[1])) {
             $chunk = fread($pipes[1], 65536);
             if ($chunk === false) {
                 break;

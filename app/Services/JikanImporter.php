@@ -39,15 +39,11 @@ class JikanImporter
         $existingEpisodes = $anime->episodes()->get()->keyBy('number');
 
         foreach ($episodes as $ep) {
-            if ($ep['filler'] || $ep['recap']) {
-                continue;
-            }
-
             $existing = $existingEpisodes->get($ep['number']);
 
             if ($existing) {
                 $existing->update([
-                    'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                    'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                     'description' => $ep['synopsis'],
                     'thumbnail' => $ep['thumbnail'],
                     'air_date' => $ep['air_date'],
@@ -56,7 +52,7 @@ class JikanImporter
             } else {
                 $anime->episodes()->create([
                     'number' => $ep['number'],
-                    'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                    'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                     'description' => $ep['synopsis'],
                     'thumbnail' => $ep['thumbnail'],
                     'air_date' => $ep['air_date'],
@@ -77,16 +73,13 @@ class JikanImporter
 
         $newEpisodes = [];
         foreach ($episodes as $ep) {
-            if ($ep['filler'] || $ep['recap']) {
-                continue;
-            }
             if (in_array($ep['number'], $existingNumbers)) {
                 continue;
             }
             $newEpisodes[] = [
                 'anime_id' => $anime->id,
                 'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                 'description' => $ep['synopsis'],
                 'thumbnail' => $ep['thumbnail'],
                 'air_date' => $ep['air_date'],
@@ -109,10 +102,6 @@ class JikanImporter
     {
         $count = 0;
         foreach ($episodes as $ep) {
-            if ($ep['filler'] || $ep['recap']) {
-                continue;
-            }
-
             $existingEp = $anime->episodes()->where('number', $ep['number'])->first();
             if ($existingEp) {
                 continue;
@@ -120,7 +109,7 @@ class JikanImporter
 
             $anime->episodes()->create([
                 'number' => $ep['number'],
-                'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                'title' => $ep['title'] ?: 'Episode '.$ep['number'],
                 'description' => $ep['synopsis'],
                 'thumbnail' => $ep['thumbnail'],
                 'air_date' => $ep['air_date'],

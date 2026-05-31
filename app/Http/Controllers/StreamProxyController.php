@@ -33,12 +33,12 @@ class StreamProxyController extends Controller
     public function stream(Request $request)
     {
         $encoded = $request->query('url');
-        if (!$encoded) {
+        if (! $encoded) {
             abort(400, 'Missing url parameter');
         }
 
         $url = base64_decode($encoded, true);
-        if ($url === false || (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://'))) {
+        if ($url === false || (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://'))) {
             abort(400, 'Invalid url parameter');
         }
 
@@ -48,13 +48,13 @@ class StreamProxyController extends Controller
         $contentType = $this->mimeMap[$ext] ?? 'application/octet-stream';
 
         $responseHeaders = $this->getHeaders($url);
-        if (!$responseHeaders) {
+        if (! $responseHeaders) {
             abort(502, 'Could not reach upstream server');
         }
 
         $upstreamCode = (int) explode(' ', $responseHeaders[0])[1] ?? 500;
         if ($upstreamCode >= 400) {
-            abort(502, 'Upstream returned ' . $upstreamCode);
+            abort(502, 'Upstream returned '.$upstreamCode);
         }
 
         $upstreamContentType = $responseHeaders['Content-Type'] ?? null;
@@ -105,7 +105,7 @@ class StreamProxyController extends Controller
             $headers['Content-Range'] = "bytes $start-$end/$fileSize";
         }
 
-        return new StreamedResponse(function () use ($url, $start, $end, $length, $fileSize) {
+        return new StreamedResponse(function () use ($url, $start, $end, $length) {
             $ctx = stream_context_create([
                 'http' => [
                     'method' => 'GET',
@@ -115,12 +115,12 @@ class StreamProxyController extends Controller
             ]);
 
             $remote = @fopen($url, 'rb', false, $ctx);
-            if (!$remote) {
+            if (! $remote) {
                 return;
             }
 
             $bytesRemaining = $length > 0 ? $length : PHP_INT_MAX;
-            while ($bytesRemaining > 0 && !feof($remote)) {
+            while ($bytesRemaining > 0 && ! feof($remote)) {
                 $chunkSize = min(65536, $bytesRemaining);
                 $chunk = fread($remote, $chunkSize);
                 if ($chunk === false) {
@@ -145,7 +145,7 @@ class StreamProxyController extends Controller
         ]);
 
         $headers = @get_headers($url, true, $ctx);
+
         return $headers ?: null;
     }
-
 }

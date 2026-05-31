@@ -17,14 +17,14 @@ class AnimeImportService
             $genre = $allGenres->firstWhere('mal_id', $data['mal_id'])
                 ?? $allGenres->firstWhere('slug', $slug);
 
-            if (!$genre) {
+            if (! $genre) {
                 $genre = Genre::create([
                     'mal_id' => $data['mal_id'],
                     'name' => $data['name'],
                     'slug' => $slug,
                 ]);
                 $allGenres->push($genre);
-            } elseif (!$genre->mal_id) {
+            } elseif (! $genre->mal_id) {
                 $genre->update(['mal_id' => $data['mal_id']]);
             }
 
@@ -71,7 +71,7 @@ class AnimeImportService
         $counter = 1;
         $originalSlug = $slug;
         while (Anime::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter++;
+            $slug = $originalSlug.'-'.$counter++;
         }
 
         $anime = Anime::create([

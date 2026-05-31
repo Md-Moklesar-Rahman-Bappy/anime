@@ -37,8 +37,8 @@ class Anime extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn($anime) => cache()->forget("anime_genres_list"));
-        static::deleted(fn($anime) => cache()->forget("anime_genres_list"));
+        static::saved(fn ($anime) => cache()->forget('anime_genres_list'));
+        static::deleted(fn ($anime) => cache()->forget('anime_genres_list'));
     }
 
     public function getThumbnailUrlAttribute(): string

@@ -3,9 +3,8 @@
 namespace App\Services;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ContentCrudService
 {
@@ -59,13 +58,13 @@ class ContentCrudService
 
         if ($file = request()->file('thumbnail')) {
             $data['thumbnail'] = $file->store("{$lowerPrefix}/thumbnails", 'public');
-        } elseif ($existing && !isset($data['thumbnail'])) {
+        } elseif ($existing && ! isset($data['thumbnail'])) {
             $data['thumbnail'] = $existing->thumbnail;
         }
 
         if ($file = request()->file('banner')) {
             $data['banner'] = $file->store("{$lowerPrefix}/banners", 'public');
-        } elseif ($existing && !isset($data['banner'])) {
+        } elseif ($existing && ! isset($data['banner'])) {
             $data['banner'] = $existing->banner;
         }
 

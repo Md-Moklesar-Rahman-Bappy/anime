@@ -20,7 +20,7 @@ class MangaCommentsController extends Controller
 
     public function destroy(MangaComment $mangaComment)
     {
-        if (!auth()->user()->isSuperAdmin()) {
+        if (! auth()->user()->isSuperAdmin()) {
             abort(403);
         }
 
