@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\JikanApiException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -11,6 +12,8 @@ class JikanService
     protected string $baseUrl;
 
     protected int $timeout;
+
+    protected int $connectTimeout;
 
     protected int $retry;
 
@@ -21,9 +24,10 @@ class JikanService
     public function __construct()
     {
         $this->baseUrl = config('services.jikan.base_url', 'https://api.jikan.moe/v4');
-        $this->timeout = config('services.jikan.timeout', 15);
-        $this->retry = config('services.jikan.retry', 3);
-        $this->retryDelay = config('services.jikan.retry_delay', 100);
+        $this->timeout = config('services.jikan.timeout', 30);
+        $this->connectTimeout = config('services.jikan.connect_timeout', 15);
+        $this->retry = config('services.jikan.retry', 5);
+        $this->retryDelay = config('services.jikan.retry_delay', 200);
     }
 
     public function getPagination(): ?array
@@ -143,7 +147,8 @@ class JikanService
     {
         $response = Http::baseUrl($this->baseUrl)
             ->timeout($this->timeout)
-            ->retry($this->retry, $this->retryDelay * 10, fn ($e) => isset($e->response) && $e->response->status() >= 500)
+            ->connectTimeout($this->connectTimeout)
+            ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e instanceof ConnectionException || (isset($e->response) && $e->response->status() >= 500))
             ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
             ->acceptJson()
             ->get($endpoint, $params);
@@ -165,7 +170,8 @@ class JikanService
 
             $retryResponse = Http::baseUrl($this->baseUrl)
                 ->timeout($this->timeout)
-                ->retry($this->retry, $this->retryDelay * 10, fn ($e) => isset($e->response) && $e->response->status() >= 500)
+                ->connectTimeout($this->connectTimeout)
+                ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e instanceof ConnectionException || (isset($e->response) && $e->response->status() >= 500))
                 ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
                 ->acceptJson()
                 ->get($endpoint, $params);
