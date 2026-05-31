@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Genre;
+use App\Services\JikanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -39,5 +40,44 @@ class GenreController extends Controller
         $genre->delete();
 
         return redirect()->route('admin.genres.index')->with('success', 'Genre deleted.');
+    }
+
+    public function importFromMal(JikanService $jikan)
+    {
+        $malGenres = $jikan->getGenres();
+
+        if ($jikan->lastError) {
+            return back()->with('error', 'Failed to fetch genres from MAL: '.$jikan->lastError);
+        }
+
+        $created = 0;
+        $updated = 0;
+
+        foreach ($malGenres as $genreData) {
+            $slug = Str::slug($genreData['name']);
+            $genre = Genre::where('mal_id', $genreData['mal_id'])
+                ->orWhere('slug', $slug)
+                ->first();
+
+            if ($genre) {
+                if (! $genre->mal_id) {
+                    $genre->update([
+                        'mal_id' => $genreData['mal_id'],
+                        'name' => $genreData['name'],
+                    ]);
+                    $updated++;
+                }
+            } else {
+                Genre::create([
+                    'mal_id' => $genreData['mal_id'],
+                    'name' => $genreData['name'],
+                    'slug' => $slug,
+                ]);
+                $created++;
+            }
+        }
+
+        return redirect()->route('admin.genres.index')
+            ->with('success', "Imported genres from MAL. {$created} new, {$updated} updated.");
     }
 }

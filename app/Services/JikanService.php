@@ -47,14 +47,17 @@ class JikanService
             }
 
             if ($response->status() === 429) {
-                $retryAfter = (int) $response->header('Retry-After', 5);
-                sleep(min($retryAfter, 10));
+                $retryAfter = min((int) $response->header('Retry-After', 5), 10);
+                $this->lastError = "Rate limited. Retrying after {$retryAfter}s...";
+                sleep($retryAfter);
                 $response = Http::baseUrl($this->baseUrl)
                     ->timeout($this->timeout)
+                    ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
                     ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
                     ->acceptJson()
                     ->get($endpoint, $params);
                 if ($response->successful()) {
+                    $this->lastError = null;
                     return $response->json();
                 }
             }
@@ -72,7 +75,7 @@ class JikanService
 
     protected function rateLimit(): void
     {
-        usleep(350000);
+        usleep(1200000);
     }
 
     public function searchAnime(string $query, int $page = 1): Collection
@@ -160,6 +163,16 @@ class JikanService
         $this->lastPagination = $data['pagination'] ?? null;
 
         return collect($data['data'] ?? [])->map(fn ($item) => $this->mapAnime($item));
+    }
+
+    public function getGenres(): Collection
+    {
+        $data = $this->request('/genres/anime');
+
+        return collect($data['data'] ?? [])->map(fn ($item) => [
+            'mal_id' => $item['mal_id'],
+            'name' => $item['name'],
+        ]);
     }
 
     public function browsePagination(): ?array

@@ -71,7 +71,13 @@ class JikanController extends Controller
                 ->with('error', 'Anime not found on MyAnimeList.');
         }
 
+        $this->jikan->lastError = null;
         $episodes = $this->jikan->getAllEpisodes($malId);
+        if ($this->jikan->lastError) {
+            return redirect()->route('admin.jikan.search')
+                ->with('error', 'Failed to fetch episodes: '.$this->jikan->lastError);
+        }
+
         $alreadyImported = Anime::where('mal_id', $malId)->exists();
 
         return view('admin.jikan.preview', compact('anime', 'episodes', 'alreadyImported'));
@@ -91,7 +97,12 @@ class JikanController extends Controller
                 ->with('error', 'Failed to fetch anime data from MyAnimeList.');
         }
 
+        $this->jikan->lastError = null;
         $episodeData = $this->jikan->getAllEpisodes($malId);
+        if ($this->jikan->lastError) {
+            return redirect()->route('admin.jikan.search')
+                ->with('error', 'Failed to fetch episodes: '.$this->jikan->lastError);
+        }
 
         $genreIds = $this->importer->syncGenres($data['genres']);
         $anime = $this->importer->upsertAnime($data, $genreIds);
@@ -113,6 +124,7 @@ class JikanController extends Controller
                 ->with('error', 'Anime not found. Import it first from MAL Import.');
         }
 
+        $this->jikan->lastError = null;
         $count = $anime->episodes()->count();
         $episodeData = $this->jikan->getAllEpisodes($malId);
 
@@ -186,6 +198,41 @@ class JikanController extends Controller
 
         return redirect()->route('admin.jikan.search')
             ->with('success', "Dispatched {$dispatched} anime for import. {$skipped} skipped (already imported). Run `php artisan queue:work` to process the queue.");
+    }
+
+    public function refreshAnime(int $malId)
+    {
+        $anime = Anime::where('mal_id', $malId)->first();
+
+        if (! $anime) {
+            return redirect()->route('admin.jikan.search')
+                ->with('error', 'Anime not found. Import it first from MAL Import.');
+        }
+
+        $data = $this->jikan->getAnime($malId);
+        if ($this->jikan->lastError || ! $data) {
+            return back()->with('error', 'Failed to fetch anime data from MAL: '.($this->jikan->lastError ?: 'Unknown error'));
+        }
+
+        $episodeData = $this->jikan->getAllEpisodes($malId);
+        if ($this->jikan->lastError) {
+            return back()->with('error', 'Failed to fetch episodes: '.$this->jikan->lastError);
+        }
+
+        $oldEpCount = $anime->episodes()->count();
+
+        $genreIds = $this->importer->syncGenres($data['genres']);
+        $this->importer->upsertAnime($data, $genreIds);
+        $processed = $this->importer->upsertEpisodes($anime, $episodeData->toArray(), false, true);
+
+        $newEpCount = $anime->episodes()->count();
+        $anime->update(['episodes_count' => $newEpCount]);
+
+        $added = $newEpCount - $oldEpCount;
+        $updated = $processed - $added;
+
+        return redirect()->route('admin.anime.index')
+            ->with('success', "Refreshed \"{$anime->title}\" from MAL. {$added} new episodes, {$updated} updated. Total: {$newEpCount} episodes.");
     }
 
     public function resetProgress()

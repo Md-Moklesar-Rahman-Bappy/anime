@@ -127,6 +127,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
     Route::post('/genres', [AdminGenreController::class, 'store'])->name('genres.store');
     Route::put('/genres/{genre}', [AdminGenreController::class, 'update'])->name('genres.update');
     Route::delete('/genres/{genre}', [AdminGenreController::class, 'destroy'])->name('genres.destroy');
+    Route::post('/genres/import-from-mal', [AdminGenreController::class, 'importFromMal'])->name('genres.import-from-mal');
 
     // Manga admin
     Route::resource('manga', AdminMangaController::class);
@@ -167,6 +168,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:super_admin,ad
         Route::post('/import/{malId}', [JikanController::class, 'import'])->name('import');
         Route::post('/batch-import', [JikanController::class, 'batchImport'])->name('batch-import');
         Route::post('/refresh-episodes/{malId}', [JikanController::class, 'refreshEpisodes'])->name('refresh-episodes');
+        Route::post('/refresh-anime/{malId}', [JikanController::class, 'refreshAnime'])->name('refresh-anime');
         Route::post('/reset-progress', [JikanController::class, 'resetProgress'])->name('reset-progress');
     });
 
