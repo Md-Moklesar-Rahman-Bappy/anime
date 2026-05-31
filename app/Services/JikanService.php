@@ -143,7 +143,7 @@ class JikanService
     {
         $response = Http::baseUrl($this->baseUrl)
             ->timeout($this->timeout)
-            ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
+            ->retry($this->retry, $this->retryDelay * 10, fn ($e) => isset($e->response) && $e->response->status() >= 500)
             ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
             ->acceptJson()
             ->get($endpoint, $params);
@@ -165,7 +165,7 @@ class JikanService
 
             $retryResponse = Http::baseUrl($this->baseUrl)
                 ->timeout($this->timeout)
-                ->retry($this->retry, $this->retryDelay * 10, fn ($e) => $e->response && $e->response->status() >= 500)
+                ->retry($this->retry, $this->retryDelay * 10, fn ($e) => isset($e->response) && $e->response->status() >= 500)
                 ->withUserAgent('Mozilla/5.0 (compatible; AnimeCatalog/1.0)')
                 ->acceptJson()
                 ->get($endpoint, $params);
@@ -242,13 +242,28 @@ class JikanService
             'number' => $item['episode'] ?? $item['mal_id'],
             'title' => $item['title'] ?? null,
             'title_japanese' => $item['title_japanese'] ?? null,
-            'air_date' => $item['aired'] ?? null,
+            'air_date' => $this->parseAirDate($item['aired'] ?? null),
             'duration' => $this->parseDuration($item['duration'] ?? null),
             'thumbnail' => $images['image_url'] ?? null,
             'synopsis' => $item['synopsis'] ?? null,
             'filler' => $item['filler'] ?? false,
             'recap' => $item['recap'] ?? false,
         ];
+    }
+
+    protected function parseAirDate(?string $aired): ?string
+    {
+        if (! $aired) {
+            return null;
+        }
+
+        $date = preg_replace('/T\d{2}:\d{2}:\d{2}\+00:00$/', '', $aired);
+
+        if (! $date || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return null;
+        }
+
+        return $date;
     }
 
     protected function parseDuration(?string $duration): ?int
