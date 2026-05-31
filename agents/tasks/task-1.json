@@ -1,0 +1,10 @@
+{
+    "id":  1,
+    "assignee":  "backend",
+    "title":  "Test the agent system",
+    "description":  "Verify all agents work correctly",
+    "status":  "open",
+    "created":  "2026-05-31 13:35:24",
+    "priority":  "high",
+    "updated":  "2026-05-31 13:35:24"
+}
