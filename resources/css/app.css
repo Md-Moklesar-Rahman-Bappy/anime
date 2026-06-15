@@ -1,6 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
 
 [x-cloak] { display: none !important; }
 
@@ -40,7 +44,6 @@
     color: #7c3aed;
 }
 
-/* Aniwaves-style control bar */
 .player-control-bar {
     background: #111827;
     border-top: 1px solid #1f2937;
@@ -92,7 +95,6 @@
     font-weight: 500;
 }
 
-/* Server selector */
 .server-select {
     background: #1f2937;
     border: 1px solid #374151;
@@ -111,7 +113,6 @@
     box-shadow: 0 0 0 2px rgba(124,58,237,0.3);
 }
 
-/* Dropdown menus */
 .player-dropdown {
     position: absolute;
     bottom: 100%;
@@ -156,7 +157,6 @@
     justify-content: center;
 }
 
-/* Modal overlay */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -196,7 +196,6 @@
     color: #fff;
 }
 
-/* Utility */
 .plyr-wrapper {
     position: relative;
     background: #000;

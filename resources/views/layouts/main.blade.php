@@ -16,7 +16,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
-<body class="font-sans antialiased bg-gray-950 text-white">
+<body class="font-sans antialiased bg-[#0a0a0f] text-white">
     <div class="min-h-screen flex flex-col">
         @include('layouts.partials.header')
 

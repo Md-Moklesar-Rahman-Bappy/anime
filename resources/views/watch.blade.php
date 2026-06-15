@@ -182,7 +182,7 @@
                     <button type="submit" class="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Post Comment</button>
                 </form>
                 @else
-                <p class="text-gray-400 text-sm mb-4"><a href="{{ route('login') }}" class="text-purple-500 hover:text-purple-400">Login</a> to comment.</p>
+                <p class="text-gray-400 text-sm mb-4"><a href="{{ route('auth.login') }}" class="text-purple-500 hover:text-purple-400">Login</a> to comment.</p>
                 @endauth
                 <div class="space-y-4">
                     @foreach($comments as $comment)
@@ -266,7 +266,7 @@ window.PLAYER_PREV_URL = {{ $prevEpisode ? '"'.route('watch', ['slug' => $anime-
 window.PLAYER_ANIME_ID = {{ $anime->id }};
 window.PLAYER_EPISODE_ID = {{ $episode->id }};
 window.PLAYER_IS_AUTH = {{ auth()->check() ? 'true' : 'false' }};
-window.PLAYER_LOGIN_URL = '{{ route('login') }}';
+window.PLAYER_LOGIN_URL = '{{ route('auth.login') }}';
 window.PLAYER_SKIP_TIMES = @json($skipTimes);
 </script>
 @endpush
