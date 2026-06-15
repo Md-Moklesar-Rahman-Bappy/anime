@@ -33,9 +33,10 @@ return [
 
     'jikan' => [
         'base_url' => 'https://api.jikan.moe/v4',
-        'timeout' => 15,
-        'retry' => 3,
-        'retry_delay' => 100,
+        'timeout' => 30,
+        'connect_timeout' => 15,
+        'retry' => 5,
+        'retry_delay' => 200,
     ],
 
     'youtube' => [

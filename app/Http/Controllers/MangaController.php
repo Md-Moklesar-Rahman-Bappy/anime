@@ -3,39 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Manga;
-use Illuminate\Support\Facades\Cache;
+use App\Services\RelatedContentService;
+use App\Services\ViewCounterService;
 
 class MangaController extends Controller
 {
+    public function __construct(
+        protected ViewCounterService $viewCounter,
+        protected RelatedContentService $relatedContent,
+    ) {}
+
     public function __invoke($slug)
     {
         $manga = Manga::where('slug', $slug)
-            ->with(['genres', 'chapters' => function ($q) {
-                $q->orderBy('number', 'desc');
-            }])
+            ->with(['genres', 'chapters' => fn ($q) => $q->orderBy('number', 'desc')])
             ->firstOrFail();
 
-        $key = "manga_view_{$manga->id}";
-        if (! session()->has($key)) {
-            $manga->increment('views');
-            session()->put($key, true);
-        }
+        $this->viewCounter->increment($manga, 'manga');
 
-        $related = Cache::remember('related_manga_'.$manga->id, 600, function () use ($manga) {
-            $genreIds = $manga->genres->pluck('id')->toArray();
-            if (empty($genreIds)) {
-                return collect();
-            }
-            return Manga::whereHas('genres', function ($q) use ($genreIds) {
-                $q->whereIn('manga_genre_relation.manga_genre_id', $genreIds);
-            }, '>=', count($genreIds))
-                ->where('id', '!=', $manga->id)
-                ->orderBy('views', 'desc')
-                ->take(8)
-                ->get();
-        });
+        $related = $this->relatedContent->byGenres($manga, $manga->genres, 'genres');
 
-        $isFavorited = auth()->check() && $manga->favoritedBy()->where('user_id', auth()->id())->exists();
+        $isFavorited = auth()->check()
+            && $manga->favoritedBy()->where('user_id', auth()->id())->exists();
 
         return view('manga-detail', compact('manga', 'related', 'isFavorited'));
     }

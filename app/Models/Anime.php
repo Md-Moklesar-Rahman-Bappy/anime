@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\AssetUrlService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Anime extends Model
 {
@@ -35,21 +35,20 @@ class Anime extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(fn ($anime) => cache()->forget('anime_genres_list'));
+        static::deleted(fn ($anime) => cache()->forget('anime_genres_list'));
+    }
+
     public function getThumbnailUrlAttribute(): string
     {
-        if ($this->thumbnail) {
-            return str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail);
-        }
-
-        $letter = mb_substr($this->title ?? 'A', 0, 1);
-        return 'data:image/svg+xml,' . rawurlencode("<svg xmlns='http://www.w3.org/2000/svg' width='300' height='420'><rect fill='%23374151' width='300' height='420'/><text x='150' y='210' text-anchor='middle' dominant-baseline='central' fill='white' font-size='80' font-family='sans-serif'>{$letter}</text></svg>");
+        return app(AssetUrlService::class)->thumbnailUrl($this->thumbnail, $this->title ?? 'A');
     }
 
     public function getBannerUrlAttribute(): string
     {
-        return $this->banner
-            ? (str_starts_with($this->banner, 'http') ? $this->banner : Storage::url($this->banner))
-            : $this->thumbnail_url;
+        return app(AssetUrlService::class)->bannerUrl($this->banner, $this->thumbnail_url);
     }
 
     public function genres(): BelongsToMany

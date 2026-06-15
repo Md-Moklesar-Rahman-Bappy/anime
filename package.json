@@ -10,12 +10,13 @@
         "alpinejs": "^3.4.2",
         "autoprefixer": "^10.4.2",
         "axios": "^1.6.4",
-        "laravel-vite-plugin": "^1.0",
+        "laravel-vite-plugin": "^3.1",
         "postcss": "^8.4.31",
-        "tailwindcss": "^3.1.0",
-        "vite": "^5.0"
+        "tailwindcss": "^4.3.0",
+        "vite": "^8.0.14"
     },
     "dependencies": {
+        "chart.js": "^4.5.1",
         "plyr": "^3.8.4"
     }
 }

@@ -9,6 +9,14 @@ class Report extends Model
 {
     protected $fillable = ['episode_id', 'user_id', 'issue_type', 'description', 'status'];
 
+    protected function casts(): array
+    {
+        return [
+            'episode_id' => 'integer',
+            'user_id' => 'integer',
+        ];
+    }
+
     public function episode(): BelongsTo
     {
         return $this->belongsTo(Episode::class);

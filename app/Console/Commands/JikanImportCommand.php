@@ -27,6 +27,7 @@ class JikanImportCommand extends Command
     protected $description = 'Import anime from MyAnimeList via the Jikan API';
 
     protected JikanService $jikan;
+
     protected JikanImporter $importer;
 
     public function __construct(JikanService $jikan, JikanImporter $importer)

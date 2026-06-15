@@ -120,6 +120,15 @@
                         <img src="https://ui-avatars.com/api/?name={{ urlencode($comment->user->name) }}&background=7c3aed&color=fff" class="w-6 h-6 rounded-full" alt="">
                         <span class="text-sm text-gray-300">{{ $comment->user->name }}</span>
                         <span class="text-xs text-gray-600">{{ $comment->created_at->diffForHumans() }}</span>
+                        @auth
+                        @if(auth()->user()->isSuperAdmin())
+                        <form action="{{ route('manga.comments.destroy', $comment) }}" method="POST" class="ml-auto" onsubmit="return confirm('Delete this comment?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-xs text-red-500 hover:text-red-400">Delete</button>
+                        </form>
+                        @endif
+                        @endauth
                     </div>
                     <p class="text-sm text-gray-400">{{ $comment->body }}</p>
                 </div>

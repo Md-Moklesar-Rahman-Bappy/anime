@@ -42,7 +42,7 @@ A full-featured anime streaming website built with Laravel 11. Browse, search, f
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Md-Moklesar-Rahman-Bappy/anime.git
    cd anime
    ```
 

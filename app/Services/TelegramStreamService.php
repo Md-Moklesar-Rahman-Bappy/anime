@@ -2,67 +2,21 @@
 
 namespace App\Services;
 
-/**
- * Telegram Streaming Service
- *
- * Handles streaming of Telegram videos for files >20MB that cannot be downloaded
- * via the Telegram Bot API (which has a 20MB file size limit).
- *
- * Architecture:
- * - Uses Python 3 + Telethon (MTProto client) for streaming large files
- * - Communicates with Python script via proc_open() for each request
- * - Supports HTTP Range requests for seeking within videos
- *
- * Python Component:
- * - Location: storage/app/telegram/stream.py
- * - Usage:
- *   - `python stream.py info <message_id>` - Get file metadata as JSON
- *   - `python stream.py stream <message_id> <offset> <length>` - Stream byte range
- * - Session: Persisted at storage/app/telegram-session/telethon_session
- * - Libraries: telethon (installed via pip)
- *
- * Flow for Large Files (>20MB):
- * 1. Admin resolves t.me/aniwavebd/123 in episode form
- * 2. TelegramService.resolveMessage() calls TelegramStreamService.getMessageInfo()
- * 3. getMessageInfo() executes Python script: `python stream.py info 123`
- * 4. Python script uses Telethon to fetch message metadata from Telegram
- * 5. Form receives metadata, detects needs_streaming=true, shows large file notice
- * 6. Admin imports episode, Server.url is set to `/tg/123`
- * 7. Browser plays episode, Plyr requests `/tg/123`
- * 8. TgStreamController calls TelegramStreamService.streamMessage()
- * 9. streamMessage() parses HTTP Range header (if present for seeking)
- * 10. Executes Python script: `python stream.py stream 123 <offset> <length>`
- * 11. Python streams the requested byte range to browser via subprocess pipe
- *
- * Advantages:
- * - No PHP MTProto implementation needed (Python/Telethon handles protocol)
- * - No dependency on external APIs for large files
- * - Supports seeking via HTTP Range requests
- * - Session persisted across requests for fast reuse
- * - Memory efficient (streaming via pipes, not loading into memory)
- *
- * @package App\Services
- */
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TelegramStreamService
 {
-    /**
-     * Get the path to the Python streamer script.
-     */
     protected function streamerScript(): string
     {
         return storage_path('app/telegram/stream.py');
     }
 
-    /**
-     * Execute the Python streamer script with given arguments.
-     * Returns the output or null on error.
-     */
     protected function runStreamer(array $args): ?string
     {
         $script = $this->streamerScript();
         if (! file_exists($script)) {
-            throw new \RuntimeException('Streamer script not found: ' . $script);
+            throw new \RuntimeException('Streamer script not found: '.$script);
         }
 
         $cmd = [
@@ -71,7 +25,6 @@ class TelegramStreamService
             ...array_map('escapeshellarg', $args),
         ];
 
-        // Pass all environment variables to Python process
         $env = getenv();
 
         $process = proc_open(
@@ -97,15 +50,12 @@ class TelegramStreamService
         $exitCode = proc_close($process);
 
         if ($exitCode !== 0) {
-            throw new \RuntimeException('Streamer failed: ' . $error);
+            throw new \RuntimeException('Streamer failed: '.$error);
         }
 
         return $output;
     }
 
-    /**
-     * Get message metadata (file size, mime type, etc).
-     */
     public function getMessageInfo(int $messageId): ?array
     {
         try {
@@ -122,73 +72,57 @@ class TelegramStreamService
         }
     }
 
-    /**
-     * Stream a message's media to the current output buffer.
-     * Handles HTTP Range requests for seeking.
-     */
-    public function streamMessage(int $messageId): void
+    public function streamMessage(int $messageId, Request $request): StreamedResponse
     {
-        try {
-            set_time_limit(0);
+        $info = $this->getMessageInfo($messageId);
+        if (! $info) {
+            abort(404, 'Message not found');
+        }
 
-            // Get message info first
-            $info = $this->getMessageInfo($messageId);
-            if (! $info) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Message not found']);
+        $fileSize = $info['file_size'];
+        $mimeType = $info['mime_type'] ?? 'video/mp4';
 
-                return;
-            }
+        $start = 0;
+        $end = $fileSize - 1;
+        $statusCode = 200;
 
-            $fileSize = $info['file_size'];
-            $mimeType = $info['mime_type'] ?? 'video/mp4';
-
-            // Parse Range header if present
-            $start = 0;
-            $end = $fileSize - 1;
-            $statusCode = 200;
-
-            if (isset($_SERVER['HTTP_RANGE'])) {
-                if (preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches)) {
-                    $start = intval($matches[1]);
-                    $end = $matches[2] !== '' ? intval($matches[2]) : $fileSize - 1;
+        if ($request->header('Range')) {
+            if (preg_match('/bytes=(\d+)-(\d*)/', $request->header('Range'), $matches)) {
+                $start = intval($matches[1]);
+                $end = $matches[2] !== '' ? intval($matches[2]) : $fileSize - 1;
+                $start = min($start, $fileSize - 1);
+                $end = min($end, $fileSize - 1);
+                if ($start <= $end) {
                     $statusCode = 206;
                 }
             }
+        }
 
-            $length = $end - $start + 1;
+        $length = $end - $start + 1;
 
-            // Set response headers
-            header('Content-Type: ' . $mimeType);
-            header('Content-Length: ' . $length);
-            header('Accept-Ranges: bytes');
-            http_response_code($statusCode);
+        $headers = [
+            'Content-Type' => $mimeType,
+            'Content-Length' => $length,
+            'Accept-Ranges' => 'bytes',
+        ];
 
-            if ($statusCode === 206) {
-                header("Content-Range: bytes $start-$end/$fileSize");
-            }
+        if ($statusCode === 206) {
+            $headers['Content-Range'] = "bytes $start-$end/$fileSize";
+        }
 
-            // Clear output buffers
+        return new StreamedResponse(function () use ($messageId, $start, $length) {
             while (ob_get_level()) {
                 ob_end_clean();
             }
-
-            // Stream the file via Python subprocess
             $this->streamMediaRange($messageId, $start, $length);
-        } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
-        }
+        }, $statusCode, $headers);
     }
 
-    /**
-     * Stream a byte range of media via subprocess, directly to output.
-     */
     protected function streamMediaRange(int $messageId, int $offset, int $length): void
     {
         $script = $this->streamerScript();
         if (! file_exists($script)) {
-            throw new \RuntimeException('Streamer script not found: ' . $script);
+            throw new \RuntimeException('Streamer script not found: '.$script);
         }
 
         $cmd = [
@@ -200,7 +134,6 @@ class TelegramStreamService
             (string) $length,
         ];
 
-        // Pass all environment variables to Python process
         $env = getenv();
 
         $process = proc_open(
@@ -218,9 +151,8 @@ class TelegramStreamService
             throw new \RuntimeException('Failed to start streamer process');
         }
 
-        // Stream output directly to PHP's output buffer
         while (! feof($pipes[1])) {
-            $chunk = fread($pipes[1], 65536); // 64KB chunks
+            $chunk = fread($pipes[1], 65536);
             if ($chunk === false) {
                 break;
             }

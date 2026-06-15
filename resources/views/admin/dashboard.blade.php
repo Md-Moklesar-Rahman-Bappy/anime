@@ -56,13 +56,13 @@
             </div>
             <p class="text-2xl font-bold">{{ number_format($totalUsers) }}</p>
         </div>
-        <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+        <a href="{{ route('admin.comments.index') }}" class="bg-gray-900 rounded-lg p-4 border border-gray-800 hover:bg-gray-800 transition-colors block">
             <div class="flex items-center justify-between mb-2">
                 <p class="text-gray-400 text-xs uppercase tracking-wide">Comments</p>
                 <span class="text-cyan-500 text-lg">&#128172;</span>
             </div>
             <p class="text-2xl font-bold">{{ number_format($totalComments) }}</p>
-        </div>
+        </a>
         <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
             <div class="flex items-center justify-between mb-2">
                 <p class="text-gray-400 text-xs uppercase tracking-wide">Total Views</p>
@@ -121,9 +121,7 @@
                 @foreach($recentEpisodes as $episode)
                 <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition-colors">
                     <div class="w-12 h-7 rounded overflow-hidden bg-gray-800 flex-shrink-0">
-                        @if($episode->thumbnail)
                         <img src="{{ $episode->thumbnail_url }}" alt="" class="w-full h-full object-cover">
-                        @endif
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium truncate">{{ $episode->anime->title ?? 'Unknown' }}</p>
@@ -149,9 +147,7 @@
                 <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition-colors">
                     <span class="text-sm font-bold text-gray-500 w-5 flex-shrink-0">{{ $i + 1 }}</span>
                     <div class="w-10 h-14 rounded overflow-hidden bg-gray-800 flex-shrink-0">
-                        @if($anime->thumbnail)
                         <img src="{{ $anime->thumbnail_url }}" alt="" class="w-full h-full object-cover">
-                        @endif
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium truncate">{{ $anime->title }}</p>

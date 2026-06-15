@@ -4,10 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\ChapterBookmark;
 use App\Models\MangaFavorite;
+use App\Services\FavoriteService;
 use Illuminate\Http\Request;
 
 class MangaFavoritesController extends Controller
 {
+    protected array $categories = [
+        'reading' => 'Reading',
+        'completed' => 'Completed',
+        'plan_to_read' => 'Plan to Read',
+        'on_hold' => 'On Hold',
+        'dropped' => 'Dropped',
+    ];
+
+    public function __construct(
+        protected FavoriteService $favoriteService,
+    ) {}
+
     public function toggle(Request $request)
     {
         $data = $request->validate(['manga_id' => 'required|exists:manga,id']);
@@ -18,6 +31,7 @@ class MangaFavoritesController extends Controller
 
         if ($favorite) {
             $favorite->delete();
+
             return response()->json(['status' => 'removed']);
         }
 
