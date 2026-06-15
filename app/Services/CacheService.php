@@ -2,18 +2,32 @@
 
 namespace App\Services;
 
-use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class CacheService
 {
-    const DEFAULT_TTL = 300;
+    public const DEFAULT_TTL = 300;
+    public const LONG_TTL = 1800;
 
-    const LONG_TTL = 1800;
+    /*
+    |--------------------------------------------------------------------------
+    | Basic Cache Wrappers
+    |--------------------------------------------------------------------------
+    */
 
     public function remember(string $key, int $ttl, callable $callback): mixed
     {
-        return Cache::remember($key, $ttl, $callback);
+        try {
+            return Cache::remember($key, $ttl, $callback);
+        } catch (\Throwable $e) {
+            Log::error('Cache remember failed', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $callback(); // ✅ fallback
+        }
     }
 
     public function forget(string $key): void
@@ -21,39 +35,39 @@ class CacheService
         Cache::forget($key);
     }
 
-    public function forgetByPattern(string $prefix): void
+    /*
+    |--------------------------------------------------------------------------
+    | Grouped Cache (Better structure)
+    |--------------------------------------------------------------------------
+    */
+
+    public function rememberGroup(string $group, string $key, int $ttl, callable $callback): mixed
     {
-        Cache::forget($prefix);
+        return Cache::tags($group)->remember($key, $ttl, $callback);
     }
+
+    public function flushGroup(string $group): void
+    {
+        Cache::tags($group)->flush();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Genres
+    |--------------------------------------------------------------------------
+    */
 
     public function getGenres(string $modelClass): mixed
     {
-        $cacheKey = class_basename($modelClass).'_genres_list';
+        $cacheKey = class_basename($modelClass) . '_genres_list';
 
-        return Cache::remember($cacheKey, self::LONG_TTL, fn () => $modelClass::all());
+        return $this->remember($cacheKey, self::LONG_TTL, function () use ($modelClass) {
+            return $modelClass::all();
+        });
     }
 
     public function flushGenreCache(string $modelClass): void
     {
-        Cache::forget(class_basename($modelClass).'_genres_list');
-    }
-
-    public function getSetting(string $key): ?string
-    {
-        return Cache::remember("setting_{$key}", self::LONG_TTL, function () use ($key) {
-            return Setting::where('key', $key)->value('value');
-        });
-    }
-
-    public function flushSetting(string $key): void
-    {
-        Cache::forget("setting_{$key}");
-    }
-
-    public function flushSettings(): void
-    {
-        foreach (['setting_logo', 'setting_favicon', 'sitemap_urls'] as $key) {
-            Cache::forget($key);
-        }
+        $this->forget(class_basename($modelClass) . '_genres_list');
     }
 }

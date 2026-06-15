@@ -19,11 +19,62 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useTailwind();
 
-        RateLimiter::for('comments', fn ($request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
-        RateLimiter::for('reports', fn ($request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
-        RateLimiter::for('favorites', fn ($request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
-        RateLimiter::for('stream', fn (Request $request) => Limit::perMinute(30)->by($request->ip())->response(function () {
-            return response('Too many requests', 429);
-        }));
+        /*
+        |--------------------------------------------------------------------------
+        | Comment Rate Limiter
+        |--------------------------------------------------------------------------
+        */
+        RateLimiter::for('comments', function (Request $request) {
+            return Limit::perMinute(30)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Report Rate Limiter (stricter)
+        |--------------------------------------------------------------------------
+        */
+        RateLimiter::for('reports', function (Request $request) {
+            return Limit::perMinute(5) // ✅ reduced for safety
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Favorites Rate Limiter
+        |--------------------------------------------------------------------------
+        */
+        RateLimiter::for('favorites', function (Request $request) {
+            return Limit::perMinute(50)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Streaming Rate Limiter (CRITICAL)
+        |--------------------------------------------------------------------------
+        */
+        RateLimiter::for('stream', function (Request $request) {
+            return Limit::perMinute(30)
+                ->by($request->ip())
+                ->response(function () {
+                    return response('Too many streaming requests', 429);
+                });
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Global API Rate Limiter (IMPORTANT)
+        |--------------------------------------------------------------------------
+        */
+        RateLimiter::for('global', function (Request $request) {
+            return Limit::perMinute(120)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'error' => 'Too many requests',
+                    ], 429);
+                });
+        });
     }
 }

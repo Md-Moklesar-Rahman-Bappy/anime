@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Anime;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FeaturedController extends Controller
 {
@@ -15,39 +17,100 @@ class FeaturedController extends Controller
 
     public function update(Request $request)
     {
-        $ids = $request->input('featured_ids', []);
+        $ids = collect($request->input('featured_ids', []))
+            ->filter()
+            ->unique()
+            ->values();
 
-        Anime::where('featured', true)->update(['featured' => false, 'featured_order' => null]);
-
-        foreach ($ids as $order => $id) {
-            Anime::where('id', $id)->update(['featured' => true, 'featured_order' => $order + 1]);
+        if ($ids->isEmpty()) {
+            return back()->with('error', 'No anime selected.');
         }
 
-        return redirect()->route('admin.featured.index')->with('success', 'Featured slider updated!');
+        try {
+            DB::transaction(function () use ($ids) {
+                $this->resetFeatured();
+
+                foreach ($ids as $order => $id) {
+                    Anime::where('id', $id)->update([
+                        'featured' => true,
+                        'featured_order' => $order + 1,
+                    ]);
+                }
+            });
+
+            return redirect()
+                ->route('admin.featured.index')
+                ->with('success', 'Featured slider updated!');
+        } catch (\Throwable $e) {
+            Log::error('Featured update failed', [
+                'ids' => $ids,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to update featured slider.');
+        }
     }
 
     public function autoFill(Request $request)
     {
         $mode = $request->input('mode', 'recent');
+
         $count = min(max((int) $request->input('count', 5), 1), 20);
 
-        Anime::where('featured', true)->update(['featured' => false, 'featured_order' => null]);
+        try {
+            DB::transaction(function () use ($mode, $count) {
 
-        $query = match ($mode) {
-            'top_rated' => Anime::whereNotNull('rating')->orderBy('rating', 'desc'),
-            'most_viewed' => Anime::orderBy('views', 'desc'),
-            'recent' => Anime::latest(),
-            default => Anime::latest(),
-        };
+                $this->resetFeatured();
 
-        $anime = $query->take($count)->get();
+                $query = match ($mode) {
+                    'top_rated' => Anime::whereNotNull('rating')
+                        ->orderByDesc('rating'),
 
-        foreach ($anime as $order => $a) {
-            $a->update(['featured' => true, 'featured_order' => $order + 1]);
+                    'most_viewed' => Anime::orderByDesc('views'),
+
+                    'recent' => Anime::latest(),
+
+                    default => Anime::latest(),
+                };
+
+                $animeList = $query
+                    ->whereNotNull('thumbnail') // ✅ avoid broken UI
+                    ->take($count)
+                    ->get();
+
+                foreach ($animeList as $order => $anime) {
+                    $anime->update([
+                        'featured' => true,
+                        'featured_order' => $order + 1,
+                    ]);
+                }
+            });
+
+            $labels = [
+                'recent' => 'Recent Uploads',
+                'top_rated' => 'Top Rated',
+                'most_viewed' => 'Most Popular',
+            ];
+
+            return redirect()
+                ->route('admin.featured.index')
+                ->with('success', 'Featured slider auto-filled from ' . ($labels[$mode] ?? $mode) . '!');
+        } catch (\Throwable $e) {
+            Log::error('Featured autofill failed', [
+                'mode' => $mode,
+                'count' => $count,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Auto-fill failed.');
         }
+    }
 
-        $labels = ['recent' => 'Recent Uploads', 'top_rated' => 'Top Rated', 'most_viewed' => 'Most Popular'];
-
-        return redirect()->route('admin.featured.index')->with('success', 'Featured slider auto-filled from '.($labels[$mode] ?? $mode).'!');
+    protected function resetFeatured(): void
+    {
+        Anime::where('featured', true)->update([
+            'featured' => false,
+            'featured_order' => null,
+        ]);
     }
 }

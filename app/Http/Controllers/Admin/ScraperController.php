@@ -9,34 +9,39 @@ use App\Models\Server;
 use App\Services\TelegramService;
 use App\Services\YouTubeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ScraperController extends Controller
 {
-    protected YouTubeService $youtube;
-
-    protected TelegramService $telegram;
-
-    public function __construct(YouTubeService $youtube, TelegramService $telegram)
-    {
-        $this->youtube = $youtube;
-        $this->telegram = $telegram;
-    }
+    public function __construct(
+        protected YouTubeService $youtube,
+        protected TelegramService $telegram
+    ) {}
 
     public function youtubePreview(Request $request)
     {
         $data = $request->validate([
             'url' => 'required|url',
             'anime_id' => 'required|exists:anime,id',
-            'episode_number' => 'nullable|integer',
         ]);
 
-        $info = $this->youtube->getVideoInfo($data['url']);
+        try {
+            $info = $this->youtube->getVideoInfo($data['url']);
 
-        if (! $info) {
-            return response()->json(['error' => 'Could not fetch YouTube video info.'], 422);
+            if (!$info) {
+                return response()->json(['error' => 'Could not fetch video info.'], 422);
+            }
+
+            return response()->json($info);
+        } catch (\Throwable $e) {
+            Log::error('YouTube preview failed', [
+                'url' => $data['url'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'Preview failed.'], 500);
         }
-
-        return response()->json($info);
     }
 
     public function youtubeImport(Request $request)
@@ -44,67 +49,59 @@ class ScraperController extends Controller
         $data = $request->validate([
             'anime_id' => 'required|exists:anime,id',
             'video_id' => 'required|string',
-            'title' => 'nullable|string|max:255',
             'episode_number' => 'required|integer',
+            'title' => 'nullable|string|max:255',
             'duration' => 'nullable|integer|min:0',
             'thumbnail' => 'nullable|string',
         ]);
 
+        if (!auth()->check()) {
+            return back()->with('error', 'Authentication required.');
+        }
+
         $anime = Anime::findOrFail($data['anime_id']);
 
-        $existing = Episode::where('anime_id', $anime->id)
-            ->where('number', $data['episode_number'])
-            ->first();
-
-        if ($existing) {
-            return back()->with('error', "Episode {$data['episode_number']} already exists for this anime.");
+        if ($this->episodeExists($anime->id, $data['episode_number'])) {
+            return back()->with('error', "Episode already exists.");
         }
 
-        $episode = Episode::create([
-            'anime_id' => $anime->id,
-            'number' => $data['episode_number'],
-            'title' => $data['title'] ?? "Episode {$data['episode_number']}",
-            'source_type' => 'youtube',
-            'source_id' => $data['video_id'],
-            'source_url' => "https://www.youtube.com/watch?v={$data['video_id']}",
-            'duration' => $data['duration'],
-            'thumbnail' => $data['thumbnail'],
-            'has_sub' => false,
-            'has_dub' => false,
-            'created_by' => auth()->id(),
-        ]);
+        try {
+            DB::transaction(function () use ($data, $anime, &$episode) {
 
-        Server::create([
-            'episode_id' => $episode->id,
-            'label' => 'YouTube',
-            'url' => "https://www.youtube.com/embed/{$data['video_id']}",
-            'type' => 'youtube',
-            'language' => 'english',
-        ]);
+                $episode = Episode::create([
+                    'anime_id' => $anime->id,
+                    'number' => $data['episode_number'],
+                    'title' => $data['title'] ?? "Episode {$data['episode_number']}",
+                    'source_type' => 'youtube',
+                    'source_id' => $data['video_id'],
+                    'source_url' => "https://www.youtube.com/watch?v={$data['video_id']}",
+                    'duration' => $data['duration'],
+                    'thumbnail' => $data['thumbnail'] ?? null,
+                    'has_sub' => false,
+                    'has_dub' => false,
+                    'created_by' => auth()->id(),
+                ]);
 
-        return redirect()->route('admin.anime.episodes.index', $anime)
-            ->with('success', "Episode {$data['episode_number']} imported from YouTube.");
-    }
+                Server::create([
+                    'episode_id' => $episode->id,
+                    'label' => 'YouTube',
+                    'url' => "https://www.youtube.com/embed/{$data['video_id']}",
+                    'type' => 'youtube',
+                    'language' => 'english',
+                ]);
+            });
 
-    public function telegramPreview(Request $request)
-    {
-        $data = $request->validate([
-            'url' => 'required|string',
-        ]);
+            return redirect()
+                ->route('admin.anime.episodes.index', $anime)
+                ->with('success', 'YouTube episode imported.');
+        } catch (\Throwable $e) {
+            Log::error('YouTube import failed', [
+                'anime_id' => $anime->id,
+                'error' => $e->getMessage(),
+            ]);
 
-        $info = null;
-
-        if (preg_match('/^[a-zA-Z0-9_-]+$/', $data['url'])) {
-            $info = $this->telegram->resolveFileId($data['url']);
-        } else {
-            $info = $this->telegram->resolveMessage($data['url']);
+            return back()->with('error', 'Import failed.');
         }
-
-        if (! $info) {
-            return response()->json(['error' => 'Could not find video. Check the URL/file_id and try again.'], 422);
-        }
-
-        return response()->json($info);
     }
 
     public function telegramImport(Request $request)
@@ -113,54 +110,59 @@ class ScraperController extends Controller
             'anime_id' => 'required|exists:anime,id',
             'episode_number' => 'required|integer',
             'direct_url' => 'required|string',
-            'file_id' => 'nullable|string',
-            'file_size' => 'nullable|integer',
-            'duration' => 'nullable|integer',
-            'thumbnail' => 'nullable|string',
-            'type' => 'nullable|string',
-            'title' => 'nullable|string|max:255',
-            'language' => 'nullable|string|in:english,japanese,hindi',
         ]);
+
+        if (!auth()->check()) {
+            return back()->with('error', 'Authentication required.');
+        }
 
         $anime = Anime::findOrFail($data['anime_id']);
 
-        $existing = Episode::where('anime_id', $anime->id)
-            ->where('number', $data['episode_number'])
-            ->first();
-
-        if ($existing) {
-            return back()->with('error', "Episode {$data['episode_number']} already exists for this anime.");
+        if ($this->episodeExists($anime->id, $data['episode_number'])) {
+            return back()->with('error', "Episode already exists.");
         }
 
-        $language = $data['language'] ?? 'english';
+        try {
+            DB::transaction(function () use ($data, $anime, &$episode) {
 
-        $episode = Episode::create([
-            'anime_id' => $anime->id,
-            'number' => $data['episode_number'],
-            'title' => $data['title'] ?? "Episode {$data['episode_number']}",
-            'description' => null,
-            'video_path' => $data['direct_url'],
-            'storage_disk' => 'streaming',
-            'source_type' => 'telegram',
-            'source_id' => $data['file_id'],
-            'source_url' => $data['direct_url'],
-            'duration' => $data['duration'] ? (int) round($data['duration'] / 60) : null,
-            'thumbnail' => $data['thumbnail'],
-            'has_sub' => true,
-            'has_dub' => false,
-            'air_date' => null,
-            'created_by' => auth()->id(),
-        ]);
+                $episode = Episode::create([
+                    'anime_id' => $anime->id,
+                    'number' => $data['episode_number'],
+                    'title' => "Episode {$data['episode_number']}",
+                    'video_path' => $data['direct_url'],
+                    'storage_disk' => 'streaming',
+                    'source_type' => 'telegram',
+                    'source_url' => $data['direct_url'],
+                    'has_sub' => true,
+                    'created_by' => auth()->id(),
+                ]);
 
-        Server::create([
-            'episode_id' => $episode->id,
-            'label' => 'Telegram',
-            'url' => $data['direct_url'],
-            'type' => $data['type'] ?? 'mp4',
-            'language' => $language,
-        ]);
+                Server::create([
+                    'episode_id' => $episode->id,
+                    'label' => 'Telegram',
+                    'url' => $data['direct_url'],
+                    'type' => 'mp4',
+                    'language' => 'english',
+                ]);
+            });
 
-        return redirect()->route('admin.anime.episodes.index', $anime)
-            ->with('success', "Episode {$data['episode_number']} imported from Telegram.");
+            return redirect()
+                ->route('admin.anime.episodes.index', $anime)
+                ->with('success', 'Telegram episode imported.');
+        } catch (\Throwable $e) {
+            Log::error('Telegram import failed', [
+                'anime_id' => $anime->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Import failed.');
+        }
+    }
+
+    protected function episodeExists(int $animeId, int $number): bool
+    {
+        return Episode::where('anime_id', $animeId)
+            ->where('number', $number)
+            ->exists();
     }
 }

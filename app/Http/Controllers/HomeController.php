@@ -4,34 +4,96 @@ namespace App\Http\Controllers;
 
 use App\Models\Anime;
 use App\Models\Episode;
-use App\Services\CacheService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
 {
-    const CACHE_TTL = 300;
+    const TTL = 300;
+    const SHORT_TTL = 120;
 
-    public function __construct(
-        protected CacheService $cache,
-    ) {}
+    protected array $selectFields = [
+        'id', 'title', 'slug', 'thumbnail', 'banner',
+        'type', 'status', 'year', 'rating',
+        'age_rating', 'episodes_count', 'views', 'description'
+    ];
 
     public function index()
     {
-        $featured = Cache::remember('home_featured', self::CACHE_TTL, fn () => Anime::where('featured', true)->orderBy('featured_order')->take(5)->get()
-        );
+        try {
 
-        $latestEpisodes = Cache::remember('home_latest_episodes', self::CACHE_TTL / 2, fn () => Episode::with('anime:id,title,slug,thumbnail')->latest()->take(12)->get()
-        );
+            $data = Cache::remember('home_all', self::TTL, function () {
 
-        $newAnime = Cache::remember('home_new_anime', self::CACHE_TTL, fn () => Anime::latest()->take(10)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'episodes_count', 'views'])
-        );
+                $featured = Anime::where('featured', true)
+                    ->orderBy('featured_order')
+                    ->take(5)
+                    ->get();
 
-        $trending = Cache::remember('home_trending', self::CACHE_TTL, fn () => Anime::orderBy('views', 'desc')->take(10)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'episodes_count', 'views'])
-        );
+                $newAnime = Anime::with('genres')
+                    ->latest()
+                    ->take(10)
+                    ->get($this->selectFields);
 
-        $ongoing = Cache::remember('home_ongoing', self::CACHE_TTL, fn () => Anime::where('status', 'Ongoing')->latest()->take(8)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'episodes_count', 'views'])
-        );
+                $trending = Anime::orderByDesc('views')
+                    ->take(10)
+                    ->get($this->selectFields);
 
-        return view('home', compact('featured', 'latestEpisodes', 'newAnime', 'trending', 'ongoing'));
+                $ongoing = Anime::with('genres')
+                    ->where('status', 'Ongoing')
+                    ->latest()
+                    ->take(8)
+                    ->get($this->selectFields);
+
+                $upcoming = Anime::where('status', 'Not Yet Aired')
+                    ->latest()
+                    ->take(12)
+                    ->get($this->selectFields);
+
+                $completed = Anime::where('status', 'Completed')
+                    ->latest()
+                    ->take(5)
+                    ->get($this->selectFields);
+
+                return compact(
+                    'featured',
+                    'newAnime',
+                    'trending',
+                    'ongoing',
+                    'upcoming',
+                    'completed'
+                );
+            });
+
+            // ✅ Frequently changing data
+            $latestEpisodes = Cache::remember(
+                'home_latest_episodes',
+                self::SHORT_TTL,
+                fn () => Episode::with('anime:id,title,slug,thumbnail,type')
+                    ->latest()
+                    ->take(12)
+                    ->get()
+            );
+
+            return view('home', [
+                ...$data,
+                'latestEpisodes' => $latestEpisodes,
+            ]);
+
+        } catch (\Throwable $e) {
+
+            Log::error('Homepage load failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return view('home', [
+                'featured' => [],
+                'latestEpisodes' => [],
+                'newAnime' => [],
+                'trending' => [],
+                'ongoing' => [],
+                'upcoming' => [],
+                'completed' => [],
+            ]);
+        }
     }
 }

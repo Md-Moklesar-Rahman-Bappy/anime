@@ -7,35 +7,48 @@ use App\Models\Comment;
 use App\Models\MangaComment;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Log;
 
 class CommentController extends Controller
 {
     public function index()
     {
         $perPage = 20;
-        $page = Paginator::resolveCurrentPage('page');
+        $page = Paginator::resolveCurrentPage();
 
-        $animeQuery = Comment::with(['episode.anime', 'user'])->latest();
-        $animeTotal = $animeQuery->count();
-        $animeComments = $animeQuery->skip(($page - 1) * $perPage)->take($perPage)->get()
-            ->map(fn ($comment) => $this->mapAnimeComment($comment));
+        // ✅ Load MORE data before merging
+        $animeComments = Comment::with(['episode.anime', 'user'])
+            ->latest()
+            ->take(100)
+            ->get()
+            ->map(fn($c) => $this->mapAnimeComment($c));
 
-        $mangaQuery = MangaComment::with(['chapter.manga', 'user'])->latest();
-        $mangaTotal = $mangaQuery->count();
-        $mangaComments = $mangaQuery->skip(($page - 1) * $perPage)->take($perPage)->get()
-            ->map(fn ($comment) => $this->mapMangaComment($comment));
+        $mangaComments = MangaComment::with(['chapter.manga', 'user'])
+            ->latest()
+            ->take(100)
+            ->get()
+            ->map(fn($c) => $this->mapMangaComment($c));
 
-        $all = collect($animeComments)->merge($mangaComments)->sortByDesc('created_at');
+        // ✅ Merge + sort
+        $all = $animeComments
+            ->merge($mangaComments)
+            ->sortByDesc('created_at')
+            ->values();
 
-        $comments = new LengthAwarePaginator(
-            $all->forPage(1, $perPage),
-            $animeTotal + $mangaTotal,
+        $total = $all->count();
+
+        // ✅ Paginate AFTER merging
+        $paginated = new LengthAwarePaginator(
+            $all->forPage($page, $perPage),
+            $total,
             $perPage,
             $page,
-            ['path' => Paginator::resolveCurrentPath()]
+            ['path' => request()->url()]
         );
 
-        return view('admin.comments.index', compact('comments'));
+        return view('admin.comments.index', [
+            'comments' => $paginated,
+        ]);
     }
 
     protected function mapAnimeComment(Comment $comment): object
@@ -43,11 +56,13 @@ class CommentController extends Controller
         return (object) [
             'id' => $comment->id,
             'type' => 'anime',
-            'user_name' => $comment->user->name,
+            'user_name' => $comment->user?->name ?? 'Unknown',
             'body' => $comment->body,
-            'source' => $comment->episode->anime->title,
-            'source_url' => route('watch', ['slug' => $comment->episode->anime->slug, 'ep' => $comment->episode->number]),
-            'episode' => 'Ep '.$comment->episode->number,
+            'source' => $comment->episode?->anime?->title ?? 'Unknown',
+            'source_url' => route('watch', [
+                'slug' => $comment->episode?->anime?->slug ?? '#',
+            ]),
+            'episode' => 'Ep ' . ($comment->episode?->number ?? '?'),
             'created_at' => $comment->created_at,
         ];
     }
@@ -57,26 +72,40 @@ class CommentController extends Controller
         return (object) [
             'id' => $comment->id,
             'type' => 'manga',
-            'user_name' => $comment->user->name,
+            'user_name' => $comment->user?->name ?? 'Unknown',
             'body' => $comment->body,
-            'source' => $comment->chapter->manga->title,
-            'source_url' => route('manga.read', ['slug' => $comment->chapter->manga->slug, 'chapter' => $comment->chapter->number]),
-            'episode' => 'Ch. '.rtrim(rtrim($comment->chapter->number, '0'), '.'),
+            'source' => $comment->chapter?->manga?->title ?? 'Unknown',
+            'source_url' => route('manga.read', [
+                'slug' => $comment->chapter?->manga?->slug ?? '#',
+            ]),
+            'episode' => 'Ch. ' . rtrim(rtrim($comment->chapter?->number ?? '0', '0'), '.'),
             'created_at' => $comment->created_at,
         ];
     }
 
     public function destroyAnime(Comment $comment)
     {
-        $comment->delete();
+        try {
+            $comment->delete();
 
-        return back()->with('success', 'Anime comment deleted.');
+            return back()->with('success', 'Anime comment deleted.');
+        } catch (\Throwable $e) {
+            Log::error($e);
+
+            return back()->with('error', 'Delete failed.');
+        }
     }
 
     public function destroyManga(MangaComment $mangaComment)
     {
-        $mangaComment->delete();
+        try {
+            $mangaComment->delete();
 
-        return back()->with('success', 'Manga comment deleted.');
+            return back()->with('success', 'Manga comment deleted.');
+        } catch (\Throwable $e) {
+            Log::error($e);
+
+            return back()->with('error', 'Delete failed.');
+        }
     }
 }

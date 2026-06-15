@@ -3,149 +3,130 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StreamProxyController extends Controller
 {
+    protected array $allowedHosts = [
+        'youtube.com',
+        'googlevideo.com',
+        'cdn.example.com', // ✅ your CDN here
+    ];
+
     protected array $mimeMap = [
         'mp4' => 'video/mp4',
         'webm' => 'video/webm',
-        'mkv' => 'video/x-matroska',
         'm3u8' => 'application/x-mpegURL',
         'ts' => 'video/mp2t',
-        'avi' => 'video/x-msvideo',
-        'mov' => 'video/quicktime',
-        'wmv' => 'video/x-ms-wmv',
-        'flv' => 'video/x-flv',
-        'ogv' => 'video/ogg',
-        'mp3' => 'audio/mpeg',
-        'aac' => 'audio/aac',
-        'ogg' => 'audio/ogg',
-        'wav' => 'audio/wav',
-        'm4a' => 'audio/mp4',
-        'jpg' => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'png' => 'image/png',
-        'gif' => 'image/gif',
-        'webp' => 'image/webp',
     ];
 
     public function stream(Request $request)
     {
-        $encoded = $request->query('url');
-        if (! $encoded) {
-            abort(400, 'Missing url parameter');
-        }
+        try {
+            $encoded = $request->query('url');
 
-        $url = base64_decode($encoded, true);
-        if ($url === false || (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://'))) {
-            abort(400, 'Invalid url parameter');
-        }
+            if (!$encoded) {
+                abort(400, 'Missing URL');
+            }
 
-        set_time_limit(0);
+            $url = base64_decode($encoded, true);
 
-        $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
-        $contentType = $this->mimeMap[$ext] ?? 'application/octet-stream';
+            if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
+                abort(400, 'Invalid URL');
+            }
 
-        $responseHeaders = $this->getHeaders($url);
-        if (! $responseHeaders) {
-            abort(502, 'Could not reach upstream server');
-        }
+            // ✅ SECURITY: restrict domains
+            $host = parse_url($url, PHP_URL_HOST);
 
-        $upstreamCode = (int) explode(' ', $responseHeaders[0])[1] ?? 500;
-        if ($upstreamCode >= 400) {
-            abort(502, 'Upstream returned '.$upstreamCode);
-        }
+            if (!$this->isAllowedHost($host)) {
+                abort(403, 'Unauthorized host');
+            }
 
-        $upstreamContentType = $responseHeaders['Content-Type'] ?? null;
-        if (is_array($upstreamContentType)) {
-            $upstreamContentType = end($upstreamContentType);
-        }
-        if ($upstreamContentType && $upstreamContentType !== 'application/octet-stream') {
-            $contentType = $upstreamContentType;
-        }
+            set_time_limit(0);
 
-        $fileSize = $responseHeaders['Content-Length'] ?? 0;
-        if (is_array($fileSize)) {
-            $fileSize = end($fileSize);
-        }
-        $fileSize = (int) $fileSize;
+            $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+            $contentType = $this->mimeMap[$ext] ?? 'application/octet-stream';
 
-        $start = 0;
-        $end = $fileSize > 0 ? $fileSize - 1 : 0;
-        $statusCode = 200;
+            $headers = $this->getHeaders($url);
 
-        if ($request->header('Range') && $fileSize > 0) {
-            $range = $request->header('Range');
-            if (preg_match('/bytes=(\d+)-(\d*)/', $range, $matches)) {
-                $start = (int) $matches[1];
-                $end = $matches[2] !== '' ? (int) $matches[2] : $fileSize - 1;
-                $start = min($start, $fileSize - 1);
-                $end = min($end, $fileSize - 1);
-                if ($start <= $end) {
-                    $statusCode = 206;
+            if (!$headers) {
+                abort(502, 'Upstream unreachable');
+            }
+
+            $fileSize = (int) ($headers['Content-Length'] ?? 0);
+
+            $start = 0;
+            $end = $fileSize > 0 ? $fileSize - 1 : 0;
+            $status = 200;
+
+            if ($request->header('Range') && $fileSize > 0) {
+                if (preg_match('/bytes=(\d+)-(\d*)/', $request->header('Range'), $m)) {
+                    $start = (int) $m[1];
+                    $end = $m[2] !== '' ? (int) $m[2] : $fileSize - 1;
+                    $status = 206;
                 }
             }
-        }
 
-        $length = $fileSize > 0 ? $end - $start + 1 : 0;
+            return new StreamedResponse(function () use ($url, $start, $end) {
 
-        $headers = [
-            'Content-Type' => $contentType,
-            'Access-Control-Allow-Origin' => '*',
-            'Accept-Ranges' => 'bytes',
-            'Cache-Control' => 'no-cache, must-revalidate',
-        ];
+                $ctx = stream_context_create([
+                    'http' => [
+                        'method' => 'GET',
+                        'header' => "Range: bytes={$start}-{$end}\r\n",
+                        'timeout' => 60,
+                    ],
+                ]);
 
-        if ($fileSize > 0) {
-            $headers['Content-Length'] = $length;
-        }
+                $stream = @fopen($url, 'rb', false, $ctx);
 
-        if ($statusCode === 206 && $fileSize > 0) {
-            $headers['Content-Range'] = "bytes $start-$end/$fileSize";
-        }
+                if (!$stream) {
+                    return;
+                }
 
-        return new StreamedResponse(function () use ($url, $start, $end, $length) {
-            $ctx = stream_context_create([
-                'http' => [
-                    'method' => 'GET',
-                    'header' => "Range: bytes=$start-$end\r\n",
-                    'timeout' => 3600,
-                ],
+                while (!feof($stream)) {
+                    echo fread($stream, 65536);
+                    flush();
+                }
+
+                fclose($stream);
+
+            }, $status, [
+                'Content-Type' => $contentType,
+                'Accept-Ranges' => 'bytes',
+                'Access-Control-Allow-Origin' => '*',
             ]);
 
-            $remote = @fopen($url, 'rb', false, $ctx);
-            if (! $remote) {
-                return;
-            }
+        } catch (\Throwable $e) {
 
-            $bytesRemaining = $length > 0 ? $length : PHP_INT_MAX;
-            while ($bytesRemaining > 0 && ! feof($remote)) {
-                $chunkSize = min(65536, $bytesRemaining);
-                $chunk = fread($remote, $chunkSize);
-                if ($chunk === false) {
-                    break;
-                }
-                echo $chunk;
-                flush();
-                $bytesRemaining -= strlen($chunk);
-            }
+            Log::error('Stream proxy failed', [
+                'url' => $request->query('url'),
+                'error' => $e->getMessage(),
+            ]);
 
-            fclose($remote);
-        }, $statusCode, $headers);
+            abort(500, 'Streaming failed');
+        }
     }
 
     protected function getHeaders(string $url): ?array
     {
-        $ctx = stream_context_create([
-            'http' => [
-                'method' => 'HEAD',
-                'timeout' => 15,
-            ],
-        ]);
+        try {
+            return @get_headers($url, true);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
 
-        $headers = @get_headers($url, true, $ctx);
+    protected function isAllowedHost(?string $host): bool
+    {
+        if (!$host) return false;
 
-        return $headers ?: null;
+        foreach ($this->allowedHosts as $allowed) {
+            if (str_contains($host, $allowed)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

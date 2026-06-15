@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -25,27 +26,55 @@ class RegisteredUserController extends Controller
 
     /**
      * Handle an incoming registration request.
-     *
-     * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
+        // ✅ Validate input
+        $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                'unique:' . User::class,
+            ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        try {
+            // ✅ Create user safely
+            $user = User::create([
+                'name' => trim($validated['name']),
+                'email' => strtolower($validated['email']),
+                'password' => Hash::make($validated['password']),
+                'role' => 'user', // ✅ ensure default role
+            ]);
 
-        event(new Registered($user));
+            // ✅ Fire event (email verification etc.)
+            event(new Registered($user));
 
-        Auth::login($user);
+            // ✅ Login user
+            Auth::login($user);
 
-        return redirect(route('admin.dashboard', absolute: false));
+            // ✅ Optional: regenerate session for security
+            $request->session()->regenerate();
+
+            // ✅ Support redirect flow
+            return redirect()->intended(
+                route('admin.dashboard', absolute: false)
+            );
+
+        } catch (\Throwable $e) {
+            Log::error('User registration failed', [
+                'email' => $validated['email'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'email' => 'Registration failed. Please try again.',
+            ]);
+        }
     }
 }

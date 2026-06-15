@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\StoreAnimeRequest;
 use App\Models\Anime;
 use App\Models\Genre;
 use App\Services\ContentCrudService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AnimeController extends Controller
 {
@@ -14,23 +16,26 @@ class AnimeController extends Controller
         protected ContentCrudService $crud,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $search = request('search');
-        $query = Anime::latest('updated_at');
+        $search = $request->input('search');
+
+        $query = Anime::query()->latest('updated_at');
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('type', 'like', "%{$search}%")
-                    ->orWhere('status', 'like', "%{$search}%")
-                    ->orWhere('studio', 'like', "%{$search}%");
+            $safeSearch = '%' . addcslashes($search, '%_') . '%';
+
+            $query->where(function ($q) use ($safeSearch) {
+                $q->where('title', 'like', $safeSearch)
+                    ->orWhere('type', 'like', $safeSearch)
+                    ->orWhere('status', 'like', $safeSearch)
+                    ->orWhere('studio', 'like', $safeSearch);
             });
         }
 
         $animeList = $query->withCount('episodes')->paginate(20);
 
-        if (request()->wantsJson()) {
+        if ($request->wantsJson()) {
             return response()->json([
                 'html' => view('admin.anime._table', compact('animeList'))->render(),
                 'pagination' => view('admin.anime._pagination', compact('animeList'))->render(),
@@ -48,32 +53,75 @@ class AnimeController extends Controller
 
     public function create()
     {
-        return view('admin.anime.form', ['genres' => Genre::all()]);
+        $genres = Genre::select('id', 'name')->get();
+
+        return view('admin.anime.form', compact('genres'));
     }
 
     public function store(StoreAnimeRequest $request)
     {
-        $anime = $this->crud->create(Anime::class, $request->validated(), $request->genres, 'genres');
+        try {
+            $anime = $this->crud->create(
+                Anime::class,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        return redirect()->route('admin.anime.index')->with('success', 'Anime created successfully.');
+            return redirect()
+                ->route('admin.anime.index')
+                ->with('success', 'Anime created successfully.');
+        } catch (\Throwable $e) {
+            Log::error($e);
+
+            return back()->with('error', 'Failed to create anime.');
+        }
     }
 
     public function edit(Anime $anime)
     {
-        return view('admin.anime.form', ['anime' => $anime, 'genres' => Genre::all()]);
+        $anime->load('genres');
+        $genres = Genre::select('id', 'name')->get();
+
+        return view('admin.anime.form', compact('anime', 'genres'));
     }
 
     public function update(StoreAnimeRequest $request, Anime $anime)
     {
-        $this->crud->update($anime, $request->validated(), $request->genres, 'genres');
+        try {
+            $this->crud->update(
+                $anime,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        return redirect()->route('admin.anime.index')->with('success', 'Anime updated successfully.');
+            return redirect()
+                ->route('admin.anime.index')
+                ->with('success', 'Anime updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error($e);
+
+            return back()->with('error', 'Update failed.');
+        }
     }
 
-    public function destroy(Anime $anime)
+    public function destroy(Request $request, Anime $anime)
     {
-        $this->crud->delete($anime);
+        try {
+            $this->crud->delete($anime);
 
-        return redirect()->route('admin.anime.index')->with('success', 'Anime deleted.');
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()
+                ->route('admin.anime.index')
+                ->with('success', 'Anime deleted.');
+        } catch (\Throwable $e) {
+            Log::error($e);
+
+            return back()->with('error', 'Delete failed.');
+        }
     }
 }

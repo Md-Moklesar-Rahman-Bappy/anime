@@ -5,28 +5,70 @@ namespace App\Http\Controllers;
 use App\Models\Chapter;
 use App\Models\Manga;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class MangaHomeController extends Controller
 {
-    const CACHE_TTL = 300;
+    const TTL = 300;
+    const SHORT_TTL = 120;
+
+    protected array $fields = [
+        'id', 'title', 'slug', 'thumbnail',
+        'type', 'year', 'chapters_count', 'views'
+    ];
 
     public function index()
     {
-        $featured = Cache::remember('manga_home_featured', self::CACHE_TTL, fn () => Manga::where('featured', true)->orderBy('featured_order')->take(5)->get()
-        );
+        try {
+            $data = Cache::remember('manga_home_all', self::TTL, function () {
 
-        $trending = Cache::remember('manga_home_trending', self::CACHE_TTL, fn () => Manga::orderBy('views', 'desc')->take(12)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'chapters_count', 'views'])
-        );
+                $featured = Manga::where('featured', true)
+                    ->orderBy('featured_order')
+                    ->take(5)
+                    ->get();
 
-        $recentChapters = Cache::remember('manga_home_recent_chapters', self::CACHE_TTL / 2, fn () => Chapter::with('manga:id,title,slug,thumbnail')->latest()->take(24)->get()
-        );
+                $trending = Manga::orderByDesc('views')
+                    ->take(12)
+                    ->get($this->fields);
 
-        $newManga = Cache::remember('manga_home_new', self::CACHE_TTL, fn () => Manga::latest()->take(20)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'chapters_count', 'views'])
-        );
+                $newManga = Manga::with('genres')
+                    ->latest()
+                    ->take(20)
+                    ->get($this->fields);
 
-        $mostViewed = Cache::remember('manga_home_most_viewed', self::CACHE_TTL, fn () => Manga::orderBy('views', 'desc')->take(10)->get(['id', 'title', 'slug', 'thumbnail', 'type', 'year', 'chapters_count', 'views'])
-        );
+                return compact(
+                    'featured',
+                    'trending',
+                    'newManga'
+                );
+            });
 
-        return view('manga-home', compact('featured', 'trending', 'recentChapters', 'newManga', 'mostViewed'));
+            // ✅ frequently updated data
+            $recentChapters = Cache::remember(
+                'manga_home_recent_chapters',
+                self::SHORT_TTL,
+                fn () => Chapter::with('manga:id,title,slug,thumbnail')
+                    ->latest()
+                    ->take(24)
+                    ->get()
+            );
+
+            return view('manga-home', [
+                ...$data,
+                'recentChapters' => $recentChapters,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Manga homepage failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return view('manga-home', [
+                'featured' => [],
+                'trending' => [],
+                'newManga' => [],
+                'recentChapters' => [],
+            ]);
+        }
     }
 }

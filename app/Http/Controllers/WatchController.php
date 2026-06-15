@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Anime;
 use App\Models\Comment;
-use App\Models\Favorite;
 use App\Services\RelatedContentService;
 use App\Services\ServerResolverService;
 use App\Services\ViewCounterService;
+use Illuminate\Support\Facades\Log;
 
 class WatchController extends Controller
 {
@@ -17,61 +17,91 @@ class WatchController extends Controller
         protected ServerResolverService $serverResolver,
     ) {}
 
-    public function __invoke($slug)
+    public function __invoke(string $slug)
     {
-        $anime = $this->loadAnime($slug);
-        $this->viewCounter->increment($anime, 'anime');
+        try {
+            $user = auth()->user();
 
-        $episode = $this->resolveEpisode($anime);
-        $episode->load(['servers', 'skipTimes']);
+            // ✅ Load anime with optimized relations
+            $anime = Anime::where('slug', $slug)
+                ->with([
+                    'genres:id,name,slug',
+                    'episodes:id,anime_id,number,title,thumbnail,has_sub,has_dub'
+                ])
+                ->firstOrFail();
 
-        $isFavorited = false;
-        $favCategory = null;
+            $this->viewCounter->increment($anime, 'anime');
 
-        if (auth()->check()) {
-            $fav = Favorite::where('user_id', auth()->id())
-                ->where('anime_id', $anime->id)->first();
-            $isFavorited = (bool) $fav;
-            $favCategory = $fav?->category;
+            // ✅ Resolve episode
+            $epNumber = (int) request('ep');
+
+            $episode = $anime->episodes
+                ->firstWhere('number', $epNumber) ?? $anime->episodes->first();
+
+            if (!$episode) {
+                abort(404);
+            }
+
+            // ✅ Load episode relations
+            $episode->load(['servers', 'skipTimes']);
+
+            // ✅ Episode navigation (no extra queries)
+            $episodes = $anime->episodes->sortBy('number')->values();
+            $index = $episodes->search(fn ($e) => $e->id === $episode->id);
+
+            $prevEpisode = $episodes[$index - 1] ?? null;
+            $nextEpisode = $episodes[$index + 1] ?? null;
+
+            // ✅ Favorite state
+            $isFavorited = false;
+            $favCategory = null;
+
+            if ($user) {
+                $fav = $user->favorites()
+                    ->where('anime_id', $anime->id)
+                    ->first();
+
+                if ($fav) {
+                    $isFavorited = true;
+                    $favCategory = $fav->category;
+                }
+            }
+
+            // ✅ Server resolution
+            $serverData = $this->serverResolver->resolveAll($episode);
+
+            // ✅ Comments
+            $comments = Comment::with('user')
+                ->where('episode_id', $episode->id)
+                ->latest()
+                ->paginate(20);
+
+            // ✅ Related
+            $related = $this->relatedContent->byGenres(
+                $anime,
+                $anime->genres ?? collect(),
+                'genres'
+            );
+
+            return view('watch', array_merge([
+                'anime' => $anime,
+                'episode' => $episode,
+                'prevEpisode' => $prevEpisode,
+                'nextEpisode' => $nextEpisode,
+                'comments' => $comments,
+                'related' => $related,
+                'isFavorited' => $isFavorited,
+                'favCategory' => $favCategory,
+            ], $serverData));
+
+        } catch (\Throwable $e) {
+            Log::error('Watch page failed', [
+                'slug' => $slug,
+                'ep' => request('ep'),
+                'error' => $e->getMessage(),
+            ]);
+
+            abort(404, 'Video not found');
         }
-
-        $serverData = $this->serverResolver->resolveAll($episode);
-
-        return view('watch', array_merge([
-            'anime' => $anime,
-            'episode' => $episode,
-            'prevEpisode' => $this->getSiblingEpisode($anime, $episode, -1),
-            'nextEpisode' => $this->getSiblingEpisode($anime, $episode, 1),
-            'comments' => Comment::where('episode_id', $episode->id)
-                ->with('user')->latest()->paginate(20),
-            'related' => $this->relatedContent->byGenres($anime, $anime->genres, 'genres'),
-            'isFavorited' => $isFavorited,
-            'favCategory' => $favCategory,
-        ], $serverData));
-    }
-
-    protected function loadAnime(string $slug): Anime
-    {
-        return Anime::where('slug', $slug)
-            ->with(['genres'])
-            ->with(['episodes' => fn ($q) => $q->select('id', 'anime_id', 'number', 'title', 'thumbnail', 'has_sub', 'has_dub')
-                ->orderBy('number')])
-            ->firstOrFail();
-    }
-
-    protected function resolveEpisode(Anime $anime)
-    {
-        $episode = request('ep')
-            ? $anime->episodes->firstWhere('number', (int) request('ep'))
-            : $anime->episodes->first();
-
-        abort_if(! $episode, 404);
-
-        return $episode;
-    }
-
-    protected function getSiblingEpisode(Anime $anime, $episode, int $direction)
-    {
-        return $anime->episodes->where('number', $episode->number + $direction)->first();
     }
 }

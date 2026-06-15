@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 class YouTubeService
 {
@@ -13,28 +14,47 @@ class YouTubeService
         $this->apiKey = config('services.youtube.key', '');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Main Entry
+    |--------------------------------------------------------------------------
+    */
+
     public function getVideoInfo(string $url): ?array
     {
         $videoId = $this->extractVideoId($url);
-        if (! $videoId) {
+
+        if (!$videoId) {
             return null;
         }
 
-        $info = $this->viaOEmbed($videoId);
-        if (! $info) {
-            return null;
-        }
+        return Cache::remember("youtube_{$videoId}", 3600, function () use ($videoId) {
 
-        return $info;
+            // ✅ Try oEmbed first
+            $info = $this->viaOEmbed($videoId);
+
+            // ✅ fallback to API if needed
+            if (!$info && $this->apiKey) {
+                return $this->viaApi($videoId);
+            }
+
+            return $info;
+        });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Extract Video ID
+    |--------------------------------------------------------------------------
+    */
 
     public function extractVideoId(string $url): ?string
     {
         $patterns = [
-            '/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/',
-            '/youtu\.be\/([a-zA-Z0-9_-]+)/',
-            '/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/',
-            '/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/',
+            '/v=([a-zA-Z0-9_-]{11})/',
+            '/youtu\.be\/([a-zA-Z0-9_-]{11})/',
+            '/embed\/([a-zA-Z0-9_-]{11})/',
+            '/shorts\/([a-zA-Z0-9_-]{11})/',
         ];
 
         foreach ($patterns as $pattern) {
@@ -46,61 +66,118 @@ class YouTubeService
         return null;
     }
 
-    public function viaOEmbed(string $videoId): ?array
-    {
-        $url = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={$videoId}&format=json";
-        $response = Http::get($url);
+    /*
+    |--------------------------------------------------------------------------
+    | oEmbed
+    |--------------------------------------------------------------------------
+    */
 
-        if (! $response->successful()) {
+    protected function viaOEmbed(string $videoId): ?array
+    {
+        try {
+            $url = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={$videoId}&format=json";
+
+            $response = Http::timeout(5)
+                ->retry(2, 200)
+                ->get($url);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $data = $response->json();
+
+            return [
+                'id' => $videoId,
+                'title' => $data['title'] ?? null,
+                'author' => $data['author_name'] ?? null,
+                'thumbnail' => $data['thumbnail_url'] ?? null,
+                'duration' => $this->apiKey ? $this->fetchDuration($videoId) : null,
+                'embed_url' => "https://www.youtube.com/embed/{$videoId}",
+                'watch_url' => "https://www.youtube.com/watch?v={$videoId}",
+            ];
+
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Full API fallback
+    |--------------------------------------------------------------------------
+    */
+
+    protected function viaApi(string $videoId): ?array
+    {
+        try {
+            $url = "https://www.googleapis.com/youtube/v3/videos";
+
+            $response = Http::timeout(5)
+                ->retry(2, 200)
+                ->get($url, [
+                    'id' => $videoId,
+                    'part' => 'snippet,contentDetails',
+                    'key' => $this->apiKey,
+                ]);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $item = $response['items'][0] ?? null;
+
+            if (!$item) {
+                return null;
+            }
+
+            return [
+                'id' => $videoId,
+                'title' => $item['snippet']['title'] ?? null,
+                'author' => $item['snippet']['channelTitle'] ?? null,
+                'thumbnail' => $item['snippet']['thumbnails']['high']['url'] ?? null,
+                'duration' => $this->iso8601ToSeconds($item['contentDetails']['duration'] ?? null),
+                'embed_url' => "https://www.youtube.com/embed/{$videoId}",
+                'watch_url' => "https://www.youtube.com/watch?v={$videoId}",
+            ];
+
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duration Parser
+    |--------------------------------------------------------------------------
+    */
+
+    protected function iso8601ToSeconds(?string $iso): ?int
+    {
+        if (!$iso) {
             return null;
         }
 
-        $data = $response->json();
+        try {
+            $interval = new \DateInterval($iso);
 
-        $duration = null;
-        if ($this->apiKey) {
-            $duration = $this->fetchDuration($videoId);
+            return ($interval->h * 3600)
+                + ($interval->i * 60)
+                + $interval->s;
+
+        } catch (\Throwable) {
+            return null;
         }
-
-        return [
-            'id' => $videoId,
-            'title' => $data['title'] ?? null,
-            'author' => $data['author_name'] ?? null,
-            'author_url' => $data['author_url'] ?? null,
-            'thumbnail' => $data['thumbnail_url'] ?? null,
-            'duration' => $duration,
-            'embed_url' => "https://www.youtube.com/embed/{$videoId}",
-            'watch_url' => "https://www.youtube.com/watch?v={$videoId}",
-        ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duration via API
+    |--------------------------------------------------------------------------
+    */
 
     protected function fetchDuration(string $videoId): ?int
     {
-        if (! $this->apiKey) {
-            return null;
-        }
-
-        $url = "https://www.googleapis.com/youtube/v3/videos?id={$videoId}&part=contentDetails&key={$this->apiKey}";
-        $response = Http::get($url);
-
-        if (! $response->successful()) {
-            return null;
-        }
-
-        $data = $response->json();
-        $duration = $data['items'][0]['contentDetails']['duration'] ?? null;
-
-        if (! $duration) {
-            return null;
-        }
-
-        return $this->iso8601ToSeconds($duration);
-    }
-
-    protected function iso8601ToSeconds(string $iso): int
-    {
-        $interval = new \DateInterval($iso);
-
-        return ($interval->h * 3600) + ($interval->i * 60) + $interval->s;
+        return $this->viaApi($videoId)['duration'] ?? null;
     }
 }

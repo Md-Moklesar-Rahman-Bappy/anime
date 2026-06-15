@@ -6,6 +6,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
@@ -26,15 +27,34 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        try {
+            $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+            if (!$user) {
+                return Redirect::route('login')
+                    ->with('error', 'Authentication required.');
+            }
+
+            $user->fill($request->validated());
+
+            // ✅ If email changed → force re-verification
+            if ($user->isDirty('email')) {
+                $user->email_verified_at = null;
+            }
+
+            $user->save();
+
+            return Redirect::route('profile.edit')
+                ->with('status', 'profile-updated');
+
+        } catch (\Throwable $e) {
+            Log::error('Profile update failed', [
+                'user_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to update profile.');
         }
-
-        $request->user()->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
     /**
@@ -46,15 +66,40 @@ class ProfileController extends Controller
             'password' => ['required', 'current_password'],
         ]);
 
-        $user = $request->user();
+        try {
+            $user = $request->user();
 
-        Auth::logout();
+            if (!$user) {
+                return Redirect::route('login')
+                    ->with('error', 'Authentication required.');
+            }
 
-        $user->delete();
+            // ✅ Prevent deleting last super admin (important safety)
+            if (
+                $user->role === 'super_admin' &&
+                \App\Models\User::where('role', 'super_admin')->count() <= 1
+            ) {
+                return back()->with('error', 'Cannot delete the last super admin.');
+            }
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+            Auth::logout();
 
-        return Redirect::to('/');
+            $user->delete();
+
+            // ✅ Session security
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return Redirect::to('/')
+                ->with('success', 'Account deleted.');
+
+        } catch (\Throwable $e) {
+            Log::error('Account deletion failed', [
+                'user_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to delete account.');
+        }
     }
 }

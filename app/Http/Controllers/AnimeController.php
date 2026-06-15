@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\Favorite;
 use App\Services\RelatedContentService;
 use App\Services\ViewCounterService;
+use Illuminate\Support\Facades\Log;
 
 class AnimeController extends Controller
 {
@@ -14,22 +15,51 @@ class AnimeController extends Controller
         protected RelatedContentService $relatedContent,
     ) {}
 
-    public function __invoke($slug)
+    public function __invoke(string $slug)
     {
-        $anime = Anime::where('slug', $slug)
-            ->with(['genres', 'episodes' => fn ($q) => $q->orderBy('number')])
-            ->withCount('episodes')
-            ->firstOrFail();
+        try {
+            // ✅ Load anime with optimized relations
+            $anime = Anime::where('slug', $slug)
+                ->with([
+                    'genres:id,name,slug',
+                    'episodes' => fn ($q) => $q->orderBy('number')
+                ])
+                ->withCount('episodes')
+                ->firstOrFail();
 
-        $this->viewCounter->increment($anime, 'anime');
+            // ✅ Increment views safely
+            $this->viewCounter->increment($anime, 'anime');
 
-        $related = $this->relatedContent->byGenres($anime, $anime->genres, 'genres');
+            // ✅ Related content
+            $related = $this->relatedContent->byGenres(
+                $anime,
+                $anime->genres ?? collect(),
+                'genres'
+            );
 
-        $isFavorited = auth()->check()
-            && Favorite::where('user_id', auth()->id())
-                ->where('anime_id', $anime->id)
-                ->exists();
+            // ✅ Favorite check (cleaner)
+            $isFavorited = false;
 
-        return view('anime-detail', compact('anime', 'related', 'isFavorited'));
+            if (auth()->check()) {
+                $isFavorited = auth()->user()
+                    ->favorites()
+                    ->where('anime_id', $anime->id)
+                    ->exists();
+            }
+
+            return view('anime-detail', [
+                'anime' => $anime,
+                'related' => $related,
+                'isFavorited' => $isFavorited,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Anime detail load failed', [
+                'slug' => $slug,
+                'error' => $e->getMessage(),
+            ]);
+
+            abort(404, 'Anime not found.');
+        }
     }
 }

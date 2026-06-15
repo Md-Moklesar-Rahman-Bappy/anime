@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class Episode extends Model
@@ -30,14 +31,45 @@ class Episode extends Model
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Boot logic
+    |--------------------------------------------------------------------------
+    */
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => static::clearCache());
+        static::deleted(fn () => static::clearCache());
+    }
+
+    protected static function clearCache(): void
+    {
+        Cache::forget('home_latest_episodes');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors
+    |--------------------------------------------------------------------------
+    */
+
     public function getThumbnailUrlAttribute(): string
     {
         if ($this->thumbnail) {
-            return str_starts_with($this->thumbnail, 'http') ? $this->thumbnail : Storage::url($this->thumbnail);
+            return str_starts_with($this->thumbnail, 'http')
+                ? $this->thumbnail
+                : Storage::url($this->thumbnail);
         }
 
-        return $this->anime?->thumbnail_url ?? '';
+        return $this->anime?->thumbnail_url ?: '';
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
 
     public function anime(): BelongsTo
     {
@@ -62,5 +94,81 @@ class Episode extends Model
     public function skipTimes(): HasMany
     {
         return $this->hasMany(SkipTime::class);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('number');
+    }
+
+    public function scopeLatest($query)
+    {
+        return $query->orderByDesc('created_at');
+    }
+
+    public function scopeForAnime($query, int $animeId)
+    {
+        return $query->where('anime_id', $animeId);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Navigation Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function previous()
+    {
+        return static::where('anime_id', $this->anime_id)
+            ->where('number', '<', $this->number)
+            ->orderByDesc('number')
+            ->first();
+    }
+
+    public function next()
+    {
+        return static::where('anime_id', $this->anime_id)
+            ->where('number', '>', $this->number)
+            ->orderBy('number')
+            ->first();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Source Helpers (VERY IMPORTANT)
+    |--------------------------------------------------------------------------
+    */
+
+    public function isYouTube(): bool
+    {
+        return $this->source_type === 'youtube';
+    }
+
+    public function isTelegram(): bool
+    {
+        return $this->source_type === 'telegram';
+    }
+
+    public function isUpload(): bool
+    {
+        return $this->source_type === 'upload';
+    }
+
+    public function isExternal(): bool
+    {
+        return $this->source_type === 'external';
+    }
+
+    public function hasVideo(): bool
+    {
+        return !empty($this->video_path)
+            || !empty($this->source_url)
+            || !empty($this->source_id);
     }
 }

@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\StoreMangaRequest;
 use App\Models\Manga;
 use App\Models\MangaGenre;
 use App\Services\ContentCrudService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MangaController extends Controller
 {
@@ -14,39 +16,109 @@ class MangaController extends Controller
         protected ContentCrudService $crud,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        return view('admin.manga.index', ['mangaList' => Manga::latest()->paginate(20)]);
+        $query = Manga::query()->latest('updated_at');
+
+        $mangaList = $query
+            ->with('genres')
+            ->paginate(20);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'html' => view('admin.manga._table', compact('mangaList'))->render(),
+                'pagination' => view('admin.manga._pagination', compact('mangaList'))->render(),
+                'total' => $mangaList->total(),
+            ]);
+        }
+
+        return view('admin.manga.index', compact('mangaList'));
     }
 
     public function create()
     {
-        return view('admin.manga.form', ['genres' => MangaGenre::all()]);
+        $genres = MangaGenre::select('id', 'name')->get();
+
+        return view('admin.manga.form', compact('genres'));
     }
 
     public function store(StoreMangaRequest $request)
     {
-        $this->crud->create(Manga::class, $request->validated(), $request->genres, 'genres');
+        try {
+            $this->crud->create(
+                Manga::class,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        return redirect()->route('admin.manga.index')->with('success', 'Manga created successfully.');
+            return redirect()
+                ->route('admin.manga.index')
+                ->with('success', 'Manga created successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Manga create failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create manga.');
+        }
     }
 
     public function edit(Manga $manga)
     {
-        return view('admin.manga.form', ['manga' => $manga, 'genres' => MangaGenre::all()]);
+        $manga->load('genres');
+
+        $genres = MangaGenre::select('id', 'name')->get();
+
+        return view('admin.manga.form', compact('manga', 'genres'));
     }
 
     public function update(StoreMangaRequest $request, Manga $manga)
     {
-        $this->crud->update($manga, $request->validated(), $request->genres, 'genres');
+        try {
+            $this->crud->update(
+                $manga,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        return redirect()->route('admin.manga.index')->with('success', 'Manga updated successfully.');
+            return redirect()
+                ->route('admin.manga.index')
+                ->with('success', 'Manga updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Manga update failed', [
+                'manga_id' => $manga->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to update manga.');
+        }
     }
 
-    public function destroy(Manga $manga)
+    public function destroy(Request $request, Manga $manga)
     {
-        $this->crud->delete($manga);
+        try {
+            $this->crud->delete($manga);
 
-        return redirect()->route('admin.manga.index')->with('success', 'Manga deleted.');
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()
+                ->route('admin.manga.index')
+                ->with('success', 'Manga deleted.');
+        } catch (\Throwable $e) {
+            Log::error('Manga delete failed', [
+                'manga_id' => $manga->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Delete failed.');
+        }
     }
 }

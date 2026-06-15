@@ -7,6 +7,8 @@ use App\Models\Setting;
 use App\Services\JikanImporter;
 use App\Services\JikanService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class JikanImportCommand extends Command
 {
@@ -22,12 +24,12 @@ class JikanImportCommand extends Command
         {--all : Import all anime from Jikan (paginated, resumable)}
         {--episodes : Also fetch episodes when using --all}
         {--batch=100 : Number of anime per batch when using --all}
+        {--force : Skip confirmation prompts}
         {--dry-run : Preview what would be imported without saving}';
 
     protected $description = 'Import anime from MyAnimeList via the Jikan API';
 
     protected JikanService $jikan;
-
     protected JikanImporter $importer;
 
     public function __construct(JikanService $jikan, JikanImporter $importer)
@@ -39,34 +41,40 @@ class JikanImportCommand extends Command
 
     public function handle(): int
     {
-        if ($this->option('all')) {
-            return $this->importAll();
+        try {
+            if ($this->option('all')) {
+                return $this->importAll();
+            }
+
+            if ($this->option('top')) {
+                return $this->importTop();
+            }
+
+            if ($this->option('seasonal')) {
+                return $this->importSeasonal();
+            }
+
+            if ($malId = $this->option('mal-id')) {
+                return $this->importById((int) $malId);
+            }
+
+            if ($query = $this->argument('query')) {
+                return $this->searchAndImport($query);
+            }
+
+            $this->error('Provide a query, --mal-id, --top, --seasonal, or --all.');
+            return Command::FAILURE;
+        } catch (Throwable $e) {
+            $this->error('Import failed: ' . $e->getMessage());
+            report($e);
+
+            return Command::FAILURE;
         }
-
-        if ($this->option('top')) {
-            return $this->importTop();
-        }
-
-        if ($this->option('seasonal')) {
-            return $this->importSeasonal();
-        }
-
-        if ($malId = $this->option('mal-id')) {
-            return $this->importById((int) $malId);
-        }
-
-        if ($query = $this->argument('query')) {
-            return $this->searchAndImport($query);
-        }
-
-        $this->error('Provide a query, --mal-id, --top, --seasonal, or --all.');
-
-        return Command::FAILURE;
     }
 
     protected function importAll(): int
     {
-        $batchSize = (int) $this->option('batch');
+        $batchSize = max(1, (int) $this->option('batch'));
         $fetchEpisodes = (bool) $this->option('episodes');
 
         $resumeMalId = Setting::where('key', 'jikan_last_mal_id')->value('value');
@@ -81,7 +89,6 @@ class JikanImportCommand extends Command
         $imported = 0;
         $skipped = 0;
         $page = $startPage;
-        $pastResumePoint = ! $resumeMalId;
 
         while (true) {
             $results = $this->jikan->browseAnime($page);
@@ -92,36 +99,37 @@ class JikanImportCommand extends Command
             }
 
             foreach ($results as $data) {
-                $malId = $data['mal_id'];
+                $malId = (int) $data['mal_id'];
 
                 if ($resumeMalId && $malId <= (int) $resumeMalId) {
                     $skipped++;
-
                     continue;
                 }
 
-                $pastResumePoint = true;
-
                 if (Anime::where('mal_id', $malId)->exists()) {
                     $skipped++;
-
                     continue;
                 }
 
                 if ($this->option('dry-run')) {
                     $this->line("[DRY-RUN] Would import: {$data['title']} (MAL #{$malId})");
                     $imported++;
-                    Setting::updateOrCreate(['key' => 'jikan_last_mal_id'], ['value' => $malId]);
-
                     continue;
                 }
 
                 $this->line("Importing: {$data['title']} (MAL #{$malId})...");
 
-                $episodes = $fetchEpisodes ? $this->jikan->getAllEpisodes($malId) : collect();
+                $episodes = $fetchEpisodes
+                    ? $this->jikan->getAllEpisodes($malId)
+                    : collect();
+
                 $this->importAnime($data, $episodes);
 
-                Setting::updateOrCreate(['key' => 'jikan_last_mal_id'], ['value' => $malId]);
+                Setting::updateOrCreate(
+                    ['key' => 'jikan_last_mal_id'],
+                    ['value' => $malId]
+                );
+
                 $imported++;
 
                 if ($imported >= $batchSize) {
@@ -133,7 +141,8 @@ class JikanImportCommand extends Command
             }
 
             $pagination = $this->jikan->browsePagination($page + 1);
-            if (! ($pagination['has_next_page'] ?? false)) {
+
+            if (!($pagination['has_next_page'] ?? false)) {
                 $this->info('All pages imported!');
                 break;
             }
@@ -141,8 +150,11 @@ class JikanImportCommand extends Command
             $page++;
         }
 
-        Setting::where('key', 'jikan_last_mal_id')->delete();
-        $this->info("Done! Imported: {$imported}, Skipped (already exist): {$skipped}");
+        if (!$this->option('dry-run')) {
+            Setting::where('key', 'jikan_last_mal_id')->delete();
+        }
+
+        $this->info("Done! Imported: {$imported}, Skipped: {$skipped}");
 
         return Command::SUCCESS;
     }
@@ -151,16 +163,14 @@ class JikanImportCommand extends Command
     {
         if (Anime::where('mal_id', $malId)->exists()) {
             $this->warn("MAL ID {$malId} is already imported.");
-
-            return Command::FAILURE;
+            return Command::SUCCESS;
         }
 
         $this->info("Fetching MAL ID {$malId}...");
         $data = $this->jikan->getAnime($malId);
 
-        if (! $data) {
+        if (!$data) {
             $this->error("Anime with MAL ID {$malId} not found.");
-
             return Command::FAILURE;
         }
 
@@ -168,8 +178,7 @@ class JikanImportCommand extends Command
         $this->line("Found: {$data['title']} ({$data['episodes_count']} eps)");
 
         if ($this->option('dry-run')) {
-            $this->line('Dry-run: would import this anime.');
-
+            $this->line("[DRY-RUN] Would import: {$data['title']}");
             return Command::SUCCESS;
         }
 
@@ -185,7 +194,6 @@ class JikanImportCommand extends Command
 
         if ($results->isEmpty()) {
             $this->error("No results for \"{$query}\".");
-
             return Command::FAILURE;
         }
 
@@ -193,20 +201,21 @@ class JikanImportCommand extends Command
 
         if (Anime::where('mal_id', $first['mal_id'])->exists()) {
             $this->warn("\"{$first['title']}\" is already imported.");
-
-            return Command::FAILURE;
+            return Command::SUCCESS;
         }
 
         $this->line("Found: {$first['title']} (MAL ID: {$first['mal_id']}, {$first['episodes_count']} eps)");
 
         if ($this->option('dry-run')) {
-            $this->line('Dry-run: would import this anime.');
-
+            $this->line("[DRY-RUN] Would import: {$first['title']}");
             return Command::SUCCESS;
         }
 
-        if (! $this->confirm("Import \"{$first['title']}\"?", true)) {
-            return Command::FAILURE;
+        if (!$this->option('force') && $this->input->isInteractive()) {
+            if (!$this->confirm("Import \"{$first['title']}\"?", true)) {
+                $this->warn('Import cancelled.');
+                return Command::SUCCESS;
+            }
         }
 
         $episodes = $this->jikan->getAllEpisodes($first['mal_id']);
@@ -217,7 +226,7 @@ class JikanImportCommand extends Command
 
     protected function importTop(): int
     {
-        $limit = (int) $this->option('limit');
+        $limit = max(1, (int) $this->option('limit'));
         $filter = $this->option('filter');
 
         $this->info("Fetching top {$limit} anime (filter: {$filter})...");
@@ -225,7 +234,6 @@ class JikanImportCommand extends Command
 
         if ($results->isEmpty()) {
             $this->error('No results.');
-
             return Command::FAILURE;
         }
 
@@ -238,7 +246,6 @@ class JikanImportCommand extends Command
             if ($this->option('dry-run')) {
                 $this->line("[DRY-RUN] Would import: {$data['title']}");
                 $imported++;
-
                 continue;
             }
 
@@ -255,15 +262,21 @@ class JikanImportCommand extends Command
 
     protected function importSeasonal(): int
     {
-        $year = $this->option('year') ?: (int) date('Y');
+        $year = (int) ($this->option('year') ?: date('Y'));
         $season = $this->option('season') ?: $this->getCurrentSeason();
+
+        $allowedSeasons = ['winter', 'spring', 'summer', 'fall'];
+
+        if (!in_array($season, $allowedSeasons, true)) {
+            $this->error('Invalid season. Allowed values: winter, spring, summer, fall.');
+            return Command::FAILURE;
+        }
 
         $this->info("Fetching {$season} {$year} seasonal anime...");
         $results = $this->jikan->getSeasonalAnime($year, $season);
 
         if ($results->isEmpty()) {
             $this->error("No results for {$season} {$year}.");
-
             return Command::FAILURE;
         }
 
@@ -276,7 +289,6 @@ class JikanImportCommand extends Command
             if ($this->option('dry-run')) {
                 $this->line("[DRY-RUN] Would import: {$data['title']}");
                 $imported++;
-
                 continue;
             }
 
@@ -293,11 +305,18 @@ class JikanImportCommand extends Command
 
     protected function importAnime(array $data, $episodes): void
     {
-        $genreIds = $this->importer->syncGenres($data['genres']);
-        $anime = $this->importer->upsertAnime($data, $genreIds);
-        $this->importer->upsertEpisodes($anime, is_array($episodes) ? $episodes : $episodes->toArray());
+        DB::transaction(function () use ($data, $episodes) {
+            $genreIds = $this->importer->syncGenres($data['genres'] ?? []);
+            $anime = $this->importer->upsertAnime($data, $genreIds);
 
-        $this->info("Imported: {$anime->title} ({$anime->episodes()->count()} episodes)");
+            $episodeArray = is_array($episodes)
+                ? $episodes
+                : $episodes->toArray();
+
+            $this->importer->upsertEpisodes($anime, $episodeArray);
+
+            $this->info("Imported: {$anime->title} ({$anime->episodes()->count()} episodes)");
+        });
     }
 
     protected function getCurrentSeason(): string

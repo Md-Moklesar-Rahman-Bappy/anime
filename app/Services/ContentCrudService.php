@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -10,34 +11,36 @@ class ContentCrudService
 {
     public function create(string $modelClass, array $data, ?array $genreIds = null, ?string $genreRelation = null): Model
     {
-        $data['slug'] = Str::slug($data['title']);
-        $data['featured'] = request()->has('featured');
+        return DB::transaction(function () use ($modelClass, $data, $genreIds, $genreRelation) {
 
-        $data = $this->handleFileUploads($modelClass, $data);
+            $data = $this->prepareData($data);
+            $data = $this->handleFileUploads($modelClass, $data);
 
-        $model = $modelClass::create($data);
+            $model = $modelClass::create($data);
 
-        if ($genreIds !== null && $genreRelation) {
-            $model->{$genreRelation}()->sync($genreIds);
-        }
+            if ($genreIds !== null && $genreRelation) {
+                $model->{$genreRelation}()->sync($genreIds);
+            }
 
-        return $model;
+            return $model;
+        });
     }
 
     public function update(Model $model, array $data, ?array $genreIds = null, ?string $genreRelation = null): Model
     {
-        $data['slug'] = Str::slug($data['title']);
-        $data['featured'] = request()->has('featured');
+        return DB::transaction(function () use ($model, $data, $genreIds, $genreRelation) {
 
-        $data = $this->handleFileUploads(get_class($model), $data, $model);
+            $data = $this->prepareData($data);
+            $data = $this->handleFileUploads(get_class($model), $data, $model);
 
-        $model->update($data);
+            $model->update($data);
 
-        if ($genreIds !== null && $genreRelation) {
-            $model->{$genreRelation}()->sync($genreIds);
-        }
+            if ($genreIds !== null && $genreRelation) {
+                $model->{$genreRelation}()->sync($genreIds);
+            }
 
-        return $model;
+            return $model;
+        });
     }
 
     public function delete(Model $model, array $fileFields = ['thumbnail', 'banner']): void
@@ -51,21 +54,63 @@ class ContentCrudService
         $model->delete();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Data Preparation
+    |--------------------------------------------------------------------------
+    */
+
+    protected function prepareData(array $data): array
+    {
+        $title = $data['title'] ?? 'content';
+
+        $data['slug'] = $data['slug'] ?? $this->generateUniqueSlug($title);
+
+        $data['featured'] = $data['featured'] ?? false;
+
+        return $data;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Slug Generator
+    |--------------------------------------------------------------------------
+    */
+
+    protected function generateUniqueSlug(string $title): string
+    {
+        $base = Str::slug($title);
+        return $base . '-' . substr(md5(uniqid()), 0, 6);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | File Handling
+    |--------------------------------------------------------------------------
+    */
+
     protected function handleFileUploads(string $modelClass, array $data, ?Model $existing = null): array
     {
         $prefix = class_basename($modelClass);
-        $lowerPrefix = Str::lower(Str::plural($prefix));
+        $folder = Str::lower(Str::plural($prefix));
 
-        if ($file = request()->file('thumbnail')) {
-            $data['thumbnail'] = $file->store("{$lowerPrefix}/thumbnails", 'public');
-        } elseif ($existing && ! isset($data['thumbnail'])) {
-            $data['thumbnail'] = $existing->thumbnail;
-        }
+        foreach (['thumbnail', 'banner'] as $field) {
 
-        if ($file = request()->file('banner')) {
-            $data['banner'] = $file->store("{$lowerPrefix}/banners", 'public');
-        } elseif ($existing && ! isset($data['banner'])) {
-            $data['banner'] = $existing->banner;
+            if (request()->hasFile($field)) {
+
+                // ✅ delete old file
+                if ($existing && $existing->{$field}) {
+                    Storage::disk('public')->delete($existing->{$field});
+                }
+
+                $data[$field] = request()->file($field)
+                    ->store("{$folder}/{$field}s", 'public');
+
+            } elseif ($existing && !isset($data[$field])) {
+
+                // ✅ preserve existing
+                $data[$field] = $existing->{$field};
+            }
         }
 
         return $data;
