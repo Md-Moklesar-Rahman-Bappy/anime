@@ -9,14 +9,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('anime', function (Blueprint $table) {
-            $table->string('age_rating')->nullable()->after('rating');
+
+            if (!Schema::hasColumn('anime', 'age_rating')) {
+                $table->string('age_rating', 20)
+                    ->nullable()
+                    ->after('rating')
+                    ->index();
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('anime', function (Blueprint $table) {
-            $table->dropColumn('age_rating');
+
+            if (Schema::hasColumn('anime', 'age_rating')) {
+                $table->dropColumn('age_rating');
+            }
         });
     }
 };

@@ -11,12 +11,70 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('requests', function (Blueprint $table) {
+        Schema::create('anime_requests', function (Blueprint $table) {
+
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('anime_title');
+
+            /*
+            |--------------------------------------------------------------------------
+            | Relationships
+            |--------------------------------------------------------------------------
+            */
+            $table->foreignId('user_id')
+                ->constrained()
+                ->cascadeOnDelete()
+                ->index();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Request Data
+            |--------------------------------------------------------------------------
+            */
+            $table->string('anime_title')->index(); // ✅ searchable
             $table->text('description')->nullable();
-            $table->string('status')->default('pending'); // pending, fulfilled, rejected
+
+            /*
+            |--------------------------------------------------------------------------
+            | Moderation
+            |--------------------------------------------------------------------------
+            */
+            $table->string('status')->default('pending')->index();
+            // pending / fulfilled / rejected
+
+            /*
+            |--------------------------------------------------------------------------
+            | Admin Handling
+            |--------------------------------------------------------------------------
+            */
+            $table->foreignId('handled_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->timestamp('resolved_at')->nullable();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Linked Anime (if fulfilled)
+            |--------------------------------------------------------------------------
+            */
+            $table->foreignId('anime_id')
+                ->nullable()
+                ->constrained('anime')
+                ->nullOnDelete();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Constraints
+            |--------------------------------------------------------------------------
+            */
+            $table->unique(['user_id', 'anime_title']); // ✅ prevent spam duplicates
+
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
             $table->timestamps();
         });
     }
@@ -26,6 +84,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('requests');
+        Schema::dropIfExists('anime_requests');
     }
 };

@@ -6,23 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            $table->text('url')->change();
+
+            if (Schema::hasColumn('servers', 'url')) {
+                $table->text('url')
+                    ->change();
+            }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            $table->string('url', 255)->change();
+
+            if (Schema::hasColumn('servers', 'url')) {
+                $table->string('url', 255)
+                    ->change();
+            }
         });
     }
 };

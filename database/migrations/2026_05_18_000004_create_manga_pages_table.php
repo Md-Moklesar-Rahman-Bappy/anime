@@ -9,13 +9,48 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('manga_pages', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('chapter_id')->constrained('chapters')->cascadeOnDelete();
-            $table->integer('page_number');
-            $table->string('image_path');
-            $table->timestamps();
 
-            $table->unique(['chapter_id', 'page_number']);
+            $table->id();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Relationships
+            |--------------------------------------------------------------------------
+            */
+            $table->foreignId('chapter_id')
+                ->constrained('chapters')
+                ->cascadeOnDelete()
+                ->index();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Page Info
+            |--------------------------------------------------------------------------
+            */
+            $table->integer('page_number');
+
+            $table->string('image_path'); // path to stored image
+
+            /*
+            |--------------------------------------------------------------------------
+            | Constraints
+            |--------------------------------------------------------------------------
+            */
+            $table->unique(['chapter_id', 'page_number']); // ✅ prevent duplicates
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexing
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['chapter_id', 'page_number']); // ✅ fast page loading
+
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
+            $table->timestamps();
         });
     }
 

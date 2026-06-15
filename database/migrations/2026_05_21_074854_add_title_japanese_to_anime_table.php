@@ -6,20 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('anime', function (Blueprint $table) {
-            $table->string('title_japanese')->nullable()->after('title');
+
+            if (!Schema::hasColumn('anime', 'title_japanese')) {
+                $table->string('title_japanese')
+                    ->nullable()
+                    ->after('title');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('anime', function (Blueprint $table) {
-            $table->dropColumn('title_japanese');
+
+            if (Schema::hasColumn('anime', 'title_japanese')) {
+                $table->dropColumn('title_japanese');
+            }
         });
     }
 };

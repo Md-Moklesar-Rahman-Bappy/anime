@@ -6,23 +6,26 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('episodes', function (Blueprint $table) {
-            $table->integer('telegram_message_id')->nullable()->description('The message ID from @aniwavebd');
+
+            if (!Schema::hasColumn('episodes', 'telegram_message_id')) {
+                $table->unsignedBigInteger('telegram_message_id')
+                    ->nullable()
+                    ->after('source_url')
+                    ->index();
+            }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('episodes', function (Blueprint $table) {
-            //
+
+            if (Schema::hasColumn('episodes', 'telegram_message_id')) {
+                $table->dropColumn('telegram_message_id');
+            }
         });
     }
 };
