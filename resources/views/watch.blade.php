@@ -247,6 +247,7 @@ window.PLAYER_PREV_URL = {{ $prevEpisode ? '"'.route('watch', ['slug' => $anime-
 window.PLAYER_ANIME_ID = {{ $anime->id }};
 window.PLAYER_EPISODE_ID = {{ $episode->id }};
 window.PLAYER_IS_AUTH = {{ auth()->check() ? 'true' : 'false' }};
+window.PLAYER_LOGIN_URL = '{{ route('login') }}';
 window.PLAYER_SKIP_TIMES = @json($skipTimes);
 </script>
 @endpush

@@ -283,7 +283,7 @@ export function player() {
 
         async updateList(category) {
             if (!window.PLAYER_IS_AUTH) {
-                window.location.href = '/login';
+                window.location.href = window.PLAYER_LOGIN_URL;
                 return;
             }
 
