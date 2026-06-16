@@ -157,4 +157,8 @@ Route::prefix('admin')
             Route::get('/status/{upload}', [UploadController::class, 'status'])->name('status');
             Route::delete('/cancel/{upload}', [UploadController::class, 'cancel'])->name('cancel');
         });
+<<<<<<< HEAD
+=======
+
+>>>>>>> 69efe2ee0ae0a15e36d5429779cd8c2f83671234
     });

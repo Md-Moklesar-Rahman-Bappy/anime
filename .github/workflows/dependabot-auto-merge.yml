@@ -1,4 +1,4 @@
-name: "Dependabot Auto-Merge"
+name: 🤖 Dependabot Auto Merge (Safe)
 
 on:
   pull_request:
@@ -9,25 +9,22 @@ permissions:
   pull-requests: write
 
 jobs:
-  auto-merge:
+  automerge:
+    name: 🔄 Auto Merge Dependabot Updates
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+
+    if: >
+      github.actor == 'dependabot[bot]' &&
+      contains(github.event.pull_request.title, 'patch')
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Detect update type
-        id: version-check
-        run: |
-          echo "title=${{ github.event.pull_request.title }}" >> $GITHUB_OUTPUT
-          if [[ "${{ github.event.pull_request.title }}" =~ "major" ]]; then
-            echo "merge=false" >> $GITHUB_OUTPUT
-          else
-            echo "merge=true" >> $GITHUB_OUTPUT
-
-      - name: Enable auto-merge for Dependabot PRs
-        if: steps.version-check.outputs.merge == 'true'
-        uses: peter-evans/enable-pull-request-automerge@v3
+      - name: ✅ Approve Dependabot PR
+        uses: hmarr/auto-approve-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          merge-method: squash
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔁 Enable Auto Merge
+        uses: pascalgn/automerge-action@v0.16.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: merge
