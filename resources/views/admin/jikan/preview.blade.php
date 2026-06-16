@@ -89,21 +89,21 @@
     </div>
     @endif
 
-    <div class="flex items-center justify-between">
-        @if($alreadyImported)
-        <div class="bg-yellow-600/20 text-yellow-400 px-4 py-3 rounded-lg text-sm">
-            This anime has already been imported.
-        </div>
-        @else
+    <div class="flex items-center justify-between gap-4">
         <form action="{{ route('admin.jikan.import', $anime['mal_id']) }}" method="POST">
             @csrf
             <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium"
-                onclick="return confirm('Import {{ $anime['title'] }} with {{ count($episodes) }} episodes?')">
-                Import "{{ $anime['title'] }}"
+                onclick="return confirm('{{ $alreadyImported ? 'Re-import (update)' : 'Import' }} {{ $anime['title'] }} with all {{ count($episodes) }} episodes?')">
+                @if($alreadyImported)
+                    <i class="fas fa-sync-alt mr-2"></i>Re-import (Update)
+                @else
+                    Import "{{ $anime['title'] }}"
+                @endif
             </button>
         </form>
-        @endif
-        <span class="text-sm text-gray-500">MAL ID: {{ $anime['mal_id'] }}</span>
+        <span class="text-sm text-gray-500">
+            MAL ID: {{ $anime['mal_id'] }} &middot; {{ count($episodes) }} episodes
+        </span>
     </div>
 </div>
 @endsection

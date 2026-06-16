@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -24,17 +25,46 @@ class ConfirmablePasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (! Auth::guard('web')->validate([
-            'email' => $request->user()->email,
-            'password' => $request->password,
-        ])) {
+        // ✅ Validate input
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        try {
+            $user = $request->user();
+
+            if (!$user) {
+                return redirect()
+                    ->route('login')
+                    ->with('error', 'Authentication required.');
+            }
+
+            // ✅ Validate password
+            if (!Auth::guard('web')->validate([
+                'email' => $user->email,
+                'password' => $request->password,
+            ])) {
+                throw ValidationException::withMessages([
+                    'password' => __('auth.password'),
+                ]);
+            }
+
+            // ✅ Store confirmation timestamp
+            $request->session()->put('auth.password_confirmed_at', time());
+
+            // ✅ Flexible redirect (fallback to admin dashboard)
+            return redirect()->intended(
+                route('admin.dashboard', absolute: false)
+            );
+        } catch (\Throwable $e) {
+            Log::error('Password confirmation failed', [
+                'user_id' => $request->user()?->id,
+                'error'   => $e->getMessage(),
+            ]);
+
             throw ValidationException::withMessages([
-                'password' => __('auth.password'),
+                'password' => 'An unexpected error occurred. Please try again.',
             ]);
         }
-
-        $request->session()->put('auth.password_confirmed_at', time());
-
-        return redirect()->intended(route('admin.dashboard', absolute: false));
     }
 }

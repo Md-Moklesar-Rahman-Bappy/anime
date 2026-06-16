@@ -14,7 +14,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Users
-        User::create(['name' => 'Super Admin', 'email' => 'superadmin@superadmin.com', 'password' => bcrypt('password'), 'role' => 'super_admin', 'username' => 'superadmin']);
+        User::create(['name' => 'Super Admin', 'email' => 'admin@anime.test', 'password' => bcrypt('password'), 'role' => 'super_admin', 'username' => 'superadmin']);
+        User::create(['name' => 'Super Admin', 'email' => 'superadmin@superadmin.com', 'password' => bcrypt('password'), 'role' => 'super_admin', 'username' => 'superadmin2']);
         User::create(['name' => 'Admin', 'email' => 'admin2@anime.test', 'password' => bcrypt('password'), 'role' => 'admin', 'username' => 'admin']);
         User::create(['name' => 'User', 'email' => 'user@anime.test', 'password' => bcrypt('password'), 'role' => 'user', 'username' => 'user']);
         User::create(['name' => 'Demo User', 'email' => 'demo@anime.test', 'password' => bcrypt('password'), 'role' => 'user', 'username' => 'demo']);

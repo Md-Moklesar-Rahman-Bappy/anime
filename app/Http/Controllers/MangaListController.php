@@ -2,140 +2,120 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesListing;
 use App\Models\Manga;
 use App\Models\MangaGenre;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MangaListController extends Controller
 {
-    public function index()
-    {
-        $mangaList = Manga::latest()->paginate(24);
-        $title = 'All Manga';
+    use HandlesListing;
 
-        return view('manga-list', compact('mangaList', 'title'));
+    protected function modelClass(): string
+    {
+        return Manga::class;
     }
 
-    public function newest()
+    protected function genreClass(): string
     {
-        $mangaList = Manga::latest()->paginate(24);
-        $title = 'Newest Manga';
-
-        return view('manga-list', compact('mangaList', 'title'));
+        return MangaGenre::class;
     }
 
-    public function updated()
+    protected function cachePrefix(): string
     {
-        $mangaList = Manga::whereHas('chapters', function ($q) {
-            $q->where('created_at', '>=', now()->subWeek());
-        })->latest()->paginate(24);
-        $title = 'Recently Updated';
-
-        return view('manga-list', compact('mangaList', 'title'));
+        return 'manga';
     }
 
-    public function ongoing()
+    protected function listView(): string
     {
-        $mangaList = Manga::where('status', 'Ongoing')->latest()->paginate(24);
-        $title = 'Ongoing Manga';
-
-        return view('manga-list', compact('mangaList', 'title'));
+        return 'manga-list';
     }
 
-    public function trending()
+    protected function listVariableName(): string
     {
-        $mangaList = Manga::orderBy('views', 'desc')->paginate(24);
-        $title = 'Trending Manga';
+        return 'mangaList';
+    }
 
-        return view('manga-list', compact('mangaList', 'title'));
+    protected function itemLabel(): string
+    {
+        return 'Manga';
     }
 
     public function completed()
     {
-        $mangaList = Manga::where('status', 'Completed')->latest()->paginate(24);
-        $title = 'Completed Manga';
-
-        return view('manga-list', compact('mangaList', 'title'));
+        return $this->renderList(
+            $this->baseQuery()
+                ->where('status', 'Completed')
+                ->latest(),
+            'Completed Manga'
+        );
     }
 
-    public function azList($letter = null)
+    public function index()
     {
-        $query = Manga::query();
-        if ($letter && $letter !== 'all') {
-            $query->where('title', 'like', $letter . '%');
-        }
-        $mangaList = $query->orderBy('title')->paginate(24);
-        $title = $letter ? "Manga starting with $letter" : 'All Manga';
+        return $this->newest();
+    }
 
-        return view('manga-list', compact('mangaList', 'title'));
+    protected function applySort($query, ?string $sort): void
+    {
+        if ($sort === 'chapters') {
+            $query->orderByDesc('chapters_count');
+            return;
+        }
+
+        parent::applySort($query, $sort);
     }
 
     public function filter(Request $request)
     {
-        $query = Manga::query();
+        try {
+            $query = $this->baseQuery();
 
-        if ($request->q) {
-            $query->where('title', 'like', "%{$request->q}%");
-        }
-
-        if ($request->type) {
-            $query->where('type', $request->type);
-        }
-
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->year) {
-            if (str_ends_with($request->year, 's')) {
-                $decade = (int) substr($request->year, 0, -1);
-                $query->whereBetween('year', [$decade * 10, $decade * 10 + 9]);
-            } else {
-                $query->where('year', $request->year);
+            if ($request->filled('q')) {
+                $safe = '%' . addcslashes($request->q, '%_') . '%';
+                $query->where('title', 'like', $safe);
             }
+
+            if ($request->filled('type')) {
+                $query->where('type', $request->type);
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->filled('year')) {
+                if (str_ends_with($request->year, 's')) {
+                    $decade = (int) substr($request->year, 0, -1);
+                    $query->whereBetween('year', [$decade * 10, $decade * 10 + 9]);
+                } else {
+                    $query->where('year', (int) $request->year);
+                }
+            }
+
+            if ($request->filled('genres')) {
+                $genreSlugs = (array) $request->genres;
+
+                $query->whereHas('genres', function ($q) use ($genreSlugs) {
+                    $q->whereIn('slug', $genreSlugs);
+                });
+            }
+
+            $this->applySort($query, $request->sort);
+
+            return $this->renderList(
+                $query->withQueryString(),
+                'Filter Results'
+            );
+
+        } catch (\Throwable $e) {
+            Log::error('Manga list filter failed', [
+                'params' => $request->all(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to filter results.');
         }
-
-        if ($request->genres) {
-            $genreIds = MangaGenre::whereIn('slug', (array) $request->genres)->pluck('id');
-            $query->whereHas('genres', function ($q) use ($genreIds) {
-                $q->whereIn('manga_genre_relation.manga_genre_id', $genreIds);
-            });
-        }
-
-        switch ($request->sort) {
-            case 'updated':
-                $query->latest('updated_at');
-                break;
-            case 'added':
-                $query->latest('created_at');
-                break;
-            case 'views':
-                $query->orderBy('views', 'desc');
-                break;
-            case 'score':
-                $query->orderBy('score', 'desc');
-                break;
-            case 'rating':
-                $query->orderBy('rating', 'desc');
-                break;
-            case 'name':
-                $query->orderBy('title');
-                break;
-            case 'chapters':
-                $query->orderBy('chapters_count', 'desc');
-                break;
-            case 'release':
-                $query->orderBy('year', 'desc');
-                break;
-            default:
-                $query->latest();
-                break;
-        }
-
-        $mangaList = $query->paginate(24)->withQueryString();
-        $title = 'Filter Results';
-        $genres = MangaGenre::all();
-
-        return view('manga-list', compact('mangaList', 'title', 'genres'));
     }
 }

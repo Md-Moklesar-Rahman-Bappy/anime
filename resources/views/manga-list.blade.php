@@ -32,18 +32,26 @@
         <span class="text-sm text-gray-500">{{ $mangaList->total() }} Items</span>
     </div>
 
-    <div class="flex gap-6">
-        <div class="hidden lg:block w-72 shrink-0">
+    <div x-data="{ filterOpen: false }" class="flex gap-6">
+        <button @click="filterOpen = !filterOpen" class="lg:hidden fixed bottom-4 right-4 z-40 bg-purple-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 010 2H4a1 1 0 01-1-1zm4 6a1 1 0 011-1h8a1 1 0 010 2H8a1 1 0 01-1-1zm2 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1z"/></svg>
+        </button>
+        <div class="fixed inset-0 z-30 bg-black/50 lg:hidden" x-cloak x-show="filterOpen" @click="filterOpen = false"></div>
+        <div class="hidden lg:block w-72 shrink-0" :class="{'!block fixed inset-0 z-40 w-full': filterOpen}">
+            <div class="bg-gray-900 rounded-xl p-5 border border-gray-800 lg:sticky lg:top-24" :class="{'h-full overflow-y-auto': filterOpen}">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm font-semibold text-gray-300">Quick Access</span>
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('manga.filter') }}" class="text-xs text-purple-400 hover:text-purple-300">Clear</a>
+                        <button @click="filterOpen = false" class="lg:hidden text-gray-400 hover:text-white">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
             <form action="{{ route('manga.filter') }}" method="GET" id="filter-form">
                 @if(request('q'))
                     <input type="hidden" name="q" value="{{ request('q') }}">
                 @endif
-
-                <div class="bg-gray-900 rounded-xl p-5 border border-gray-800 sticky top-24">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="text-sm font-semibold text-gray-300">Quick Access</span>
-                        <a href="{{ route('manga.filter') }}" class="text-xs text-purple-400 hover:text-purple-300">Clear</a>
-                    </div>
 
                     @if(isset($genres))
                     <div class="filter-section">
@@ -149,16 +157,16 @@
                     <button type="submit" class="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2.5 rounded-lg transition">
                         Filter
                     </button>
-                </div>
             </form>
         </div>
+    </div>
 
         <div class="flex-1 min-w-0">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 @forelse($mangaList as $manga)
                 <a href="{{ route('manga.detail', $manga->slug) }}" class="group">
                     <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                        <img src="{{ $manga->thumbnail ?? 'https://via.placeholder.com/200x280/1a1a2e/7c3aed' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                        <img src="{{ $manga->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
                         <div class="absolute top-2 left-2 bg-gray-900/80 text-xs px-2 py-1 rounded">{{ $manga->type ?? 'Manga' }}</div>
                         @if($manga->chapters_count > 0)
                             <div class="absolute top-2 right-2 bg-purple-600/90 text-xs px-2 py-1 rounded">{{ $manga->chapters_count }}</div>

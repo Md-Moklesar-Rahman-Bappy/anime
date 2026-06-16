@@ -3,15 +3,41 @@
 namespace App\Http\Controllers;
 
 use App\Models\MangaGenre;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class MangaGenreController extends Controller
 {
-    public function __invoke($slug)
+    public function __invoke(string $slug)
     {
-        $genre = MangaGenre::where('slug', $slug)->firstOrFail();
-        $mangaList = $genre->manga()->latest()->paginate(24);
-        $title = $genre->name;
+        try {
+            $cacheKey = "manga_genre_{$slug}";
 
-        return view('manga-list', compact('mangaList', 'title'));
+            [$genre, $mangaList] = Cache::remember($cacheKey, 300, function () use ($slug) {
+
+                $genre = MangaGenre::where('slug', $slug)->firstOrFail();
+
+                $mangaList = $genre->manga()
+                    ->with('genres') // ✅ prevent N+1
+                    ->latest()
+                    ->paginate(24)
+                    ->withQueryString();
+
+                return [$genre, $mangaList];
+            });
+
+            return view('manga-list', [
+                'mangaList' => $mangaList,
+                'title' => $genre->name,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Manga genre page failed', [
+                'slug' => $slug,
+                'error' => $e->getMessage(),
+            ]);
+
+            abort(404, 'Genre not found.');
+        }
     }
 }

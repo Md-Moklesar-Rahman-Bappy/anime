@@ -3,118 +3,122 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreMangaRequest;
 use App\Models\Manga;
 use App\Models\MangaGenre;
+use App\Services\ContentCrudService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class MangaController extends Controller
 {
-    public function index()
+    public function __construct(
+        protected ContentCrudService $crud,
+    ) {}
+
+    public function index(Request $request)
     {
-        $mangaList = Manga::latest()->paginate(20);
+        $query = Manga::query()->latest('updated_at');
+
+        $mangaList = $query
+            ->with('genres')
+            ->paginate(20);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'html' => view('admin.manga._table', compact('mangaList'))->render(),
+                'pagination' => view('admin.manga._pagination', compact('mangaList'))->render(),
+                'total' => $mangaList->total(),
+            ]);
+        }
 
         return view('admin.manga.index', compact('mangaList'));
     }
 
     public function create()
     {
-        $genres = MangaGenre::all();
+        $genres = MangaGenre::select('id', 'name')->get();
 
         return view('admin.manga.form', compact('genres'));
     }
 
-    public function store(Request $request)
+    public function store(StoreMangaRequest $request)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'alternative_titles' => 'nullable|string',
-            'type' => 'nullable|string',
-            'status' => 'nullable|string',
-            'year' => 'nullable|integer',
-            'rating' => 'nullable|numeric',
-            'score' => 'nullable|numeric',
-            'source' => 'nullable|string',
-            'author' => 'nullable|string',
-            'artist' => 'nullable|string',
-            'publisher' => 'nullable|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'banner' => 'nullable|image|max:2048',
-            'genres' => 'nullable|array',
-            'featured' => 'nullable|boolean',
-        ]);
+        try {
+            $this->crud->create(
+                Manga::class,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        $data['slug'] = Str::slug($data['title']);
-        $data['featured'] = $request->has('featured');
+            return redirect()
+                ->route('admin.manga.index')
+                ->with('success', 'Manga created successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Manga create failed', [
+                'error' => $e->getMessage(),
+            ]);
 
-        if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('manga/thumbnails', 'public');
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create manga.');
         }
-        if ($request->hasFile('banner')) {
-            $data['banner'] = $request->file('banner')->store('manga/banners', 'public');
-        }
-
-        $manga = Manga::create($data);
-
-        if ($request->genres) {
-            $manga->genres()->sync($request->genres);
-        }
-
-        return redirect()->route('admin.manga.index')->with('success', 'Manga created successfully.');
     }
 
     public function edit(Manga $manga)
     {
-        $genres = MangaGenre::all();
+        $manga->load('genres');
+
+        $genres = MangaGenre::select('id', 'name')->get();
 
         return view('admin.manga.form', compact('manga', 'genres'));
     }
 
-    public function update(Request $request, Manga $manga)
+    public function update(StoreMangaRequest $request, Manga $manga)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'alternative_titles' => 'nullable|string',
-            'type' => 'nullable|string',
-            'status' => 'nullable|string',
-            'year' => 'nullable|integer',
-            'rating' => 'nullable|numeric',
-            'score' => 'nullable|numeric',
-            'source' => 'nullable|string',
-            'author' => 'nullable|string',
-            'artist' => 'nullable|string',
-            'publisher' => 'nullable|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'banner' => 'nullable|image|max:2048',
-            'genres' => 'nullable|array',
-            'featured' => 'nullable|boolean',
-        ]);
+        try {
+            $this->crud->update(
+                $manga,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        $data['slug'] = Str::slug($data['title']);
-        $data['featured'] = $request->has('featured');
+            return redirect()
+                ->route('admin.manga.index')
+                ->with('success', 'Manga updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Manga update failed', [
+                'manga_id' => $manga->id,
+                'error' => $e->getMessage(),
+            ]);
 
-        if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('manga/thumbnails', 'public');
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to update manga.');
         }
-        if ($request->hasFile('banner')) {
-            $data['banner'] = $request->file('banner')->store('manga/banners', 'public');
-        }
-
-        $manga->update($data);
-
-        if ($request->genres) {
-            $manga->genres()->sync($request->genres);
-        }
-
-        return redirect()->route('admin.manga.index')->with('success', 'Manga updated successfully.');
     }
 
-    public function destroy(Manga $manga)
+    public function destroy(Request $request, Manga $manga)
     {
-        $manga->delete();
+        try {
+            $this->crud->delete($manga);
 
-        return redirect()->route('admin.manga.index')->with('success', 'Manga deleted.');
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()
+                ->route('admin.manga.index')
+                ->with('success', 'Manga deleted.');
+        } catch (\Throwable $e) {
+            Log::error('Manga delete failed', [
+                'manga_id' => $manga->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Delete failed.');
+        }
     }
 }

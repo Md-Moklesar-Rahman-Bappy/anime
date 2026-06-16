@@ -9,15 +9,29 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('manga', function (Blueprint $table) {
-            $table->string('source_id')->nullable()->after('source');
-            $table->string('alternative_titles', 1000)->nullable()->change();
+
+            if (!Schema::hasColumn('manga', 'source_id')) {
+                $table->string('source_id')
+                    ->nullable()
+                    ->after('source')
+                    ->index();
+            }
+
+            if (Schema::hasColumn('manga', 'alternative_titles')) {
+                $table->string('alternative_titles', 1000)
+                    ->nullable()
+                    ->change();
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('manga', function (Blueprint $table) {
-            $table->dropColumn('source_id');
+
+            if (Schema::hasColumn('manga', 'source_id')) {
+                $table->dropColumn('source_id');
+            }
         });
     }
 };

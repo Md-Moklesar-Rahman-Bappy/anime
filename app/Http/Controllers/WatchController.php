@@ -4,95 +4,104 @@ namespace App\Http\Controllers;
 
 use App\Models\Anime;
 use App\Models\Comment;
-use App\Models\Favorite;
-use Illuminate\Support\Facades\Storage;
+use App\Services\RelatedContentService;
+use App\Services\ServerResolverService;
+use App\Services\ViewCounterService;
+use Illuminate\Support\Facades\Log;
 
 class WatchController extends Controller
 {
-    public function __invoke($slug)
+    public function __construct(
+        protected ViewCounterService $viewCounter,
+        protected RelatedContentService $relatedContent,
+        protected ServerResolverService $serverResolver,
+    ) {}
+
+    public function __invoke(string $slug)
     {
-        $anime = Anime::where('slug', $slug)->with(['episodes' => function ($q) {
-            $q->orderBy('number');
-        }, 'genres'])->firstOrFail();
+        try {
+            $user = auth()->user();
 
-        $anime->increment('views');
+            // ✅ Load anime with optimized relations
+            $anime = Anime::where('slug', $slug)
+                ->with([
+                    'genres:id,name,slug',
+                    'episodes:id,anime_id,number,title,thumbnail,has_sub,has_dub'
+                ])
+                ->firstOrFail();
 
-        $episode = request('ep')
-            ? $anime->episodes->where('number', request('ep'))->first()
-            : $anime->episodes->first();
+            $this->viewCounter->increment($anime, 'anime');
 
-        if (! $episode) {
-            abort(404);
-        }
+            // ✅ Resolve episode
+            $epNumber = (int) request('ep');
 
-        $episode->load(['servers', 'skipTimes']);
+            $episode = $anime->episodes
+                ->firstWhere('number', $epNumber) ?? $anime->episodes->first();
 
-        $prevEpisode = $anime->episodes->where('number', $episode->number - 1)->first();
-        $nextEpisode = $anime->episodes->where('number', $episode->number + 1)->first();
-
-        $comments = Comment::where('episode_id', $episode->id)
-            ->with('user')->latest()->paginate(20);
-
-        $related = Anime::whereHas('genres', function ($q) use ($anime) {
-            $q->whereIn('genres.id', $anime->genres->pluck('id'));
-        })->where('id', '!=', $anime->id)->inRandomOrder()->take(8)->get();
-
-        $isFavorited = false;
-        $favCategory = null;
-        if (auth()->check()) {
-            $fav = Favorite::where('user_id', auth()->id())
-                ->where('anime_id', $anime->id)->first();
-            $isFavorited = (bool) $fav;
-            $favCategory = $fav?->category;
-        }
-
-        // Build all servers with language
-        $allServers = [];
-        $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
-        $videoServers = $episode->servers->where('type', '!=', 'youtube');
-        $hasServers = $videoServers->count() > 0;
-        $hasVideoPath = ! empty($episode->video_path);
-        $ytInVideoPath = false;
-        $ytVideoId = null;
-
-        if ($hasVideoPath && ! $youtubeServer) {
-            if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $episode->video_path, $m)) {
-                $ytInVideoPath = true;
-                $ytVideoId = $m[1];
+            if (!$episode) {
+                abort(404);
             }
+
+            // ✅ Load episode relations
+            $episode->load(['servers', 'skipTimes']);
+
+            // ✅ Episode navigation (no extra queries)
+            $episodes = $anime->episodes->sortBy('number')->values();
+            $index = $episodes->search(fn ($e) => $e->id === $episode->id);
+
+            $prevEpisode = $episodes[$index - 1] ?? null;
+            $nextEpisode = $episodes[$index + 1] ?? null;
+
+            // ✅ Favorite state
+            $isFavorited = false;
+            $favCategory = null;
+
+            if ($user) {
+                $fav = $user->favorites()
+                    ->where('anime_id', $anime->id)
+                    ->first();
+
+                if ($fav) {
+                    $isFavorited = true;
+                    $favCategory = $fav->category;
+                }
+            }
+
+            // ✅ Server resolution
+            $serverData = $this->serverResolver->resolveAll($episode);
+
+            // ✅ Comments
+            $comments = Comment::with('user')
+                ->where('episode_id', $episode->id)
+                ->latest()
+                ->paginate(20);
+
+            // ✅ Related
+            $related = $this->relatedContent->byGenres(
+                $anime,
+                $anime->genres ?? collect(),
+                'genres'
+            );
+
+            return view('watch', array_merge([
+                'anime' => $anime,
+                'episode' => $episode,
+                'prevEpisode' => $prevEpisode,
+                'nextEpisode' => $nextEpisode,
+                'comments' => $comments,
+                'related' => $related,
+                'isFavorited' => $isFavorited,
+                'favCategory' => $favCategory,
+            ], $serverData));
+
+        } catch (\Throwable $e) {
+            Log::error('Watch page failed', [
+                'slug' => $slug,
+                'ep' => request('ep'),
+                'error' => $e->getMessage(),
+            ]);
+
+            abort(404, 'Video not found');
         }
-
-        if ($youtubeServer) {
-            $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => $youtubeServer->url, 'type' => 'youtube', 'language' => $youtubeServer->language];
-        } elseif ($ytInVideoPath) {
-            $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => 'https://www.youtube.com/watch?v='.$ytVideoId, 'type' => 'youtube', 'language' => 'english'];
-        }
-
-        $idx = 0;
-        foreach ($videoServers as $s) {
-            $idx++;
-            $allServers[] = ['id' => $s->id, 'label' => $s->label ?? 'Server '.$idx, 'url' => $s->url, 'type' => $s->type, 'language' => $s->language];
-        }
-
-        if (! $hasServers && $hasVideoPath && ! $ytInVideoPath) {
-            $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path);
-            $allServers[] = ['id' => 'local', 'label' => 'Default', 'url' => $videoSrc, 'type' => 'mp4', 'language' => 'english'];
-        }
-
-        $skipTimes = $episode->skipTimes->first();
-
-        // Group servers by language
-        $languageGroups = collect($allServers)->groupBy('language');
-        $languages = $languageGroups->keys()->values()->toArray();
-
-        $initialServer = $allServers[0] ?? null;
-        $isYoutubeInit = $initialServer && $initialServer['type'] === 'youtube';
-
-        return view('watch', compact(
-            'anime', 'episode', 'prevEpisode', 'nextEpisode',
-            'comments', 'related', 'isFavorited', 'favCategory',
-            'allServers', 'languageGroups', 'languages', 'initialServer',
-            'isYoutubeInit', 'skipTimes'
-        ));
     }
 }

@@ -12,12 +12,71 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('reports', function (Blueprint $table) {
+
             $table->id();
-            $table->foreignId('episode_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('issue_type'); // broken, audio_not_synced, sub_not_synced, skip_time_wrong, other
+
+            /*
+            |--------------------------------------------------------------------------
+            | Relationships
+            |--------------------------------------------------------------------------
+            */
+
+            $table->foreignId('user_id')
+                ->constrained()
+                ->cascadeOnDelete()
+                ->index();
+
+            // Report target (comment / episode / anime)
+            $table->morphs('reportable');
+            // reportable_id + reportable_type
+
+            /*
+            |--------------------------------------------------------------------------
+            | Report Data
+            |--------------------------------------------------------------------------
+            */
+
+            $table->string('issue_type')->index();
+            // e.g. spam, abusive, broken_video, etc.
+
             $table->text('description')->nullable();
-            $table->string('status')->default('pending'); // pending, resolved, dismissed
+
+            /*
+            |--------------------------------------------------------------------------
+            | Moderation Status
+            |--------------------------------------------------------------------------
+            */
+
+            $table->string('status')->default('pending')->index();
+            // pending / resolved / rejected
+
+            /*
+            |--------------------------------------------------------------------------
+            | Admin Handling
+            |--------------------------------------------------------------------------
+            */
+
+            $table->foreignId('handled_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->timestamp('resolved_at')->nullable();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Constraints
+            |--------------------------------------------------------------------------
+            */
+
+            $table->index(['reportable_id', 'reportable_type']);
+
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
+
             $table->timestamps();
         });
     }

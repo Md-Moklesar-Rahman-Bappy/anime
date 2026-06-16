@@ -1,41 +1,47 @@
-name: CodeQL Analysis
+name: 🔐 CodeQL Security Scan
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   pull_request:
-    branches: [main]
+    branches: [ "main" ]
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: '0 2 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
-  analyze:
-    name: Analyze
+  codeql:
+    name: 🛡️ CodeQL Analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 360
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
 
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript', 'php']
+        language: [ 'php' ]
 
     steps:
-      - name: Checkout
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+      - name: ⚙️ Initialize CodeQL
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Perform Analysis
-        uses: github/codeql-action/analyze@v3
+      - name: ⚙️ Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          category: '/language:${{matrix.language}}'
+          php-version: '8.2'
+          extensions: mbstring, bcmath, intl, pdo_mysql
+
+      - name: 📦 Install Dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: 🛠️ Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: 🔍 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4

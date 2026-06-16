@@ -1,54 +1,126 @@
-# Contributor Covenant Code of Conduct
+# 📜 Code of Conduct
 
-## Our Pledge
+## 🌍 Our Commitment
 
-We as members, contributors, and leaders pledge to make participation in our
-community a harassment-free experience for everyone, regardless of age, body
-size, visible or invisible disability, ethnicity, sex characteristics, gender
-identity and expression, level of experience, education, socio-economic status,
-nationality, personal appearance, race, religion, or sexual identity
-and orientation.
+We as members, contributors, and maintainers pledge to make participation in this project a **harassment-free and inclusive experience for everyone**.
 
-We pledge to act and interact in ways that contribute to an open, welcoming,
-diverse, inclusive, and healthy community.
+We are committed to fostering a community that is:
 
-## Our Standards
+- 🤝 Respectful  
+- 🌈 Inclusive  
+- 🧠 Collaborative  
+- 🚀 Professional  
 
-Examples of behavior that contributes to a positive environment:
+Regardless of age, gender identity, ethnicity, disability, experience level, religion, or background.
 
-- Demonstrating empathy and kindness toward other people
-- Being respectful of differing opinions, viewpoints, and experiences
-- Giving and gracefully accepting constructive feedback
-- Accepting responsibility and apologizing to those affected by our mistakes
-- Focusing on what is best for the overall community
+---
 
-Examples of unacceptable behavior:
+## ✅ Expected Behavior
 
-- The use of sexualized language or imagery, and sexual attention or advances
-- Trolling, insulting or derogatory comments, and personal or political attacks
-- Public or private harassment
-- Publishing others' private information without explicit permission
-- Other conduct which could reasonably be considered inappropriate
+We expect all participants to:
 
-## Enforcement Responsibilities
+- Show **respect and empathy** toward others
+- Be open to **different opinions and ideas**
+- Provide **constructive feedback**
+- Take responsibility for mistakes and learn from them
+- Focus on improving the **project and community**
 
-Project maintainers are responsible for clarifying and enforcing our standards
-and will take appropriate and fair corrective action in response to any
-behavior they deem inappropriate, threatening, offensive, or harmful.
+---
 
-## Scope
+## ❌ Unacceptable Behavior
 
-This Code of Conduct applies within all community spaces, and also applies when
-an individual is officially representing the community in public spaces.
+The following are not tolerated:
 
-## Enforcement
+- Harassment, discrimination, or hateful conduct
+- Personal attacks, insults, or offensive comments
+- Sexual harassment or inappropriate language
+- Trolling or intentionally disruptive behavior
+- Sharing private or sensitive information without consent
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainers. All complaints will be reviewed and
-investigated promptly and fairly.
+---
 
-## Attribution
+## 🛡️ Enforcement Responsibilities
 
-This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org),
-version 2.1, available at
-[https://www.contributor-covenant.org/version/2/1/code_of_conduct.html](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html).
+Project maintainers will:
+
+- Enforce this Code of Conduct fairly and consistently  
+- Investigate all reported issues  
+- Take appropriate action when necessary  
+
+Actions may include warnings, temporary bans, or permanent removal from the community.
+
+---
+
+## 📌 Scope
+
+This Code of Conduct applies to:
+
+- GitHub issues, pull requests, and discussions  
+- Project documentation and communication channels  
+- Any public or private interaction related to the project  
+
+---
+
+## 🚨 Reporting Issues
+
+If you experience or observe unacceptable behavior:
+
+👉 Please report it privately via:
+
+- GitHub Issues (if appropriate)  
+- Maintainer contact (recommended for sensitive matters)  
+
+All reports will be:
+
+- ✅ Handled confidentially  
+- ✅ Reviewed promptly  
+- ✅ Treated with fairness and respect  
+
+---
+
+## 🔐 Responsible Disclosure (Security)
+
+For **security vulnerabilities**, please avoid public disclosure.
+
+👉 Use:
+- Security issue template  
+- Private contact with maintainers  
+
+---
+
+## ⚖️ Enforcement Guidelines
+
+Maintainers may take the following actions:
+
+| Severity | Action |
+|--------|--------|
+| Minor issue | Warning |
+| Repeated behavior | Temporary restriction |
+| Serious violation | Permanent ban |
+
+---
+
+## 🙌 Positive Community Culture
+
+We encourage:
+
+- Helping new contributors  
+- Sharing knowledge  
+- Writing clear documentation  
+- Respectful collaboration  
+
+---
+
+## 📚 Attribution
+
+This Code of Conduct is inspired by the **Contributor Covenant v2.1**:
+
+👉 https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
+
+---
+
+## 🎯 Final Note
+
+By participating in this project, you agree to follow this Code of Conduct.
+
+Together, we can build a **safe, inclusive, and professional community** 🚀

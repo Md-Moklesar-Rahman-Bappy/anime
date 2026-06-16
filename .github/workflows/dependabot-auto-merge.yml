@@ -1,0 +1,30 @@
+name: 🤖 Dependabot Auto Merge (Safe)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: 🔄 Auto Merge Dependabot Updates
+    runs-on: ubuntu-latest
+
+    if: >
+      github.actor == 'dependabot[bot]' &&
+      contains(github.event.pull_request.title, 'patch')
+
+    steps:
+      - name: ✅ Approve Dependabot PR
+        uses: hmarr/auto-approve-action@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔁 Enable Auto Merge
+        uses: pascalgn/automerge-action@v0.16.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: merge

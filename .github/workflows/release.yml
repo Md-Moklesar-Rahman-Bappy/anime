@@ -1,47 +1,33 @@
-name: Create Release
+name: 🚀 Auto Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+
+permissions:
+  contents: write
 
 jobs:
   release:
+    name: 📦 Create Automatic Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
         with:
-          php-version: '8.2'
-          tools: composer:v2
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: composer install --no-dev --optimize-autoloader
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Build assets
-        run: npm run build
-
-      - name: Create release archive
-        run: |
-          mkdir -p release/anime
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='storage/app' --exclude='tests' ./ release/anime/
-          cd release
-          zip -r ../anime-${{ github.ref_name }}.zip anime/
-
-      - name: Generate checksum
-        run: sha256sum anime-${{ github.ref_name }}.zip > anime-${{ github.ref_name }}.zip.sha256
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          files: |
-            anime-${{ github.ref_name }}.zip
-            anime-${{ github.ref_name }}.zip.sha256
-          generate_release_notes: true
+          node-version: 20
+
+      - name: 📦 Install release dependencies
+        run: npm install
+
+      - name: 🚀 Semantic Release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

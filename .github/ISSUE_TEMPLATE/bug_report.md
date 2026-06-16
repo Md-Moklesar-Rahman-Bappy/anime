@@ -1,32 +1,55 @@
 ---
-name: Bug report
-about: Report a bug to help improve AniWaves
-title: '[BUG] '
+name: 🐞 Bug Report
+about: Report a problem to help us improve the project
+title: "[BUG] "
 labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+# 🐞 Bug Report
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '...'
-3. Scroll down to '...'
+Thank you for reporting a bug! 🚀  
+Please fill in the details below to help us understand and fix the issue quickly.
+
+---
+
+## 📖 Description
+A clear and concise description of the problem.
+
+> 🧠 Tip: What’s going wrong?
+
+---
+
+## 🔄 Steps to Reproduce
+
+Follow these steps to reproduce the issue:
+
+1. Go to `'...'`
+2. Click on `'...'`
+3. Perform `'...'`
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+---
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## ✅ Expected Behavior
 
-**Environment**
-- OS: [e.g. Windows, Linux]
-- Browser: [e.g. Chrome, Firefox]
-- PHP version: [e.g. 8.2]
-- Database: [e.g. SQLite, MySQL]
+Describe what you expected to happen.
 
-**Additional context**
-Add any other context about the problem here.
+> ✔️ What should have happened?
+
+---
+
+## ❌ Actual Behavior
+
+Describe what actually happened.
+
+> ❗ What happened instead?
+
+---
+
+## 📸 Screenshots / Logs
+
+If applicable, add screenshots, error messages, or logs.
+
+```bash
+# Paste your error logs here
