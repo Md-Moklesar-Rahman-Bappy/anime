@@ -12,37 +12,33 @@ use App\Http\Controllers\MangaReaderController;
 |--------------------------------------------------------------------------
 | Manga Routes
 |--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| - Specific routes MUST come first
-| - Generic {slug} route MUST come last
-|
 */
 
-Route::prefix('manga')->name('manga.')->group(function () {
+// Homepage
+Route::get('/manga', [MangaListController::class, 'index'])->name('manga.index');
 
-    // Homepage
-    Route::get('/', [MangaListController::class, 'index'])->name('index');
+// Specific routes
+Route::get('/manga/genre/{slug}', [MangaGenreController::class, 'show'])
+    ->name('manga.genre')
+    ->where('slug', '[a-zA-Z0-9\-\_]+');
 
-    // Specific routes (VERY IMPORTANT ORDER)
-    Route::get('/genre/{slug}', MangaGenreController::class)->name('genre');
-    Route::get('/az-list/{letter?}', [MangaListController::class, 'azList'])->name('az-list');
-    Route::get('/filter', [MangaListController::class, 'filter'])->name('filter');
-    Route::get('/newest', [MangaListController::class, 'newest'])->name('newest');
-    Route::get('/updated', [MangaListController::class, 'updated'])->name('updated');
-    Route::get('/ongoing', [MangaListController::class, 'ongoing'])->name('ongoing');
-    Route::get('/trending', [MangaListController::class, 'trending'])->name('trending');
-    Route::get('/completed', [MangaListController::class, 'completed'])->name('completed');
-    Route::get('/random', MangaRandomController::class)->name('random');
+Route::get('/manga/az-list/{letter?}', [MangaListController::class, 'azList'])->name('manga.az-list');
+Route::get('/manga/filter', [MangaListController::class, 'filter'])->name('manga.filter');
 
-    // Catch-all MUST be last
-    Route::get('/{slug}', MangaController::class)->name('detail');
-});
+Route::get('/manga/newest', [MangaListController::class, 'newest'])->name('manga.newest');
+Route::get('/manga/updated', [MangaListController::class, 'updated'])->name('manga.updated');
+Route::get('/manga/ongoing', [MangaListController::class, 'ongoing'])->name('manga.ongoing');
+Route::get('/manga/trending', [MangaListController::class, 'trending'])->name('manga.trending');
+Route::get('/manga/completed', [MangaListController::class, 'completed'])->name('manga.completed');
 
-/*
-|--------------------------------------------------------------------------
-| Reader (separate to avoid conflict with /manga/{slug})
-|--------------------------------------------------------------------------
-*/
+Route::get('/manga/random', [MangaRandomController::class, 'index'])->name('manga.random');
 
-Route::get('/read/{slug}', MangaReaderController::class)->name('manga.read');
+// ✅ FIXED ROUTE (IMPORTANT)
+Route::get('/manga/{slug}', MangaController::class)
+    ->name('manga.detail')
+    ->where('slug', '[a-zA-Z0-9\-\_]+');
+
+// Reader
+Route::get('/read/{slug}', [MangaReaderController::class, 'index'])
+    ->name('manga.read')
+    ->where('slug', '[a-zA-Z0-9\-\_]+');

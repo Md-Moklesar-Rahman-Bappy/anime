@@ -76,7 +76,7 @@
             class="absolute inset-0"
             :aria-hidden="current !== {{ $i }}"
         >
-            <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ $anime->banner_url }}')"></div>
+            <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ $anime->banner_url ?? asset('fallback.jpg') }}')"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/70 to-transparent"></div>
             <div class="absolute inset-0 bg-gradient-to-r from-[#0a0a0f]/60 to-transparent"></div>
             <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
@@ -97,7 +97,7 @@
                     @endif
                 </div>
                 <p class="text-gray-400 text-sm max-w-xl line-clamp-2 mb-4 drop-shadow-md">{{ Str::limit($anime->description, 200) }}</p>
-                <a href="{{ route('watch', $anime->slug) }}" class="inline-flex items-center bg-purple-600 hover:bg-purple-500 text-white px-6 py-2.5 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95 shadow-lg shadow-purple-600/30 text-sm">
+                <a href="{{ route('watch', $anime->slug) }}" class="inline-flex items-center bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95 shadow-lg shadow-purple-600/30 text-sm">
                     <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
                     Play now
                 </a>
@@ -141,14 +141,15 @@
             {{-- Latest Episode --}}
             <section>
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold text-white">Latest Episode</h2>
+                    <h2 class="section-title">Latest Episode</h2>
                     <a href="{{ route('updated') }}" class="text-sm text-purple-500 hover:text-purple-400 font-medium">View all</a>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     @foreach($latestEpisodes as $episode)
                     <a href="{{ route('watch', ['slug' => $episode->anime->slug, 'ep' => $episode->number]) }}" class="group">
-                        <div class="relative rounded-lg overflow-hidden bg-[#141424] aspect-[2/3]">
-                            <img src="{{ $episode->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                        <div class="anime-card">
+                            <img src="{{ $episode->thumbnail_url }}" class="anime-img">
+
                             <div class="absolute top-2 left-2 bg-purple-600 text-xs font-bold px-2 py-0.5 rounded">Ep {{ $episode->number }}</div>
                             @if($episode->has_sub)<div class="absolute top-2 right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded font-medium">SUB</div>@endif
                             @if($episode->has_dub)<div class="absolute top-8 right-2 bg-green-600 text-[10px] px-1.5 py-0.5 rounded font-medium">DUB</div>@endif
@@ -167,13 +168,13 @@
             @if($upcoming->count())
             <section>
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold text-white">Upcoming Anime</h2>
+                    <h2 class="section-title">Upcoming Anime</h2>
                     <a href="{{ route('filter') }}?status=not-yet-aired" class="text-sm text-purple-500 hover:text-purple-400 font-medium">View more</a>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     @foreach($upcoming->take(8) as $anime)
                     <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
-                        <div class="relative rounded-lg overflow-hidden bg-[#141424] aspect-[2/3]">
+                        <div class="relative rounded-lg overflow-hidden bg-[#111827] aspect-[2/3]">
                             <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
                             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                                 <span class="text-xs text-gray-400">Not Yet Aired</span>
@@ -277,3 +278,29 @@
     </div>
 </div>
 @endsection
+
+<style>
+.section-title {
+    @apply text-lg font-semibold text-white mb-4;
+}
+
+.anime-card {
+    @apply relative rounded-xl overflow-hidden bg-[#111827] aspect-[2/3];
+}
+
+.anime-img {
+    @apply w-full h-full object-cover group-hover:scale-105 transition duration-300;
+}
+
+.anime-overlay {
+    @apply absolute inset-0 flex items-end p-3 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition;
+}
+
+.anime-title {
+    @apply text-sm text-gray-300 mt-2 truncate group-hover:text-white;
+}
+
+.anime-meta {
+    @apply text-xs text-gray-500 mt-1;
+}
+</style>

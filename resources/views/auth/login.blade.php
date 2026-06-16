@@ -1,10 +1,9 @@
 <x-guest-layout>
     <div class="min-h-screen flex items-center justify-center bg-[#0b0e16] px-4">
 
-        <!-- Card -->
         <div class="w-full max-w-md bg-[#111827] rounded-2xl shadow-2xl p-8 border border-gray-800">
 
-            <!-- Logo / Title -->
+            <!-- Title -->
             <div class="text-center mb-6">
                 <h1 class="text-3xl font-bold text-white">
                     Ani<span class="text-indigo-500">Stream</span>
@@ -14,9 +13,10 @@
                 </p>
             </div>
 
-            <!-- Session Status -->
-            <x-auth-session-status class="mb-4 text-green-500" :status="session('status')" />
+            <!-- Status -->
+            <x-auth-session-status class="mb-4 text-center" :status="session('status')" />
 
+            <!-- Form -->
             <form method="POST" action="{{ route('auth.login') }}">
                 @csrf
 
@@ -26,15 +26,15 @@
 
                     <x-text-input
                         id="email"
-                        type="email"
                         name="email"
+                        type="email"
                         :value="old('email')"
-                        class="mt-1 w-full bg-[#1f2937] border-gray-700 text-white focus:ring-indigo-500 focus:border-indigo-500 rounded-lg"
                         required
                         autofocus
+                        class="mt-1 w-full bg-[#1f2937] border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400"
                     />
 
-                    <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-500" />
+                    <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-400" />
                 </div>
 
                 <!-- Password -->
@@ -43,45 +43,49 @@
 
                     <x-text-input
                         id="password"
-                        type="password"
                         name="password"
-                        class="mt-1 w-full bg-[#1f2937] border-gray-700 text-white focus:ring-indigo-500 focus:border-indigo-500 rounded-lg"
+                        type="password"
                         required
+                        autocomplete="current-password"
+                        class="mt-1 w-full bg-[#1f2937] border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                     />
 
-                    <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-500" />
+                    <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-400" />
                 </div>
 
-                <!-- Remember -->
-                <div class="flex items-center justify-between mt-4">
-                    <label class="flex items-center text-gray-400 text-sm">
-                        <input type="checkbox" name="remember" class="mr-2">
+                <!-- Options -->
+                <div class="flex items-center justify-between mt-4 text-sm">
+
+                    <label class="flex items-center text-gray-400">
+                        <input type="checkbox" name="remember" class="mr-2 accent-indigo-500">
                         Remember me
                     </label>
 
                     @if (Route::has('auth.password.request'))
                         <a href="{{ route('auth.password.request') }}"
-                           class="text-sm text-indigo-400 hover:text-indigo-300">
+                           class="text-indigo-400 hover:text-indigo-300 transition">
                             Forgot password?
                         </a>
                     @endif
+
                 </div>
 
-                <!-- Button -->
+                <!-- Submit -->
                 <button
                     type="submit"
-                    class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg transition">
+                    class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg transition">
                     Sign In
                 </button>
 
                 <!-- Bottom -->
                 <div class="text-center mt-6 text-gray-400 text-sm">
-                    Don't have an account?
+                    Don’t have an account?
                     <a href="{{ route('auth.register') }}"
-                       class="text-indigo-400 hover:text-indigo-300 ml-1">
+                       class="text-indigo-400 hover:text-indigo-300 ml-1 transition">
                         Register
                     </a>
                 </div>
+
             </form>
         </div>
     </div>

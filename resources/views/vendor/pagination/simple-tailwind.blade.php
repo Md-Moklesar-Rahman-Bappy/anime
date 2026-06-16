@@ -1,25 +1,45 @@
 @if ($paginator->hasPages())
-    <nav role="navigation" aria-label="Pagination Navigation" class="flex justify-between">
-        {{-- Previous Page Link --}}
+<nav class="flex justify-center mt-6">
+
+    <div class="flex items-center gap-2 text-sm">
+
+        <!-- Previous -->
         @if ($paginator->onFirstPage())
-            <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default leading-5 rounded-md dark:text-gray-600 dark:bg-gray-800 dark:border-gray-600">
-                {!! __('pagination.previous') !!}
+            <span class="pagination-disabled">
+                ← Previous
             </span>
         @else
-            <a href="{{ $paginator->previousPageUrl() }}" rel="prev" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:focus:border-blue-700 dark:active:bg-gray-700 dark:active:text-gray-300">
-                {!! __('pagination.previous') !!}
+            <a href="{{ $paginator->previousPageUrl() }}"
+               rel="prev"
+               class="pagination-btn">
+                ← Previous
             </a>
         @endif
 
-        {{-- Next Page Link --}}
+        <!-- Next -->
         @if ($paginator->hasMorePages())
-            <a href="{{ $paginator->nextPageUrl() }}" rel="next" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:focus:border-blue-700 dark:active:bg-gray-700 dark:active:text-gray-300">
-                {!! __('pagination.next') !!}
+            <a href="{{ $paginator->nextPageUrl() }}"
+               rel="next"
+               class="pagination-btn">
+                Next →
             </a>
         @else
-            <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default leading-5 rounded-md dark:text-gray-600 dark:bg-gray-800 dark:border-gray-600">
-                {!! __('pagination.next') !!}
+            <span class="pagination-disabled">
+                Next →
             </span>
         @endif
-    </nav>
+
+    </div>
+
+</nav>
 @endif
+
+<style>
+.pagination-btn {
+    @apply px-4 py-2 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
+}
+
+.pagination-disabled {
+    @apply px-4 py-2 bg-[#111827] border border-gray-800 text-gray-600 rounded-lg cursor-not-allowed;
+}
+</style>

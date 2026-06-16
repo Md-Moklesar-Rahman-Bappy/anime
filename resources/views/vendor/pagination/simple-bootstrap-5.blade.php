@@ -1,29 +1,45 @@
 @if ($paginator->hasPages())
-    <nav role="navigation" aria-label="Pagination Navigation">
-        <ul class="pagination">
-            {{-- Previous Page Link --}}
-            @if ($paginator->onFirstPage())
-                <li class="page-item disabled" aria-disabled="true">
-                    <span class="page-link">{!! __('pagination.previous') !!}</span>
-                </li>
-            @else
-                <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev">
-                        {!! __('pagination.previous') !!}
-                    </a>
-                </li>
-            @endif
+<nav class="flex justify-center mt-6">
 
-            {{-- Next Page Link --}}
-            @if ($paginator->hasMorePages())
-                <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next">{!! __('pagination.next') !!}</a>
-                </li>
-            @else
-                <li class="page-item disabled" aria-disabled="true">
-                    <span class="page-link">{!! __('pagination.next') !!}</span>
-                </li>
-            @endif
-        </ul>
-    </nav>
+    <div class="flex items-center gap-2 text-sm">
+
+        <!-- Previous -->
+        @if ($paginator->onFirstPage())
+            <span class="pagination-disabled">
+                ← Previous
+            </span>
+        @else
+            <a href="{{ $paginator->previousPageUrl() }}"
+               rel="prev"
+               class="pagination-btn">
+                ← Previous
+            </a>
+        @endif
+
+        <!-- Next -->
+        @if ($paginator->hasMorePages())
+            <a href="{{ $paginator->nextPageUrl() }}"
+               rel="next"
+               class="pagination-btn">
+                Next →
+            </a>
+        @else
+            <span class="pagination-disabled">
+                Next →
+            </span>
+        @endif
+
+    </div>
+
+</nav>
 @endif
+
+<style>
+.pagination-btn {
+    @apply px-4 py-2 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
+}
+
+.pagination-disabled {
+    @apply px-4 py-2 bg-[#111827] border border-gray-800 text-gray-600 rounded-lg cursor-not-allowed;
+}
+</style>

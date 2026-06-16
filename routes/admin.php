@@ -2,27 +2,23 @@
 
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\AnimeController as AdminAnimeController;
-use App\Http\Controllers\Admin\EpisodeController;
-use App\Http\Controllers\Admin\GenreController as AdminGenreController;
-use App\Http\Controllers\Admin\FeaturedController;
-use App\Http\Controllers\Admin\JikanController;
-use App\Http\Controllers\Admin\MangaController as AdminMangaController;
-use App\Http\Controllers\Admin\MangaChapterController;
-use App\Http\Controllers\Admin\MangaGenreController as AdminMangaGenreController;
-use App\Http\Controllers\Admin\ReportController;
-use App\Http\Controllers\Admin\RequestController as AdminRequestController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\SettingController;
-use App\Http\Controllers\Admin\ScraperController;
-use App\Http\Controllers\Admin\UploadController;
-
-/*
-|--------------------------------------------------------------------------
-| Admin Routes
-|--------------------------------------------------------------------------
-*/
+use App\Http\Controllers\Admin\{
+    DashboardController,
+    AnimeController as AdminAnimeController,
+    EpisodeController,
+    GenreController as AdminGenreController,
+    FeaturedController,
+    JikanController,
+    MangaController as AdminMangaController,
+    MangaChapterController,
+    MangaGenreController as AdminMangaGenreController,
+    ReportController,
+    RequestController as AdminRequestController,
+    UserController,
+    SettingController,
+    ScraperController,
+    UploadController
+};
 
 Route::prefix('admin')
     ->name('admin.')
@@ -34,8 +30,8 @@ Route::prefix('admin')
         | Dashboard
         |--------------------------------------------------------------------------
         */
+        Route::get('/', fn() => redirect()->route('admin.dashboard'));
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
 
         /*
         |--------------------------------------------------------------------------
@@ -51,7 +47,6 @@ Route::prefix('admin')
                 ->name('episodes.delete-video');
         });
 
-
         /*
         |--------------------------------------------------------------------------
         | Genres
@@ -61,7 +56,6 @@ Route::prefix('admin')
         Route::post('/genres', [AdminGenreController::class, 'store'])->name('genres.store');
         Route::put('/genres/{genre}', [AdminGenreController::class, 'update'])->name('genres.update');
         Route::delete('/genres/{genre}', [AdminGenreController::class, 'destroy'])->name('genres.destroy');
-
 
         /*
         |--------------------------------------------------------------------------
@@ -79,7 +73,6 @@ Route::prefix('admin')
         Route::put('/manga-genres/{mangaGenre}', [AdminMangaGenreController::class, 'update'])->name('manga.genres.update');
         Route::delete('/manga-genres/{mangaGenre}', [AdminMangaGenreController::class, 'destroy'])->name('manga.genres.destroy');
 
-
         /*
         |--------------------------------------------------------------------------
         | Featured
@@ -89,7 +82,6 @@ Route::prefix('admin')
         Route::post('/featured', [FeaturedController::class, 'update'])->name('featured.update');
         Route::post('/featured/auto-fill', [FeaturedController::class, 'autoFill'])->name('featured.auto-fill');
 
-
         /*
         |--------------------------------------------------------------------------
         | Users
@@ -98,7 +90,6 @@ Route::prefix('admin')
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::put('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
-
 
         /*
         |--------------------------------------------------------------------------
@@ -111,7 +102,6 @@ Route::prefix('admin')
         Route::get('/requests', [AdminRequestController::class, 'index'])->name('requests.index');
         Route::put('/requests/{animeRequest}', [AdminRequestController::class, 'update'])->name('requests.update');
 
-
         /*
         |--------------------------------------------------------------------------
         | Settings
@@ -119,7 +109,6 @@ Route::prefix('admin')
         */
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
-
 
         /*
         |--------------------------------------------------------------------------
@@ -136,7 +125,6 @@ Route::prefix('admin')
             Route::post('/reset-progress', [JikanController::class, 'resetProgress'])->name('reset-progress');
         });
 
-
         /*
         |--------------------------------------------------------------------------
         | YouTube Import
@@ -147,7 +135,6 @@ Route::prefix('admin')
             Route::post('/import', [ScraperController::class, 'youtubeImport'])->name('import');
         });
 
-
         /*
         |--------------------------------------------------------------------------
         | Telegram Import
@@ -157,7 +144,6 @@ Route::prefix('admin')
             Route::post('/preview', [ScraperController::class, 'telegramPreview'])->name('preview');
             Route::post('/import', [ScraperController::class, 'telegramImport'])->name('import');
         });
-
 
         /*
         |--------------------------------------------------------------------------
@@ -171,5 +157,4 @@ Route::prefix('admin')
             Route::get('/status/{upload}', [UploadController::class, 'status'])->name('status');
             Route::delete('/cancel/{upload}', [UploadController::class, 'cancel'])->name('cancel');
         });
-
     });

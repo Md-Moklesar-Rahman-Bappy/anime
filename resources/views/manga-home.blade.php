@@ -11,7 +11,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 Browse All Manga
             </a>
-            <a href="{{ route('manga.updated') }}" class="inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 px-5 py-2.5 rounded-lg font-semibold text-sm transition">
+            <a href="{{ route('manga.updated') }}" class="inline-flex items-center gap-2 bg-[#1f2937]0 hover:bg-gray-700 text-gray-300 px-5 py-2.5 rounded-lg font-semibold text-sm transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 Recently Updated
             </a>
@@ -88,7 +88,7 @@
             class="absolute inset-0"
             :aria-hidden="current !== {{ $i }}"
         >
-            <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ $manga->banner_url }}')"></div>
+            <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ $manga->banner_url ?? asset('fallback.jpg') }}')"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/60 to-transparent"></div>
             <div class="absolute inset-0 bg-gradient-to-r from-gray-950/40 to-transparent"></div>
             <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
@@ -146,15 +146,15 @@
         <div class="lg:col-span-3 space-y-8">
             <section>
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-bold">Trending</h2>
+                    <h2 class="section-title">Trending</h2>
                     <a href="{{ route('manga.trending') }}" class="text-sm text-emerald-500 hover:text-emerald-400">View All</a>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     @foreach($trending as $manga)
                     <a href="{{ route('manga.detail', $manga->slug) }}" class="group">
-                        <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                            <img src="{{ $manga->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
-                            <div class="absolute top-2 left-2 bg-gray-900/80 text-xs px-2 py-1 rounded">{{ $manga->type ?? 'Manga' }}</div>
+                        <div class="manga-card">
+                            <img src="{{ $manga->thumbnail_url }}" class="manga-img" loading="lazy">
+                            <div class="absolute top-2 left-2 bg-[#111827]/80 text-xs px-2 py-1 rounded">{{ $manga->type ?? 'Manga' }}</div>
                             @if($manga->chapters_count > 0)
                             <div class="absolute top-2 right-2 bg-emerald-600/90 text-xs px-2 py-1 rounded font-bold">Ch. {{ $manga->chapters_count }}</div>
                             @endif
@@ -174,12 +174,12 @@
 
             <section>
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-bold">Recently Updated</h2>
+                    <h2 class="section-title">Recently Updated</h2>
                     <a href="{{ route('manga.updated') }}" class="text-sm text-emerald-500 hover:text-emerald-400">View All</a>
                 </div>
                 <div class="space-y-2">
                     @foreach($recentChapters as $chapter)
-                    <a href="{{ route('manga.read', ['slug' => $chapter->manga->slug, 'chapter' => $chapter->number]) }}" class="flex items-center justify-between bg-gray-900/60 hover:bg-gray-800/80 rounded-lg px-4 py-3 transition group">
+                    <a href="{{ route('manga.read', ['slug' => $chapter->manga->slug, 'chapter' => $chapter->number]) }}" class="flex items-center justify-between bg-[#111827]/60 hover:bg-[#1f2937]0/80 rounded-lg px-4 py-3 transition group">
                         <div class="flex items-center gap-3 min-w-0 flex-1">
                             <img src="{{ $chapter->manga->thumbnail_url }}" class="w-9 h-12 object-cover rounded flex-shrink-0" alt="">
                             <div class="min-w-0">
@@ -213,12 +213,12 @@
         </div>
 
         <div class="space-y-6">
-            <div x-data="{ tab: 'day' }" class="bg-gray-900 rounded-lg p-4">
+            <div x-data="{ tab: 'day' }" class="bg-[#111827] rounded-lg p-4">
                 <h3 class="font-bold text-lg mb-3">Most Viewed</h3>
                 <div class="flex space-x-2 mb-4">
-                    <button @click="tab = 'day'" :class="tab === 'day' ? 'bg-emerald-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Day</button>
-                    <button @click="tab = 'week'" :class="tab === 'week' ? 'bg-emerald-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Week</button>
-                    <button @click="tab = 'month'" :class="tab === 'month' ? 'bg-emerald-600' : 'bg-gray-800'" class="px-3 py-1 text-xs rounded transition">Month</button>
+                    <button @click="tab = 'day'" :class="tab === 'day' ? 'bg-emerald-600' : 'bg-[#1f2937]0'" class="px-3 py-1 text-xs rounded transition">Day</button>
+                    <button @click="tab = 'week'" :class="tab === 'week' ? 'bg-emerald-600' : 'bg-[#1f2937]0'" class="px-3 py-1 text-xs rounded transition">Week</button>
+                    <button @click="tab = 'month'" :class="tab === 'month' ? 'bg-emerald-600' : 'bg-[#1f2937]0'" class="px-3 py-1 text-xs rounded transition">Month</button>
                 </div>
                 <div class="space-y-3">
                     @foreach($mostViewed as $i => $manga)
@@ -237,7 +237,7 @@
                 </div>
             </div>
 
-            <div class="bg-gray-900 rounded-lg p-4">
+            <div class="bg-[#111827] rounded-lg p-4">
                 <h3 class="font-bold text-lg mb-3">New Release</h3>
                 <div class="space-y-3">
                     @foreach($newManga->take(5) as $manga)
@@ -257,14 +257,14 @@
     @if($newManga->count() > 5)
     <section class="mt-8">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold">Latest Manga</h2>
+            <h2 class="section-title">Latest Manga</h2>
             <a href="{{ route('manga.newest') }}" class="text-sm text-emerald-500 hover:text-emerald-400">View All</a>
         </div>
         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             @foreach($newManga as $manga)
             <a href="{{ route('manga.detail', $manga->slug) }}" class="group">
-                <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                    <img src="{{ $manga->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                <div class="manga-card">
+                    <img src="{{ $manga->thumbnail_url }}" class="manga-img" loading="lazy">
                 </div>
                 <p class="text-xs text-gray-400 mt-1.5 line-clamp-2 group-hover:text-white leading-tight">{{ $manga->title }}</p>
             </a>
@@ -274,3 +274,28 @@
     @endif
 </div>
 @endsection
+<style>
+.section-title {
+    @apply text-xl font-semibold text-white mb-4;
+}
+
+.manga-card {
+    @apply relative rounded-xl overflow-hidden bg-[#111827] aspect-[2/3];
+}
+
+.manga-img {
+    @apply w-full h-full object-cover group-hover:scale-105 transition duration-300;
+}
+
+.manga-overlay {
+    @apply absolute inset-0 flex items-end p-3 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition;
+}
+
+.manga-title {
+    @apply text-sm text-gray-300 mt-2 truncate group-hover:text-white;
+}
+
+.manga-meta {
+    @apply text-xs text-gray-500 mt-1;
+}
+</style>

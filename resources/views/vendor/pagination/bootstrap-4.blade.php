@@ -1,46 +1,87 @@
 @if ($paginator->hasPages())
-    <nav>
-        <ul class="pagination">
-            {{-- Previous Page Link --}}
-            @if ($paginator->onFirstPage())
-                <li class="page-item disabled" aria-disabled="true" aria-label="@lang('pagination.previous')">
-                    <span class="page-link" aria-hidden="true">&lsaquo;</span>
-                </li>
-            @else
-                <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev" aria-label="@lang('pagination.previous')">&lsaquo;</a>
+<nav class="flex justify-center mt-6">
+
+    <ul class="flex items-center gap-1 text-sm">
+
+        <!-- Previous -->
+        @if ($paginator->onFirstPage())
+            <li>
+                <span class="px-3 py-2 text-gray-600 bg-[#111827] border border-gray-800 rounded-lg cursor-not-allowed">
+                    ‹
+                </span>
+            </li>
+        @else
+            <li>
+                <a href="{{ $paginator->previousPageUrl() }}"
+                   class="pagination-btn">
+                    ‹
+                </a>
+            </li>
+        @endif
+
+        <!-- Pages -->
+        @foreach ($elements as $element)
+
+            <!-- ... -->
+            @if (is_string($element))
+                <li>
+                    <span class="px-3 py-2 text-gray-500">
+                        {{ $element }}
+                    </span>
                 </li>
             @endif
 
-            {{-- Pagination Elements --}}
-            @foreach ($elements as $element)
-                {{-- "Three Dots" Separator --}}
-                @if (is_string($element))
-                    <li class="page-item disabled" aria-disabled="true"><span class="page-link">{{ $element }}</span></li>
-                @endif
+            <!-- Numbers -->
+            @if (is_array($element))
+                @foreach ($element as $page => $url)
 
-                {{-- Array Of Links --}}
-                @if (is_array($element))
-                    @foreach ($element as $page => $url)
-                        @if ($page == $paginator->currentPage())
-                            <li class="page-item active" aria-current="page"><span class="page-link">{{ $page }}</span></li>
-                        @else
-                            <li class="page-item"><a class="page-link" href="{{ $url }}">{{ $page }}</a></li>
-                        @endif
-                    @endforeach
-                @endif
-            @endforeach
+                    @if ($page == $paginator->currentPage())
+                        <li>
+                            <span class="pagination-active">
+                                {{ $page }}
+                            </span>
+                        </li>
+                    @else
+                        <li>
+                            <a href="{{ $url }}"
+                               class="pagination-btn">
+                                {{ $page }}
+                            </a>
+                        </li>
+                    @endif
 
-            {{-- Next Page Link --}}
-            @if ($paginator->hasMorePages())
-                <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next" aria-label="@lang('pagination.next')">&rsaquo;</a>
-                </li>
-            @else
-                <li class="page-item disabled" aria-disabled="true" aria-label="@lang('pagination.next')">
-                    <span class="page-link" aria-hidden="true">&rsaquo;</span>
-                </li>
+                @endforeach
             @endif
-        </ul>
-    </nav>
+
+        @endforeach
+
+        <!-- Next -->
+        @if ($paginator->hasMorePages())
+            <li>
+                <a href="{{ $paginator->nextPageUrl() }}"
+                   class="pagination-btn">
+                    ›
+                </a>
+            </li>
+        @else
+            <li>
+                <span class="px-3 py-2 text-gray-600 bg-[#111827] border border-gray-800 rounded-lg cursor-not-allowed">
+                    ›
+                </span>
+            </li>
+        @endif
+
+    </ul>
+
+</nav>
 @endif
+
+<style>
+.pagination-btn {
+    @apply px-3 py-2 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
+}
+
+.pagination-active {
+    @apply px-3 py-2 bg-indigo-600 text-white rounded-lg border border-indigo-500;
+}
+</style>
