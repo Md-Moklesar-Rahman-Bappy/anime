@@ -13,19 +13,16 @@ jobs:
     name: 🔄 Auto Merge Dependabot Updates
     runs-on: ubuntu-latest
 
-    # ✅ Only allow Dependabot + patch updates (safe)
     if: >
       github.actor == 'dependabot[bot]' &&
       contains(github.event.pull_request.title, 'patch')
 
     steps:
-      # ✅ Step 1: Approve PR automatically
       - name: ✅ Approve Dependabot PR
         uses: hmarr/auto-approve-action@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ✅ Step 2: Enable auto-merge
       - name: 🔁 Enable Auto Merge
         uses: pascalgn/automerge-action@v0.15.6
         env:
