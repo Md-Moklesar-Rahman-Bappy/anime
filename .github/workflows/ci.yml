@@ -11,11 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ Checkout repository
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      # ✅ Setup PHP environment
       - name: ⚙️ Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -23,7 +21,6 @@ jobs:
           extensions: mbstring, bcmath, intl, pdo_mysql
           coverage: none
 
-      # ✅ Cache Composer dependencies
       - name: 📦 Cache Composer dependencies
         uses: actions/cache@v4
         with:
@@ -32,25 +29,19 @@ jobs:
           restore-keys: |
             composer-${{ runner.os }}-
 
-      # ✅ Install Composer dependencies
       - name: 📦 Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      # ✅ Setup environment file
       - name: ⚙️ Setup Environment
         run: |
           cp .env.example .env
           php artisan key:generate
 
-      # ✅ Set directory permissions
       - name: 🔐 Set Permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      # ✅ Run database migrations (if needed)
       - name: 🗄️ Run Migrations
         run: php artisan migrate --force
 
-      # ✅ Run tests
       - name: ✅ Run Tests
         run: php artisan test --verbose
-``
