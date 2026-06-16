@@ -26,11 +26,9 @@ jobs:
           --health-retries=3
 
     steps:
-      # ✅ Checkout code
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      # ✅ Setup PHP
       - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -38,7 +36,6 @@ jobs:
           extensions: mbstring, bcmath, intl, pdo_mysql
           coverage: none
 
-      # ✅ Cache Composer dependencies (faster CI)
       - name: 📦 Cache Composer
         uses: actions/cache@v4
         with:
@@ -46,17 +43,14 @@ jobs:
           key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
 
-      # ✅ Install dependencies
       - name: 📦 Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      # ✅ Setup environment
       - name: ⚙️ Setup Laravel Environment
         run: |
           cp .env.example .env
           php artisan key:generate
 
-      # ✅ Configure DB for testing
       - name: 🗄️ Configure Database
         run: |
           echo "DB_CONNECTION=mysql" >> .env
@@ -66,11 +60,8 @@ jobs:
           echo "DB_USERNAME=root" >> .env
           echo "DB_PASSWORD=root" >> .env
 
-      # ✅ Run migrations
       - name: 🗄️ Run Migrations
         run: php artisan migrate --force
 
-      # ✅ Run tests
       - name: ✅ Run PHPUnit Tests
         run: vendor/bin/phpunit --testdox
-``
