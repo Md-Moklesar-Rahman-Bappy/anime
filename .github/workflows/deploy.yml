@@ -11,25 +11,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ Checkout repository
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      # ✅ Setup PHP (for build tasks)
       - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
 
-      # ✅ Install dependencies
       - name: 📦 Install Composer Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      # ✅ Run tests before deploy (important!)
       - name: ✅ Run Tests
         run: php artisan test
 
-      # ✅ Deploy via SSH
       - name: 🚀 Deploy to Production Server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -38,7 +33,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           script: |
-            cd /var/www/anime
+            cd /var/www/your-project
 
             git pull origin main
 
@@ -51,3 +46,7 @@ jobs:
             php artisan view:cache
 
             sudo systemctl restart nginx
+
+
+
+            
