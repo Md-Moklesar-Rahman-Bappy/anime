@@ -1,41 +1,55 @@
 ---
 name: 🐞 Bug Report
-about: Create a report to help us improve
-title: "[BUG] "
+about: Report a problem to help us improve the project
+title: "[BUG]: "
 labels: bug
 assignees: ''
 ---
 
-## 🐞 Description
-A clear and concise description of what the bug is.
+# 🐞 Bug Report
+
+Thank you for reporting a bug! 🚀  
+Please fill in the details below to help us understand and fix the issue quickly.
+
+---
+
+## 📖 Description
+A clear and concise description of the problem.
+
+> 🧠 Tip: What’s going wrong?
 
 ---
 
 ## 🔄 Steps to Reproduce
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '...'
-3. See error
+
+Follow these steps to reproduce the issue:
+
+1. Go to `'...'`
+2. Click on `'...'`
+3. Perform `'...'`
+4. See error
 
 ---
 
 ## ✅ Expected Behavior
-What you expected to happen.
+
+Describe what you expected to happen.
+
+> ✔️ What should have happened?
 
 ---
 
-## 📸 Screenshots
-If applicable, add screenshots to help explain your problem.
+## ❌ Actual Behavior
+
+Describe what actually happened.
+
+> ❗ What happened instead?
 
 ---
 
-## 💻 Environment
-- OS: [e.g. Windows 10]
-- Browser: [e.g. Chrome 91]
-- PHP version: [e.g. 8.2]
-- Laravel version: [e.g. 10.x]
+## 📸 Screenshots / Logs
 
----
+If applicable, add screenshots, error messages, or logs.
 
-## 📌 Additional Context
-Add any other context about the problem here.
+```bash
+# Paste your error logs here
