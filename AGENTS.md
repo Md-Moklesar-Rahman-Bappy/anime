@@ -1,27 +1,29 @@
 # 🤖 AGENTS.md
 
 Welcome to the **Anime Project** 🎌  
-This document provides guidelines for AI agents, automation tools, and contributors working on this repository.
+This document defines guidelines for **AI agents, automation tools, and contributors** interacting with this repository.
 
 ---
 
 ## 📌 Project Overview
 
-This is a Laravel-based application with:
+This is a full-featured anime streaming platform built with:
 
-- ⚙️ Backend: Laravel (PHP)
-- 🎨 Frontend: Vite + Tailwind CSS + Alpine.js
+- ⚙️ Backend: Laravel 11 (PHP 8.2+)
+- 🎨 Frontend: Blade + Vite + Tailwind CSS + Alpine.js
 - 📊 Libraries: Chart.js, Plyr
-- 🔐 CI/CD: GitHub Actions (CI, Testing, Security, Deploy, Release)
+- 🗄️ Database: MySQL / SQLite
+- 🔐 DevOps: GitHub Actions (CI, Security, Deploy, Release)
 
 ---
 
-## 🎯 Goals
+## 🎯 Project Goals
 
-- Maintain high-quality, clean, and secure code
-- Ensure automated testing and deployment
-- Follow modern DevOps best practices
-- Keep the project scalable and maintainable
+- ✅ Maintain **clean and maintainable code**
+- ✅ Ensure **automated testing and deployment**
+- ✅ Follow **modern DevOps practices**
+- ✅ Keep architecture **scalable and modular**
+- ✅ Deliver **smooth user experience**
 
 ---
 
@@ -34,5 +36,12 @@ This is a Laravel-based application with:
 ├── PULL_REQUEST_TEMPLATE.md
 
 app/
+bootstrap/
+config/
+database/
+public/
 resources/
 routes/
+storage/
+tests/
+``
