@@ -1,51 +1,53 @@
-name: "CodeQL Analysis"
+name: 🔐 CodeQL Security Scan
 
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
   schedule:
-    - cron: '0 2 * * *'   # Nightly run at 2 AM UTC
+    - cron: '0 2 * * 1' # Weekly scan (Monday 02:00 UTC)
+
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
-  analyze:
-    name: Analyze (PHP)
+  codeql:
+    name: 🛡️ CodeQL Analysis
     runs-on: ubuntu-latest
-
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
 
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'php' ]
+        language: [ 'php' ]  # Laravel backend
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      # ✅ Checkout repo
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up PHP
+      # ✅ Initialize CodeQL
+      - name: ⚙️ Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      # ✅ Setup PHP
+      - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, bcmath, intl, pdo_mysql
-          coverage: none
 
-      - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --optimize-autoloader
+      # ✅ Install dependencies
+      - name: 📦 Install Dependencies
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
+      # ✅ Optional: Autobuild (safe default)
+      - name: 🛠️ Autobuild
+        uses: github/codeql-action/autobuild@v3
 
-      - name: Build project
-        run: |
-          php artisan config:clear
-          php artisan cache:clear
-          php artisan route:clear
-          php artisan view:clear
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+      # ✅ Run analysis
+      - name: 🔍 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
