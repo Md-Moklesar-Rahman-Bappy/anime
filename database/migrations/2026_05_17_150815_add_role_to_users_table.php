@@ -12,15 +12,47 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('user');
-            $table->string('username')->nullable()->unique();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Role Column
+            |--------------------------------------------------------------------------
+            */
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->string('role')
+                    ->default('user')
+                    ->index();
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Username Column
+            |--------------------------------------------------------------------------
+            */
+            if (!Schema::hasColumn('users', 'username')) {
+                $table->string('username')
+                    ->nullable()
+                    ->unique()
+                    ->after('name'); // optional placement
+            }
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['role', 'username']);
+
+            if (Schema::hasColumn('users', 'username')) {
+                $table->dropUnique(['username']);
+                $table->dropColumn('username');
+            }
+
+            if (Schema::hasColumn('users', 'role')) {
+                $table->dropColumn('role');
+            }
         });
     }
 };

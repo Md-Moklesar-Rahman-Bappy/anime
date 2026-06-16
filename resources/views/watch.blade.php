@@ -3,51 +3,28 @@
 @section('title', $episode->anime->title . ' - Episode ' . $episode->number)
 
 @section('content')
-@php
-    $youtubeServer = $episode->servers->firstWhere('type', 'youtube');
-    $videoServers = $episode->servers->where('type', '!=', 'youtube');
-    $hasServers = $videoServers->count() > 0;
-    $hasVideoPath = !empty($episode->video_path);
-    $ytInVideoPath = false;
-    $ytVideoId = null;
-    if ($hasVideoPath && !$youtubeServer) {
-        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/', $episode->video_path, $m)) {
-            $ytInVideoPath = true;
-            $ytVideoId = $m[1];
-        }
-    }
-    $allServers = [];
-    if ($youtubeServer) {
-        $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => $youtubeServer->url, 'type' => 'youtube'];
-    } elseif ($ytInVideoPath) {
-        $allServers[] = ['id' => 'youtube', 'label' => 'YouTube', 'url' => 'https://www.youtube.com/watch?v=' . $ytVideoId, 'type' => 'youtube'];
-    }
-    $idx = 0;
-    foreach ($videoServers as $s) {
-        $idx++;
-        $allServers[] = ['id' => $s->id, 'label' => $s->label ?? 'Server ' . $idx, 'url' => $s->url, 'type' => $s->type];
-    }
-    if (!$hasServers && $hasVideoPath && !$ytInVideoPath) {
-        $videoSrc = str_starts_with($episode->video_path, 'http') ? $episode->video_path : Storage::url($episode->video_path);
-        $allServers[] = ['id' => 'local', 'label' => 'Default', 'url' => $videoSrc, 'type' => 'mp4'];
-    }
-    $skipTimes = $episode->skipTimes->first();
-    $initialServer = $allServers[0] ?? null;
-    $isYoutubeInit = $initialServer && $initialServer['type'] === 'youtube';
-@endphp
-
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-4">
-            <div class="bg-black rounded-lg overflow-hidden" x-data="player()" x-init="init()">
-                <div class="plyr-wrapper">
+            <div class="bg-black rounded-lg overflow-visible" x-data="player()" x-init="init()" x-cloak>
+                <div class="plyr-wrapper overflow-hidden rounded-t-lg">
                     @if($initialServer)
-                        <video id="videoPlayer" class="w-full aspect-video" playsinline
-                            {{ $episode->thumbnail ? 'poster="'.$episode->thumbnail.'"' : '' }}>
-                            @if(!$isYoutubeInit)
-                            <source src="{{ $initialServer['url'] }}" type="{{ $initialServer['type'] === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4' }}">
-                            @endif
-                        </video>
+                        @php
+                            $_mimeMap = ['mp4'=>'video/mp4','webm'=>'video/webm','m3u8'=>'application/x-mpegURL'];
+                            $_mimeType = $_mimeMap[$initialServer['type']] ?? null;
+                            $_isEmbedInit = $initialServer['type'] === 'embed';
+                        @endphp
+                        <iframe x-show="isEmbed" :src="embedUrl"
+                                class="w-full aspect-video" frameborder="0" allowfullscreen></iframe>
+                        <div x-show="!isEmbed" class="w-full aspect-video">
+                            <video id="videoPlayer" class="w-full aspect-video" playsinline
+                                {{ $episode->thumbnail_url ? 'poster="'.$episode->thumbnail_url.'"' : '' }}
+                                @if($isYoutubeInit) data-plyr-provider="youtube" data-plyr-embed-id="{{ $youtubeVideoId ?? '' }}" @endif>
+                                @if(!$isYoutubeInit && !$_isEmbedInit)
+                                <source src="{{ $initialServer['url'] }}" @if($_mimeType) type="{{ $_mimeType }}" @endif>
+                                @endif
+                            </video>
+                        </div>
                     @else
                         <div class="w-full aspect-video flex items-center justify-center bg-gray-900 text-gray-500">
                             <div class="text-center">
@@ -66,7 +43,7 @@
                 <div class="player-control-bar">
                     <div class="ctrl-group">
                         <button class="ctrl-btn" @click="togglePlay()" title="Play/Pause (Space)">
-                            <i class="fa-solid fa-play"></i>
+                            <i class="fa-solid" :class="playing ? 'fa-pause' : 'fa-play'"></i>
                         </button>
                         <button class="ctrl-btn" @click="skip(-config.skipSeconds)" title="Rewind 10s (J)">
                             <i class="fa-solid fa-backward"></i> <span class="label">10s</span>
@@ -108,15 +85,15 @@
                         @if(count($allServers) > 1)
                         <select class="server-select" @change="switchServer($event.target.selectedIndex)">
                             @foreach($allServers as $i => $s)
-                            <option value="{{ $s['id'] }}" @if($i === 0) selected @endif>{{ $s['label'] }}</option>
+                            <option value="{{ $s['server_id'] }}" @if($i === 0) selected @endif>{{ $s['label'] }}</option>
                             @endforeach
                         </select>
                         @endif
-                        <div class="relative">
+                        <div class="relative" @click.outside="listOpen = false">
                             <button class="ctrl-btn" @click="toggleList()" title="Add to list">
                                 <i class="fa-solid fa-bookmark"></i> <span class="label">List</span>
                             </button>
-                            <div class="player-dropdown" x-cloak x-show="listOpen" @click.outside="listOpen = false">
+                            <div class="player-dropdown" x-cloak x-show="listOpen">
                                 <template x-for="cat in categories" :key="cat.value">
                                     <button class="dropdown-item" :class="{ active: favoriteCategory === cat.value }" @click="updateList(favoriteCategory === cat.value ? null : cat.value)">
                                         <span class="check">
@@ -134,11 +111,11 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="relative">
+                        <div class="relative" @click.outside="reportOpen = false">
                             <button class="ctrl-btn" @click="toggleReport()" title="Report issue">
                                 <i class="fa-solid fa-triangle-exclamation"></i> <span class="label">Report</span>
                             </button>
-                            <div class="player-dropdown" x-cloak x-show="reportOpen" @click.outside="reportOpen = false">
+                            <div class="player-dropdown" x-cloak x-show="reportOpen">
                                 <div style="padding: 8px 12px">
                                     <div style="margin-bottom: 10px">
                                         <label style="font-size:12px; color:#9ca3af; display:block; margin-bottom:4px">Issue type</label>
@@ -205,16 +182,25 @@
                     <button type="submit" class="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Post Comment</button>
                 </form>
                 @else
-                <p class="text-gray-400 text-sm mb-4"><a href="{{ route('login') }}" class="text-purple-500 hover:text-purple-400">Login</a> to comment.</p>
+                <p class="text-gray-400 text-sm mb-4"><a href="{{ route('auth.login') }}" class="text-purple-500 hover:text-purple-400">Login</a> to comment.</p>
                 @endauth
                 <div class="space-y-4">
                     @foreach($comments as $comment)
                     <div class="flex space-x-3">
                         <img src="https://ui-avatars.com/api/?name={{ urlencode($comment->user->name) }}&background=7c3aed&color=fff" class="w-8 h-8 rounded-full" alt="">
-                        <div>
+                        <div class="flex-1">
                             <div class="flex items-center space-x-2">
                                 <span class="text-sm font-semibold">{{ $comment->user->name }}</span>
                                 <span class="text-xs text-gray-500">{{ $comment->created_at->diffForHumans() }}</span>
+                                @auth
+                                @if(auth()->user()->isSuperAdmin())
+                                <form action="{{ route('comments.destroy', $comment) }}" method="POST" class="ml-auto" onsubmit="return confirm('Delete this comment?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-xs text-red-500 hover:text-red-400">Delete</button>
+                                </form>
+                                @endif
+                                @endauth
                             </div>
                             <p class="text-sm text-gray-300 mt-1">{{ $comment->body }}</p>
                         </div>
@@ -233,7 +219,7 @@
                 <div class="space-y-2 max-h-[500px] overflow-y-auto">
                     @foreach($anime->episodes as $ep)
                     <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $ep->number]) }}" class="flex items-center space-x-3 p-2 rounded-lg transition {{ $ep->id === $episode->id ? 'bg-purple-600/20 border border-purple-600' : 'hover:bg-gray-800' }}">
-                        <img src="{{ $ep->thumbnail ?? $anime->thumbnail ?? 'https://via.placeholder.com/80x45/1a1a2e/7c3aed' }}" class="w-20 h-12 object-cover rounded" alt="">
+                        <img src="{{ $ep->thumbnail_url }}" class="w-20 h-12 object-cover rounded" alt="" loading="lazy">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm truncate">Episode {{ $ep->number }}</p>
                             @if($ep->title)<p class="text-xs text-gray-500 truncate">{{ $ep->title }}</p>@endif
@@ -255,7 +241,7 @@
                 <div class="space-y-2">
                     @foreach($related as $rel)
                     <a href="{{ route('anime.detail', $rel->slug) }}" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800 transition">
-                        <img src="{{ $rel->thumbnail ?? 'https://via.placeholder.com/40x56/1a1a2e/7c3aed' }}" class="w-10 h-14 object-cover rounded" alt="">
+                        <img src="{{ $rel->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="" loading="lazy">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm truncate">{{ $rel->title }}</p>
                             <p class="text-xs text-gray-500">{{ $rel->type }} | {{ $rel->year }}</p>
@@ -271,6 +257,7 @@
 @push('scripts')
 <script>
 window.PLAYER_SERVERS = @json($allServers);
+window.PLAYER_LANGUAGES = @json($languages);
 window.PLAYER_IS_YOUTUBE = {{ $isYoutubeInit ? 'true' : 'false' }};
 window.PLAYER_IS_FAVORITED = {{ $isFavorited ? 'true' : 'false' }};
 window.PLAYER_FAV_CATEGORY = {{ $favCategory ? '"'.$favCategory.'"' : 'null' }};
@@ -279,6 +266,7 @@ window.PLAYER_PREV_URL = {{ $prevEpisode ? '"'.route('watch', ['slug' => $anime-
 window.PLAYER_ANIME_ID = {{ $anime->id }};
 window.PLAYER_EPISODE_ID = {{ $episode->id }};
 window.PLAYER_IS_AUTH = {{ auth()->check() ? 'true' : 'false' }};
+window.PLAYER_LOGIN_URL = '{{ route('auth.login') }}';
 window.PLAYER_SKIP_TIMES = @json($skipTimes);
 </script>
 @endpush

@@ -11,28 +11,65 @@ return new class extends Migration
      */
     public function up(): void
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Users Table
+        |--------------------------------------------------------------------------
+        */
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+
+            // Basic info
             $table->string('name');
+            $table->string('username')->unique()->nullable(); // ✅ required for your system
             $table->string('email')->unique();
+
+            // Auth
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            // Roles (VERY IMPORTANT)
+            $table->string('role')->default('user')->index(); // user / admin / super_admin
+
+            // Optional profile
+            $table->string('avatar')->nullable();
+
+            // Tokens
             $table->rememberToken();
+
             $table->timestamps();
         });
 
+        /*
+        |--------------------------------------------------------------------------
+        | Password Reset Tokens
+        |--------------------------------------------------------------------------
+        */
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
 
+        /*
+        |--------------------------------------------------------------------------
+        | Sessions Table
+        |--------------------------------------------------------------------------
+        */
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
+
+            $table->foreignId('user_id')
+                ->nullable()
+                ->index()
+                ->constrained('users')
+                ->nullOnDelete(); // ✅ clean relationship
+
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
+
             $table->longText('payload');
+
             $table->integer('last_activity')->index();
         });
     }
@@ -42,8 +79,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

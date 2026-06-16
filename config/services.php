@@ -33,13 +33,21 @@ return [
 
     'jikan' => [
         'base_url' => 'https://api.jikan.moe/v4',
-        'timeout' => 15,
-        'retry' => 3,
-        'retry_delay' => 100,
+        'timeout' => 30,
+        'connect_timeout' => 15,
+        'retry' => 5,
+        'retry_delay' => 200,
     ],
 
     'youtube' => [
         'key' => env('YOUTUBE_API_KEY', ''),
+    ],
+
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'channel_id' => env('TELEGRAM_CHANNEL_ID', '@aniwavebd'),
+        'api_id' => env('TELEGRAM_API_ID'),
+        'api_hash' => env('TELEGRAM_API_HASH'),
     ],
 
 ];

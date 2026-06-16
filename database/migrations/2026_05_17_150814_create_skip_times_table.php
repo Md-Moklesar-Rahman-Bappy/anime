@@ -12,13 +12,51 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('skip_times', function (Blueprint $table) {
+
             $table->id();
-            $table->foreignId('episode_id')->constrained()->onDelete('cascade');
-            $table->integer('intro_start')->nullable();
-            $table->integer('intro_end')->nullable();
-            $table->integer('outro_start')->nullable();
-            $table->integer('outro_end')->nullable();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Relationships
+            |--------------------------------------------------------------------------
+            */
+            $table->foreignId('episode_id')
+                ->constrained()
+                ->cascadeOnDelete()
+                ->unique(); // ✅ one skip config per episode
+
+            /*
+            |--------------------------------------------------------------------------
+            | Skip Segments
+            |--------------------------------------------------------------------------
+            */
+
+            // Intro skip
+            $table->unsignedInteger('intro_start')->nullable();
+            $table->unsignedInteger('intro_end')->nullable();
+
+            // Outro skip
+            $table->unsignedInteger('outro_start')->nullable();
+            $table->unsignedInteger('outro_end')->nullable();
+
+            // Optional extra (recap)
+            $table->unsignedInteger('recap_start')->nullable();
+            $table->unsignedInteger('recap_end')->nullable();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Flags
+            |--------------------------------------------------------------------------
+            */
+            $table->boolean('has_intro')->default(false);
+            $table->boolean('has_outro')->default(false);
+            $table->boolean('has_recap')->default(false);
+
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
             $table->timestamps();
         });
     }

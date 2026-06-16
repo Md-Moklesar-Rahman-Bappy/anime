@@ -5,19 +5,55 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AnimeRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class RequestController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $requests = AnimeRequest::with('user')->latest()->paginate(20);
+        $query = AnimeRequest::with('user')->latest();
+
+        // ✅ Filter support
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $requests = $query->paginate(20);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'html' => view('admin.requests._table', compact('requests'))->render(),
+                'pagination' => view('admin.requests._pagination', compact('requests'))->render(),
+                'total' => $requests->total(),
+            ]);
+        }
+
         return view('admin.requests.index', compact('requests'));
     }
 
     public function update(Request $request, AnimeRequest $animeRequest)
     {
-        $request->validate(['status' => 'required|in:pending,fulfilled,rejected']);
-        $animeRequest->update(['status' => $request->status]);
-        return back()->with('success', 'Request updated.');
+        $data = $request->validate([
+            'status' => 'required|in:pending,fulfilled,rejected',
+        ]);
+
+        try {
+            $animeRequest->update([
+                'status' => $data['status'],
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return back()->with('success', 'Request updated.');
+        } catch (\Throwable $e) {
+            Log::error('Anime request update failed', [
+                'request_id' => $animeRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to update request.');
+        }
     }
 }

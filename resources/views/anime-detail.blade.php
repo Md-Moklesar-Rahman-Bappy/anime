@@ -5,19 +5,21 @@
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
     <div class="relative rounded-xl overflow-hidden h-[300px] md:h-[400px] mb-8">
-        <img src="{{ $anime->banner ?? $anime->thumbnail ?? 'https://via.placeholder.com/1200x400/1a1a2e/7c3aed' }}" class="w-full h-full object-cover" alt="">
+        <img src="{{ $anime->banner_url }}" class="w-full h-full object-cover" alt="">
         <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/50 to-transparent"></div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div class="lg:col-span-1">
-            <img src="{{ $anime->thumbnail ?? 'https://via.placeholder.com/300x420/1a1a2e/7c3aed' }}" class="w-full rounded-lg shadow-lg" alt="">
+            <img src="{{ $anime->thumbnail_url }}" class="w-full rounded-lg shadow-lg" alt="" loading="lazy">
             <a href="{{ route('watch', $anime->slug) }}" class="block w-full bg-purple-600 hover:bg-purple-700 text-white text-center py-3 rounded-lg font-semibold mt-4 transition">
                 Watch Now
             </a>
             @auth
-            <button onclick="toggleFavorite({{ $anime->id }})" class="block w-full bg-gray-800 hover:bg-gray-700 text-white text-center py-3 rounded-lg font-semibold mt-2 transition">
-                {{ $isFavorited ? 'Remove from Favorites' : 'Add to Favorites' }}
+            <button x-data="{ favorited: {{ $isFavorited ? 'true' : 'false' }} }"
+                    @click="favorited = !favorited; fetch('/favorites/toggle', { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body: JSON.stringify({anime_id: {{ $anime->id }}}) }).then(r=>r.json())"
+                    class="block w-full bg-gray-800 hover:bg-gray-700 text-white text-center py-3 rounded-lg font-semibold mt-2 transition"
+                    x-text="favorited ? 'Remove from Favorites' : 'Add to Favorites'">
             </button>
             @endauth
         </div>
@@ -76,7 +78,7 @@
                 @foreach($related as $rel)
                 <a href="{{ route('anime.detail', $rel->slug) }}" class="group">
                     <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                        <img src="{{ $rel->thumbnail ?? 'https://via.placeholder.com/200x280/1a1a2e/7c3aed' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                        <img src="{{ $rel->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="" loading="lazy">
                     </div>
                     <h3 class="text-sm text-gray-300 mt-2 line-clamp-1 group-hover:text-white">{{ $rel->title }}</h3>
                 </a>
@@ -86,14 +88,4 @@
         </div>
     </div>
 </div>
-
-<script>
-function toggleFavorite(animeId) {
-    fetch('/favorites/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify({ anime_id: animeId })
-    }).then(r => r.json()).then(d => { if(d.status) location.reload(); });
-}
-</script>
 @endsection

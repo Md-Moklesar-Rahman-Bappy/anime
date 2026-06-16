@@ -3,120 +3,125 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreAnimeRequest;
 use App\Models\Anime;
 use App\Models\Genre;
+use App\Services\ContentCrudService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class AnimeController extends Controller
 {
-    public function index()
+    public function __construct(
+        protected ContentCrudService $crud,
+    ) {}
+
+    public function index(Request $request)
     {
-        $animeList = Anime::latest()->paginate(20);
+        $search = $request->input('search');
+
+        $query = Anime::query()->latest('updated_at');
+
+        if ($search) {
+            $safeSearch = '%' . addcslashes($search, '%_') . '%';
+
+            $query->where(function ($q) use ($safeSearch) {
+                $q->where('title', 'like', $safeSearch)
+                    ->orWhere('type', 'like', $safeSearch)
+                    ->orWhere('status', 'like', $safeSearch)
+                    ->orWhere('studio', 'like', $safeSearch);
+            });
+        }
+
+        $animeList = $query->withCount('episodes')->paginate(20);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'html' => view('admin.anime._table', compact('animeList'))->render(),
+                'pagination' => view('admin.anime._pagination', compact('animeList'))->render(),
+                'total' => $animeList->total(),
+            ]);
+        }
+
         return view('admin.anime.index', compact('animeList'));
+    }
+
+    public function show(Anime $anime)
+    {
+        return redirect()->route('admin.anime.edit', $anime);
     }
 
     public function create()
     {
-        $genres = Genre::all();
+        $genres = Genre::select('id', 'name')->get();
+
         return view('admin.anime.form', compact('genres'));
     }
 
-    public function store(Request $request)
+    public function store(StoreAnimeRequest $request)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'nullable|string',
-            'status' => 'nullable|string',
-            'country' => 'nullable|string',
-            'season' => 'nullable|string',
-            'year' => 'nullable|integer',
-            'rating' => 'nullable|numeric',
-            'score' => 'nullable|numeric',
-            'episodes_count' => 'nullable|integer',
-            'duration' => 'nullable|integer',
-            'source' => 'nullable|string',
-            'studio' => 'nullable|string',
-            'producers' => 'nullable|string',
-            'licensors' => 'nullable|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'banner' => 'nullable|image|max:2048',
-            'genres' => 'nullable|array',
-            'featured' => 'nullable|boolean',
-        ]);
+        try {
+            $anime = $this->crud->create(
+                Anime::class,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        $data['slug'] = Str::slug($data['title']);
-        $data['featured'] = $request->has('featured');
+            return redirect()
+                ->route('admin.anime.index')
+                ->with('success', 'Anime created successfully.');
+        } catch (\Throwable $e) {
+            Log::error($e);
 
-        if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('anime/thumbnails', 'public');
+            return back()->with('error', 'Failed to create anime.');
         }
-        if ($request->hasFile('banner')) {
-            $data['banner'] = $request->file('banner')->store('anime/banners', 'public');
-        }
-
-        $anime = Anime::create($data);
-
-        if ($request->genres) {
-            $anime->genres()->sync($request->genres);
-        }
-
-        return redirect()->route('admin.anime.index')->with('success', 'Anime created successfully.');
     }
 
     public function edit(Anime $anime)
     {
-        $genres = Genre::all();
+        $anime->load('genres');
+        $genres = Genre::select('id', 'name')->get();
+
         return view('admin.anime.form', compact('anime', 'genres'));
     }
 
-    public function update(Request $request, Anime $anime)
+    public function update(StoreAnimeRequest $request, Anime $anime)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'nullable|string',
-            'status' => 'nullable|string',
-            'country' => 'nullable|string',
-            'season' => 'nullable|string',
-            'year' => 'nullable|integer',
-            'rating' => 'nullable|numeric',
-            'score' => 'nullable|numeric',
-            'episodes_count' => 'nullable|integer',
-            'duration' => 'nullable|integer',
-            'source' => 'nullable|string',
-            'studio' => 'nullable|string',
-            'producers' => 'nullable|string',
-            'licensors' => 'nullable|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'banner' => 'nullable|image|max:2048',
-            'genres' => 'nullable|array',
-            'featured' => 'nullable|boolean',
-        ]);
+        try {
+            $this->crud->update(
+                $anime,
+                $request->validated(),
+                $request->input('genres', []),
+                'genres'
+            );
 
-        $data['slug'] = Str::slug($data['title']);
-        $data['featured'] = $request->has('featured');
+            return redirect()
+                ->route('admin.anime.index')
+                ->with('success', 'Anime updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error($e);
 
-        if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('anime/thumbnails', 'public');
+            return back()->with('error', 'Update failed.');
         }
-        if ($request->hasFile('banner')) {
-            $data['banner'] = $request->file('banner')->store('anime/banners', 'public');
-        }
-
-        $anime->update($data);
-
-        if ($request->genres) {
-            $anime->genres()->sync($request->genres);
-        }
-
-        return redirect()->route('admin.anime.index')->with('success', 'Anime updated successfully.');
     }
 
-    public function destroy(Anime $anime)
+    public function destroy(Request $request, Anime $anime)
     {
-        $anime->delete();
-        return redirect()->route('admin.anime.index')->with('success', 'Anime deleted.');
+        try {
+            $this->crud->delete($anime);
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()
+                ->route('admin.anime.index')
+                ->with('success', 'Anime deleted.');
+        } catch (\Throwable $e) {
+            Log::error($e);
+
+            return back()->with('error', 'Delete failed.');
+        }
     }
 }

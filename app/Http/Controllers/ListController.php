@@ -2,126 +2,160 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesListing;
 use App\Models\Anime;
+use App\Models\Episode;
 use App\Models\Genre;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ListController extends Controller
 {
-    public function newest()
+    use HandlesListing;
+
+    protected function modelClass(): string
     {
-        $animeList = Anime::latest()->paginate(24);
-        $title = 'Newest Anime';
-        return view('anime-list', compact('animeList', 'title'));
+        return Anime::class;
     }
 
-    public function updated()
+    protected function genreClass(): string
     {
-        $animeList = Anime::whereHas('episodes', function ($q) {
-            $q->where('created_at', '>=', now()->subWeek());
-        })->latest()->paginate(24);
-        $title = 'Recently Updated';
-        return view('anime-list', compact('animeList', 'title'));
+        return Genre::class;
     }
 
-    public function ongoing()
+    protected function cachePrefix(): string
     {
-        $animeList = Anime::where('status', 'Ongoing')->latest()->paginate(24);
-        $title = 'Ongoing Anime';
-        return view('anime-list', compact('animeList', 'title'));
+        return 'anime';
     }
 
-    public function trending()
+    protected function listView(): string
     {
-        $animeList = Anime::orderBy('views', 'desc')->paginate(24);
-        $title = 'Trending Anime';
-        return view('anime-list', compact('animeList', 'title'));
+        return 'anime-list';
     }
 
-    public function azList($letter = null)
+    protected function listVariableName(): string
     {
-        $query = Anime::query();
-        if ($letter && $letter !== 'all') {
-            $query->where('title', 'like', $letter . '%');
-        }
-        $animeList = $query->orderBy('title')->paginate(24);
-        $title = $letter ? "Anime starting with $letter" : 'All Anime';
-        return view('anime-list', compact('animeList', 'title'));
+        return 'animeList';
     }
 
-    public function filter(Request $request)
+    protected function itemLabel(): string
     {
-        $query = Anime::query();
+        return 'Anime';
+    }
 
-        if ($request->q) {
-            $query->where('title', 'like', "%{$request->q}%");
+    public function azList(?string $letter = null)
+    {
+        try {
+            $query = Anime::query()->with('genres');
+
+            if ($letter && strtolower($letter) !== 'all') {
+                $safeLetter = addcslashes($letter, '%_');
+                $query->where('title', 'like', $safeLetter . '%');
+            }
+
+            $list = $query
+                ->orderBy('title')
+                ->paginate(24)
+                ->withQueryString();
+
+            $title = $letter
+                ? "Anime starting with {$letter}"
+                : 'All Anime';
+
+            $genres = $this->getCachedGenres();
+
+            return view('anime-list', [
+                'animeList' => $list,
+                'title' => $title,
+                'genres' => $genres,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Anime A-Z list failed', [
+                'letter' => $letter,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to load anime list.');
+        }
+    }
+
+    public function searchAjax(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+
+        if (mb_strlen($q) < 1) {
+            return response()->json([
+                'anime' => [],
+                'episodes' => [],
+            ]);
         }
 
-        if ($request->type) {
-            $query->where('type', $request->type);
-        }
+        try {
+            $cacheKey = 'anime_search_ajax_' . md5($q);
 
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
+            $payload = Cache::remember($cacheKey, 60, function () use ($q) {
+                $safeQ = '%' . addcslashes($q, '%_') . '%';
 
-        if ($request->year) {
-            $query->where('year', $request->year);
-        }
+                $anime = Anime::query()
+                    ->where('title', 'like', $safeQ)
+                    ->select('id', 'title', 'slug', 'thumbnail', 'type', 'year')
+                    ->orderByDesc('views')
+                    ->take(6)
+                    ->get()
+                    ->map(fn ($a) => [
+                        'id' => $a->id,
+                        'title' => $a->title,
+                        'slug' => $a->slug,
+                        'thumbnail_url' => $a->thumbnail_url,
+                        'type' => $a->type,
+                        'year' => $a->year,
+                        'url' => route('anime.detail', $a->slug),
+                    ])
+                    ->values();
 
-        if ($request->season) {
-            $query->where('season', $request->season);
-        }
+                $episodes = Episode::query()
+                    ->where('title', 'like', $safeQ)
+                    ->with('anime:id,title,slug,thumbnail')
+                    ->select('id', 'anime_id', 'number', 'title', 'thumbnail')
+                    ->latest('created_at')
+                    ->take(5)
+                    ->get()
+                    ->map(fn ($e) => [
+                        'id' => $e->id,
+                        'title' => $e->title,
+                        'number' => $e->number,
+                        'thumbnail_url' => $e->thumbnail_url,
+                        'anime_title' => $e->anime?->title,
+                        'anime_slug' => $e->anime?->slug,
+                        'url' => $e->anime
+                            ? route('watch', [
+                                'slug' => $e->anime->slug,
+                                'ep' => $e->number,
+                            ])
+                            : null,
+                    ])
+                    ->filter(fn ($item) => !is_null($item['url']))
+                    ->values();
 
-        if ($request->country) {
-            $query->where('country', $request->country);
-        }
-
-        if ($request->rating) {
-            $query->where('rating', $request->rating);
-        }
-
-        if ($request->genres) {
-            $genreSlugs = (array) $request->genres;
-            $query->whereHas('genres', function ($q) use ($genreSlugs) {
-                $q->whereIn('genres.slug', $genreSlugs);
+                return [
+                    'anime' => $anime,
+                    'episodes' => $episodes,
+                ];
             });
+
+            return response()->json($payload);
+        } catch (\Throwable $e) {
+            Log::error('Anime AJAX search failed', [
+                'query' => $q,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'anime' => [],
+                'episodes' => [],
+                'error' => 'Search failed.',
+            ], 500);
         }
-
-        switch ($request->sort) {
-            case 'updated':
-                $query->latest('updated_at');
-                break;
-            case 'added':
-                $query->latest('created_at');
-                break;
-            case 'views':
-                $query->orderBy('views', 'desc');
-                break;
-            case 'score':
-                $query->orderBy('score', 'desc');
-                break;
-            case 'rating':
-                $query->orderBy('rating', 'desc');
-                break;
-            case 'name':
-                $query->orderBy('title');
-                break;
-            case 'episodes':
-                $query->orderBy('episodes_count', 'desc');
-                break;
-            case 'release':
-                $query->orderBy('year', 'desc');
-                break;
-            default:
-                $query->latest();
-                break;
-        }
-
-        $animeList = $query->paginate(24)->withQueryString();
-        $title = 'Filter Results';
-        $genres = Genre::all();
-
-        return view('anime-list', compact('animeList', 'title', 'genres'));
     }
 }

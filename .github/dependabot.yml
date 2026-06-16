@@ -1,0 +1,33 @@
+version: 2
+updates:
+  # PHP dependencies via Composer
+  - package-ecosystem: "composer"
+    directory: "/"   # Location of composer.json
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "Md-Moklesar-Rahman-Bappy"
+    labels:
+      - "dependencies"
+      - "php"
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"   # Location of workflow files
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # Frontend dependencies via npm (optional, if you use package.json)
+  - package-ecosystem: "npm"
+    directory: "/"   # Location of package.json
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"

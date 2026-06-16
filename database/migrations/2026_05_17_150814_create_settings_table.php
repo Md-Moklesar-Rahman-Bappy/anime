@@ -12,9 +12,42 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('settings', function (Blueprint $table) {
+
             $table->id();
-            $table->string('key')->unique();
-            $table->text('value')->nullable();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Core Key-Value
+            |--------------------------------------------------------------------------
+            */
+            $table->string('key')->unique()->index();
+
+            $table->longText('value')->nullable();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Metadata
+            |--------------------------------------------------------------------------
+            */
+            $table->string('type')->default('string');
+            // string, boolean, json, number
+
+            $table->string('group')->nullable()->index();
+            // general, seo, branding, streaming
+
+            /*
+            |--------------------------------------------------------------------------
+            | Behavior
+            |--------------------------------------------------------------------------
+            */
+            $table->boolean('autoload')->default(true);
+            // load automatically in AppLayout
+
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
             $table->timestamps();
         });
     }

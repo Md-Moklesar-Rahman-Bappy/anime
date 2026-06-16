@@ -31,10 +31,16 @@ export function player() {
         config: loadConfig(),
         player: null,
         servers: [],
-        currentServer: 0,
+        languages: [],
+        currentLanguage: null,
+        currentServers: [],
+        currentIndex: 0,
+        isEmbed: false,
+        embedUrl: null,
         isFavorited: false,
         favoriteCategory: null,
         isYoutube: false,
+        playing: false,
         listOpen: false,
         reportOpen: false,
         reportType: 'broken',
@@ -44,13 +50,25 @@ export function player() {
         showSkipOutro: false,
         skipTimes: null,
 
+        _keyboardHandler: null,
+        _loadId: 0,
+
         init() {
             this.servers = window.PLAYER_SERVERS || [];
-            this.currentServer = 0;
+            this.languages = window.PLAYER_LANGUAGES || [];
+            this.currentLanguage = this.languages[0] || null;
+            this.currentServers = this.servers.filter(s => s.language === this.currentLanguage);
+            this.currentIndex = 0;
             this.isYoutube = window.PLAYER_IS_YOUTUBE || false;
             this.isFavorited = window.PLAYER_IS_FAVORITED || false;
             this.favoriteCategory = window.PLAYER_FAV_CATEGORY || null;
             this.skipTimes = window.PLAYER_SKIP_TIMES || null;
+
+            const initServer = this.currentServers[0] || this.servers[0] || null;
+            if (initServer && initServer.type === 'embed') {
+                this.isEmbed = true;
+                this.embedUrl = initServer.url;
+            }
 
             this.$nextTick(() => {
                 this.initPlyr();
@@ -59,7 +77,20 @@ export function player() {
             });
         },
 
+        destroy() {
+            this._loadId++;
+            if (this._keyboardHandler) {
+                document.removeEventListener('keydown', this._keyboardHandler);
+                this._keyboardHandler = null;
+            }
+            if (this.player) {
+                this.player.destroy();
+                this.player = null;
+            }
+        },
+
         initPlyr() {
+            if (this.isEmbed) return;
             const video = this.$el.querySelector('video');
             if (!video) return;
 
@@ -73,26 +104,26 @@ export function player() {
             });
 
             this.player.on('ready', () => {
-                if (this.isYoutube && this.servers[0]) {
-                    const ytId = this.extractYoutubeId(this.servers[0].url);
-                    if (ytId) {
-                        this.player.source = {
-                            type: 'video',
-                            sources: [{ src: ytId, provider: 'youtube' }],
-                        };
-                    }
-                }
                 if (this.config.autoPlay) {
                     this.player.play();
                 }
             });
 
-            this.player.on('timeupdate', () => {
-                this.checkSkip();
+            this.player.on('play', () => {
+                this.playing = true;
+            });
+
+            this.player.on('pause', () => {
+                this.playing = false;
             });
 
             this.player.on('ended', () => {
+                this.playing = false;
                 this.handleEnded();
+            });
+
+            this.player.on('timeupdate', () => {
+                this.checkSkip();
             });
         },
 
@@ -186,7 +217,7 @@ export function player() {
         },
 
         setupKeyboard() {
-            document.addEventListener('keydown', (e) => {
+            this._keyboardHandler = (e) => {
                 if (!this.player) return;
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
@@ -210,37 +241,110 @@ export function player() {
                         }
                         break;
                 }
-            });
+            };
+            document.addEventListener('keydown', this._keyboardHandler);
+        },
+
+        switchLanguage(lang) {
+            this.currentLanguage = lang;
+            this.currentServers = this.servers.filter(s => s.language === lang);
+            this.currentIndex = 0;
+            if (this.currentServers.length > 0) {
+                this.loadServer(0);
+            }
         },
 
         switchServer(index) {
-            const server = this.servers[index];
+            this.currentIndex = index;
+            this.loadServer(index);
+        },
+
+        loadServer(index) {
+            this._loadId++;
+            const loadId = this._loadId;
+            const server = this.currentServers[index];
             if (!server) return;
-            this.currentServer = index;
 
             if (server.type === 'youtube') {
-                const ytId = this.extractYoutubeId(server.url);
-                if (ytId && this.player) {
-                    this.player.source = {
-                        type: 'video',
-                        sources: [{ src: ytId, provider: 'youtube' }],
-                    };
+                if (this.isEmbed) {
+                    this.destroyPlyr();
+                    this.isEmbed = false;
+                    this.embedUrl = null;
+                    this.$nextTick(() => {
+                        if (loadId !== this._loadId) return;
+                        this.initPlyr();
+                        this.loadYoutubeSource(server);
+                    });
+                    return;
                 }
+                this.loadYoutubeSource(server);
                 return;
             }
 
-            if (this.player) {
-                const mimeType = server.type === 'm3u8' ? 'application/x-mpegURL' : 'video/mp4';
+            if (server.type === 'embed') {
+                this.destroyPlyr();
+                this.isEmbed = true;
+                this.embedUrl = server.url;
+                return;
+            }
+
+            if (this.isEmbed) {
+                this.isEmbed = false;
+                this.embedUrl = null;
+                this.$nextTick(() => {
+                    if (loadId !== this._loadId) return;
+                    this.initPlyr();
+                    this.loadSource(server);
+                });
+                return;
+            }
+
+            this.loadSource(server);
+        },
+
+        loadSource(server) {
+            if (!this.player) return;
+            const mimeType = this.getMimeType(server.type);
+            this.player.source = {
+                type: 'video',
+                sources: [{ src: server.url, type: mimeType }],
+            };
+        },
+
+        loadYoutubeSource(server) {
+            const ytId = this.extractYoutubeId(server.url);
+            if (ytId && this.player) {
                 this.player.source = {
                     type: 'video',
-                    sources: [{ src: server.url, type: mimeType }],
+                    sources: [{ src: ytId, provider: 'youtube' }],
                 };
             }
         },
 
+        getMimeType(type) {
+            const map = {
+                'mp4': 'video/mp4',
+                'webm': 'video/webm',
+                'm3u8': 'application/x-mpegURL',
+            };
+            return map[type] || '';
+        },
+
+        destroyPlyr() {
+            if (this._keyboardHandler) {
+                document.removeEventListener('keydown', this._keyboardHandler);
+                this._keyboardHandler = null;
+            }
+            if (this.player) {
+                this.player.destroy();
+                this.player = null;
+            }
+            this.setupKeyboard();
+        },
+
         async updateList(category) {
             if (!window.PLAYER_IS_AUTH) {
-                window.location.href = '/login';
+                window.location.href = window.PLAYER_LOGIN_URL;
                 return;
             }
 
@@ -268,7 +372,6 @@ export function player() {
         },
 
         async submitReport() {
-            if (!this.reportDesc.trim() && this.reportType !== 'skip_time_wrong') return;
             this.submitting = true;
 
             try {

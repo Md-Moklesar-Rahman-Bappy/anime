@@ -1,0 +1,34 @@
+name: "Security Audit"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * *'   # Nightly run at 3 AM UTC
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, intl, pdo_mysql
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Run Composer Audit
+        run: composer audit --no-interaction --format=json
+
+      - name: Run NPM Audit (if package.json exists)
+        if: ${{ hashFiles('**/package.json') != '' }}
+        run: npm install && npm audit --json

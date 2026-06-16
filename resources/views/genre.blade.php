@@ -10,7 +10,7 @@
         @forelse($animeList as $anime)
         <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
             <div class="relative rounded-lg overflow-hidden bg-gray-800 aspect-[2/3]">
-                <img src="{{ $anime->thumbnail ?? 'https://via.placeholder.com/200x280/1a1a2e/7c3aed' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="">
+                <img src="{{ $anime->thumbnail_url }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="" loading="lazy">
                 <div class="absolute top-2 left-2 bg-gray-900/80 text-xs px-2 py-1 rounded">{{ $anime->type }}</div>
             </div>
             <h3 class="text-sm text-gray-300 mt-2 line-clamp-1 group-hover:text-white">{{ $anime->title }}</h3>

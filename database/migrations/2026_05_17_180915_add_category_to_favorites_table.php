@@ -6,20 +6,31 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('favorites', function (Blueprint $table) {
-            $table->string('category', 20)->nullable()->after('anime_id');
+
+            /*
+            |--------------------------------------------------------------------------
+            | Category (Optional grouping)
+            |--------------------------------------------------------------------------
+            */
+            if (!Schema::hasColumn('favorites', 'category')) {
+                $table->string('category', 50) // allow slightly larger values
+                    ->nullable()
+                    ->after('anime_id')
+                    ->index(); // ✅ useful for filtering
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('favorites', function (Blueprint $table) {
-            $table->dropColumn('category');
+
+            if (Schema::hasColumn('favorites', 'category')) {
+                $table->dropColumn('category');
+            }
         });
     }
 };

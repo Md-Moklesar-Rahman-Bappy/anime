@@ -9,14 +9,29 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('genres', function (Blueprint $table) {
-            $table->integer('mal_id')->unique()->nullable()->after('id');
+
+            /*
+            |--------------------------------------------------------------------------
+            | MAL ID (Jikan API)
+            |--------------------------------------------------------------------------
+            */
+            if (!Schema::hasColumn('genres', 'mal_id')) {
+                $table->unsignedBigInteger('mal_id')
+                    ->nullable()
+                    ->after('id')
+                    ->unique();
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('genres', function (Blueprint $table) {
-            $table->dropColumn('mal_id');
+
+            if (Schema::hasColumn('genres', 'mal_id')) {
+                $table->dropUnique(['mal_id']);
+                $table->dropColumn('mal_id');
+            }
         });
     }
 };
