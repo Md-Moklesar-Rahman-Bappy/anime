@@ -1,30 +1,91 @@
 ---
-name: ✨ Feature Request
-about: Suggest an idea for this project
+name: 🚀 Feature Request
+about: Suggest an idea or improvement for this project
 title: "[FEATURE] "
 labels: enhancement
 assignees: ''
 ---
 
-## ✨ Description
-A clear and concise description of the feature you’d like to see.
+# 🚀 Feature Request
+
+Thank you for suggesting a new feature! 🎉  
+Please provide as much detail as possible to help us understand your idea.
 
 ---
 
-## 🔄 Why Is This Needed?
-Explain why this feature would be useful for the project.
+## 📖 Summary
+
+Provide a clear and concise description of the feature.
+
+> 🧠 What would you like to see added?
 
 ---
 
-## 🛠 Proposed Solution
-Describe how you’d like this feature to work.
+## 🎯 Problem Statement
+
+Describe the problem or limitation you're facing.
+
+> ❗ Why is this feature needed?
 
 ---
 
-## 📸 Screenshots / Mockups
-If applicable, add visuals to help explain your idea.
+## 💡 Proposed Solution
+
+Describe how you would like this feature to work.
+
+> ✔️ What should happen?
 
 ---
 
-## 📌 Additional Context
-Add any other context or references here.
+## 🔄 Alternative Solutions
+
+Describe any alternative solutions or features you've considered.
+
+---
+
+## 📸 Mockups / Examples
+
+If applicable, add screenshots, UI mockups, or examples.
+
+---
+
+## 💻 Use Case
+
+Explain how this feature will be used.
+
+> 📌 Example:
+> - Who will use it?
+> - When will it be used?
+> - Why is it helpful?
+
+---
+
+## 📊 Impact
+
+What impact will this feature have?
+
+- [ ] Improves performance
+- [ ] Enhances user experience
+- [ ] Adds new functionality
+- [ ] Fixes existing limitation
+
+---
+
+## 🔍 Additional Context
+
+Add any other context, references, or related issues.
+
+---
+
+## ✅ Checklist
+
+Before submitting, please confirm:
+
+- [ ] I searched for existing feature requests
+- [ ] I clearly described the problem
+- [ ] I provided a detailed solution
+- [ ] I added examples/mockups if needed
+
+---
+
+✨ **Thank you for helping improve this project!**
