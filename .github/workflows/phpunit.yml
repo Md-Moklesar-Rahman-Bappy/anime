@@ -1,4 +1,4 @@
-name: "Laravel PHPUnit Tests"
+name: 🧪 Laravel PHPUnit Tests
 
 on:
   push:
@@ -8,41 +8,69 @@ on:
 
 jobs:
   phpunit:
+    name: 🧪 Run PHPUnit Tests
     runs-on: ubuntu-latest
 
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: password
+          MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: test_db
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost"
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      # ✅ Checkout code
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up PHP
+      # ✅ Setup PHP
+      - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, bcmath, intl, pdo_mysql
           coverage: none
 
-      - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --optimize-autoloader
+      # ✅ Cache Composer dependencies (faster CI)
+      - name: 📦 Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
 
-      - name: Prepare Laravel environment
+      # ✅ Install dependencies
+      - name: 📦 Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # ✅ Setup environment
+      - name: ⚙️ Setup Laravel Environment
         run: |
           cp .env.example .env
           php artisan key:generate
-          php artisan migrate --force
 
-      - name: Run PHPUnit tests
-        run: vendor/bin/phpunit
+      # ✅ Configure DB for testing
+      - name: 🗄️ Configure Database
+        run: |
+          echo "DB_CONNECTION=mysql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_DATABASE=test_db" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_PASSWORD=root" >> .env
+
+      # ✅ Run migrations
+      - name: 🗄️ Run Migrations
+        run: php artisan migrate --force
+
+      # ✅ Run tests
+      - name: ✅ Run PHPUnit Tests
+        run: vendor/bin/phpunit --testdox
+``
