@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ "main" ]
   schedule:
-    - cron: '0 2 * * 1' # Weekly scan (Monday 02:00 UTC)
+    - cron: '0 2 * * 1'
 
 permissions:
   contents: read
@@ -20,34 +20,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'php' ]  # Laravel backend
+        language: [ 'php' ]
 
     steps:
-      # ✅ Checkout repo
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      # ✅ Initialize CodeQL
       - name: ⚙️ Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
 
-      # ✅ Setup PHP
       - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, bcmath, intl, pdo_mysql
 
-      # ✅ Install dependencies
       - name: 📦 Install Dependencies
         run: composer install --no-interaction --prefer-dist
 
-      # ✅ Optional: Autobuild (safe default)
       - name: 🛠️ Autobuild
         uses: github/codeql-action/autobuild@v3
 
-      # ✅ Run analysis
       - name: 🔍 Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
