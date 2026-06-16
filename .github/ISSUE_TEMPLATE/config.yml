@@ -1,4 +1,3 @@
-# Disable blank issues to enforce structured reporting
 blank_issues_enabled: false
 
 contact_links:
