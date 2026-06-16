@@ -1,102 +1,52 @@
-name: "CodeQL Analysis"
+name: 🔐 CodeQL Security Analysis
 
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
   schedule:
-    - cron: '0 2 * * *'   # Runs every night at 2 AM UTC
+    - cron: '0 3 * * 1' # Runs every Monday at 03:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
   analyze:
-    name: Analyze (PHP)
+    name: 🛡️ Analyze (CodeQL)
     runs-on: ubuntu-latest
-
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
 
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'php' ]
+        language: [ 'php' ]  # Laravel project
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      # ✅ Checkout repository
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, bcmath, intl, pdo_mysql
-          coverage: none
-
-      - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --optimize-autoloader
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+      # ✅ Initialize CodeQL
+      - name: ⚙️ Initialize CodeQL
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
 
-      - name: Build project
-        run: |
-          php artisan config:clear
-          php artisan cache:clear
-          php artisan route:clear
-          php artisan view:clear
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-name: "CodeQL Analysis"
-
-on:
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 2 * * *'   # Runs every night at 2 AM UTC
-
-jobs:
-  analyze:
-    name: Analyze (PHP)
-    runs-on: ubuntu-latest
-
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'php' ]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up PHP
+      # ✅ Setup PHP (needed for Laravel projects)
+      - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, bcmath, intl, pdo_mysql
-          coverage: none
 
-      - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --optimize-autoloader
+      # ✅ Install dependencies
+      - name: 📦 Install Dependencies
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
+      # ✅ Build (if needed)
+      - name: 🏗️ Build Project
+        run: echo "No build step required for Laravel"
 
-      - name: Build project
-        run: |
-          php artisan config:clear
-          php artisan cache:clear
-          php artisan route:clear
-          php artisan view:clear
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+      # ✅ Perform CodeQL Analysis
+      - name: 🔍 Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
