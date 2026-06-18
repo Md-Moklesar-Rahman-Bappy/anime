@@ -13,9 +13,19 @@ class HomeController extends Controller
     const SHORT_TTL = 120;
 
     protected array $selectFields = [
-        'id', 'title', 'slug', 'thumbnail', 'banner',
-        'type', 'status', 'year', 'rating',
-        'age_rating', 'episodes_count', 'views', 'description'
+        'id',
+        'title',
+        'slug',
+        'thumbnail',
+        'banner',
+        'type',
+        'status',
+        'year',
+        'rating',
+        'age_rating',
+        'episodes_count',
+        'views',
+        'description'
     ];
 
     public function index()
@@ -64,21 +74,28 @@ class HomeController extends Controller
                 );
             });
 
-            // ✅ Frequently changing data
+            // Latest Episodes
             $latestEpisodes = Cache::remember(
                 'home_latest_episodes',
                 self::SHORT_TTL,
-                fn () => Episode::with('anime:id,title,slug,thumbnail,type')
+                fn() => Episode::with('anime:id,title,slug,thumbnail,type')
                     ->latest()
                     ->take(12)
                     ->get()
             );
 
+            // ✅ FIXED VARIABLES FOR VIEW
+            $newlyAdded = $data['newAnime'];
+            $justCompleted = $data['completed'];
+            $topAnime = $data['trending'];
+
             return view('home', [
                 ...$data,
                 'latestEpisodes' => $latestEpisodes,
+                'newlyAdded' => $newlyAdded,
+                'justCompleted' => $justCompleted,
+                'topAnime' => $topAnime,
             ]);
-
         } catch (\Throwable $e) {
 
             Log::error('Homepage load failed', [
@@ -86,13 +103,16 @@ class HomeController extends Controller
             ]);
 
             return view('home', [
-                'featured' => [],
-                'latestEpisodes' => [],
-                'newAnime' => [],
-                'trending' => [],
-                'ongoing' => [],
-                'upcoming' => [],
-                'completed' => [],
+                'featured' => collect(),
+                'latestEpisodes' => collect(),
+                'newAnime' => collect(),
+                'newlyAdded' => collect(),
+                'trending' => collect(),
+                'ongoing' => collect(),
+                'upcoming' => collect(),
+                'completed' => collect(),
+                'justCompleted' => collect(),
+                'topAnime' => collect(),
             ]);
         }
     }
