@@ -3,10 +3,45 @@
 @section('title', 'Contact')
 
 @section('content')
-<div class="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-    <h1 class="text-3xl font-bold mb-6">Contact Us</h1>
-    <div class="text-gray-400">
-        <p>For any inquiries, please reach out to us at <a href="mailto:contact@aniwaves.ru" class="text-purple-500 hover:text-purple-400">contact@aniwaves.ru</a>.</p>
+<div class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-semibold text-white">
+            Contact Us
+        </h1>
+        <p class="text-gray-400 text-sm mt-2">
+            We’d love to hear from you
+        </p>
     </div>
+
+    <!-- Contact Card -->
+    <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6 md:p-8 space-y-4 text-gray-400">
+
+        <p>
+            If you have any questions, feedback, or inquiries, feel free to reach out to us.
+        </p>
+
+        <div class="flex items-center gap-3">
+
+            <!-- Icon -->
+            <span class="text-indigo-400 text-lg">
+                ✉
+            </span>
+
+            <!-- Email -->
+            <a href="mailto:contact@aniwaves.ru"
+               class="text-indigo-400 hover:text-indigo-300 transition font-medium">
+                contact@aniwaves.ru
+            </a>
+
+        </div>
+
+        <p class="text-sm text-gray-500 pt-2">
+            We aim to respond to all inquiries as quickly as possible.
+        </p>
+
+    </div>
+
 </div>
 @endsection

@@ -2,43 +2,116 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto">
+
+    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold">Manga Genres</h1>
+        <h1 class="text-2xl font-semibold text-white">
+            Manga Genres
+        </h1>
     </div>
 
-    <div class="bg-gray-900 rounded-lg p-4 mb-6">
-        <form action="{{ route('admin.manga.genres.store') }}" method="POST" class="flex space-x-2">
+    <!-- Add Genre -->
+    <div class="bg-[#111827] border border-gray-800 rounded-2xl p-4 mb-6">
+
+         }}" method="POST" class="flex gap-2">
             @csrf
-            <input type="text" name="name" placeholder="New genre name..." class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500" required>
-            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm">Add</button>
+
+            <input type="text" name="name"
+                placeholder="New genre..."
+                class="form-input flex-1"
+                required>
+
+            <button type="submit"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm transition">
+                Add
+            </button>
         </form>
     </div>
 
-    <div class="bg-gray-900 rounded-lg overflow-hidden">
-        <table class="w-full text-sm">
-            <thead><tr class="text-gray-400 border-b border-gray-800"><th class="text-left p-3">Name</th><th class="text-left p-3">Slug</th><th class="text-left p-3">Actions</th></tr></thead>
-            <tbody>
-                @foreach($genres as $genre)
-                <tr class="border-b border-gray-800 hover:bg-gray-800/50">
-                    <td class="p-3">
-                        <form action="{{ route('admin.manga.genres.update', $genre) }}" method="POST" class="flex space-x-2">
-                            @csrf @method('PUT')
-                            <input type="text" name="name" value="{{ $genre->name }}" class="bg-transparent text-white border border-gray-700 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500" required>
-                            <button type="submit" class="text-blue-500 hover:text-blue-400 text-xs">Save</button>
-                        </form>
-                    </td>
-                    <td class="p-3 text-gray-500">{{ $genre->slug }}</td>
-                    <td class="p-3">
-                        <form action="{{ route('admin.manga.genres.destroy', $genre) }}" method="POST" onsubmit="return confirm('Delete this genre?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-red-500 hover:text-red-400">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+    <!-- Table -->
+    <div class="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden">
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+
+                <thead>
+                    <tr class="bg-[#0f172a] text-gray-400 border-b border-gray-800 text-left">
+                        <th class="p-3">Name</th>
+                        <th class="p-3">Slug</th>
+                        <th class="p-3">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                @forelse($genres as $genre)
+
+                    <tr class="border-b border-gray-800 hover:bg-[#1f2937] transition">
+
+                        <!-- Editable Name -->
+                        <td class="p-3">
+                             }}" method="POST" class="flex gap-2">
+                                @csrf
+                                @method('PUT')
+
+                                <input type="text" name="name"
+                                    value="{{ $genre->name }}"
+                                    class="form-input text-sm"
+                                    required>
+
+                                <button type="submit"
+                                    class="text-blue-400 hover:text-blue-300 text-sm transition">
+                                    Save
+                                </button>
+                            </form>
+                        </td>
+
+                        <!-- Slug -->
+                        <td class="p-3 text-gray-400">
+                            {{ $genre->slug }}
+                        </td>
+
+                        <!-- Delete -->
+                        <td class="p-3">
+                             }}" method="POST"
+                                  onsubmit="return confirm('Delete this genre?')">
+
+                                @csrf
+                                @method('DELETE')
+
+                                <button type="submit"
+                                    class="text-red-400 hover:text-red-300 text-sm transition">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+
+                    </tr>
+
+                @empty
+                    <tr>
+                        <td colspan="3" class="p-10 text-center text-gray-500">
+                            <p class="text-lg text-gray-300">No manga genres yet</p>
+                            <p class="text-sm mt-1">Add your first genre</p>
+                        </td>
+                    </tr>
+                @endforelse
+                </tbody>
+
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="p-4 border-t border-gray-800">
+            {{ $genres->links() }}
+        </div>
+
     </div>
-    <div class="mt-4">{{ $genres->links() }}</div>
 </div>
+
+<style>
+.form-input {
+    @apply w-full px-3 py-2 bg-[#1f2937] border border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500;
+}
+</style>
+
 @endsection

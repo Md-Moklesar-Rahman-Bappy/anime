@@ -64,17 +64,28 @@ class HomeController extends Controller
                     ->take(5)
                     ->get($this->selectFields);
 
+                // ✅ FIX ALL MISSING VARIABLES
+                $newlyAdded = $newAnime;
+                $justCompleted = $completed;
+                $topAnime = $trending;
+
                 return compact(
                     'featured',
                     'newAnime',
                     'trending',
                     'ongoing',
                     'upcoming',
-                    'completed'
+                    'completed',
+                    'newlyAdded',
+                    'justCompleted',
+                    'topAnime'
                 );
             });
 
+<<<<<<< HEAD
             // Latest Episodes
+=======
+>>>>>>> e49809d9d6911bdf67fad69ca28d173fa3ca9407
             $latestEpisodes = Cache::remember(
                 'home_latest_episodes',
                 self::SHORT_TTL,
@@ -106,11 +117,18 @@ class HomeController extends Controller
                 'featured' => collect(),
                 'latestEpisodes' => collect(),
                 'newAnime' => collect(),
+<<<<<<< HEAD
                 'newlyAdded' => collect(),
+=======
+>>>>>>> e49809d9d6911bdf67fad69ca28d173fa3ca9407
                 'trending' => collect(),
                 'ongoing' => collect(),
                 'upcoming' => collect(),
                 'completed' => collect(),
+<<<<<<< HEAD
+=======
+                'newlyAdded' => collect(),
+>>>>>>> e49809d9d6911bdf67fad69ca28d173fa3ca9407
                 'justCompleted' => collect(),
                 'topAnime' => collect(),
             ]);

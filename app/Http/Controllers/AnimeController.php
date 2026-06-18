@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Anime;
-use App\Models\Favorite;
 use App\Services\RelatedContentService;
 use App\Services\ViewCounterService;
 use Illuminate\Support\Facades\Log;
@@ -18,26 +17,22 @@ class AnimeController extends Controller
     public function __invoke(string $slug)
     {
         try {
-            // ✅ Load anime with optimized relations
             $anime = Anime::where('slug', $slug)
                 ->with([
                     'genres:id,name,slug',
-                    'episodes' => fn ($q) => $q->orderBy('number')
+                    'episodes' => fn($q) => $q->orderBy('number')
                 ])
                 ->withCount('episodes')
                 ->firstOrFail();
 
-            // ✅ Increment views safely
             $this->viewCounter->increment($anime, 'anime');
 
-            // ✅ Related content
             $related = $this->relatedContent->byGenres(
                 $anime,
                 $anime->genres ?? collect(),
                 'genres'
             );
 
-            // ✅ Favorite check (cleaner)
             $isFavorited = false;
 
             if (auth()->check()) {
@@ -47,19 +42,18 @@ class AnimeController extends Controller
                     ->exists();
             }
 
-            return view('anime-detail', [
-                'anime' => $anime,
-                'related' => $related,
-                'isFavorited' => $isFavorited,
-            ]);
-
+            return view('anime-detail', compact(
+                'anime',
+                'related',
+                'isFavorited'
+            ));
         } catch (\Throwable $e) {
-            Log::error('Anime detail load failed', [
+            Log::error('Anime detail failed', [
                 'slug' => $slug,
                 'error' => $e->getMessage(),
             ]);
 
-            abort(404, 'Anime not found.');
+            abort(404);
         }
     }
 }

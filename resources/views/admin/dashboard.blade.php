@@ -1,6 +1,149 @@
 @extends('admin.layouts.app')
 
 @section('content')
+<div class="max-w-7xl mx-auto"
+     x-data="dashboard({
+        userGrowthLabels: @json($userGrowth->pluck('label')),
+        userGrowthData: @json($userGrowth->pluck('count')),
+        typeLabels: @json($animeByType->keys()),
+        typeData: @json($animeByType->values()),
+        statusLabels: @json($animeByStatus->keys()),
+        statusData: @json($animeByStatus->values()),
+     })">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-white">Dashboard</h1>
+            <p class="text-gray-400 text-sm">{{ now()->format('l, F j, Y') }}</p>
+        </div>
+
+        <div class="flex gap-2">
+            <a href="{{ route('admin.anime.create') }}"
+               class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm">
+                + Anime
+            </a>
+            <a href="{{ route('admin.manga.create') }}"
+               class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm">
+                + Manga
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+
+        @foreach([
+            ['Anime',$totalAnime,'🎬','text-indigo-400'],
+            ['Episodes',$totalEpisodes,'▶','text-blue-400'],
+            ['Manga',$totalManga,'📖','text-pink-400'],
+            ['Chapters',$totalChapters,'📄','text-green-400'],
+            ['Users',$totalUsers,'👥','text-yellow-400'],
+        ] as [$label,$value,$icon,$color])
+
+        <div class="card">
+            <div class="flex justify-between mb-2">
+                <p class="text-xs text-gray-400 uppercase">{{ $label }}</p>
+                <span class="{{ $color }}">{{ $icon }}</span>
+            </div>
+            <p class="text-xl font-bold">{{ number_format($value) }}</p>
+        </div>
+
+        @endforeach
+
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+        <div class="card">
+            <h2 class="font-semibold mb-2">User Growth</h2>
+            <div class="h-64"><canvas id="userGrowthChart"></canvas></div>
+        </div>
+
+        <div class="card">
+            <h2 class="font-semibold mb-2">Anime Types</h2>
+            <div class="h-64"><canvas id="animeByTypeChart"></canvas></div>
+        </div>
+
+        <div class="card">
+            <h2 class="font-semibold mb-2">Anime Status</h2>
+            <div class="h-64"><canvas id="animeByStatusChart"></canvas></div>
+        </div>
+
+    </div>
+
+    <!-- Recent Episodes -->
+    <div class="card mb-8">
+
+        <h2 class="font-semibold mb-4">Recent Episodes</h2>
+
+        @forelse($recentEpisodes as $episode)
+        <div class="flex gap-3 py-2 border-b border-gray-800 last:border-none">
+
+            <div class="w-12 h-7 bg-gray-800 rounded overflow-hidden">
+                <img src="{{ $episode->thumbnail_url }}" class="w-full h-full object-cover">
+            </div>
+
+            <div class="flex-1">
+                <p class="text-sm">{{ $episode->anime->title ?? '-' }}</p>
+                <p class="text-xs text-gray-400">Ep {{ $episode->number }}</p>
+            </div>
+
+        </div>
+        @empty
+            <p class="text-gray-500 text-sm">No episodes yet</p>
+        @endforelse
+
+    </div>
+
+</div>
+
+<!-- Styles -->
+<style>
+.card {
+    @apply bg-[#111827] border border-gray-800 rounded-2xl p-4;
+}
+</style>
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{{-- @extends('admin.layouts.app')
+
+@section('content')
 <div class="max-w-7xl mx-auto" x-data="dashboard({
     userGrowthLabels: @json($userGrowth->pluck('label')),
     userGrowthData: @json($userGrowth->pluck('count')),
@@ -245,4 +388,4 @@
         </div>
     </div>
 </div>
-@endsection
+@endsection --}}

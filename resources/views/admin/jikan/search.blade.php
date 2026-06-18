@@ -2,165 +2,171 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">MAL Import</h1>
 
+    <h1 class="text-2xl font-semibold text-white mb-6">MAL Import</h1>
+
+    <!-- Top Panels -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div class="bg-gray-900 rounded-lg p-6 col-span-2">
-            <h2 class="text-lg font-semibold mb-4">Search & Import</h2>
+
+        <!-- Search -->
+        <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6 col-span-2">
+
+            <h2 class="text-lg font-medium text-white mb-4">Search & Import</h2>
+
             <form action="{{ route('admin.jikan.search.results') }}" method="POST">
                 @csrf
                 <div class="flex gap-4">
-                    <input type="text" name="q" value="{{ old('q', $query ?? '') }}" placeholder="Search MyAnimeList..." class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500" required>
-                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg">Search</button>
+                    <input type="text" name="q"
+                        value="{{ old('q', $query ?? '') }}"
+                        placeholder="Search MyAnimeList..."
+                        class="form-input flex-1"
+                        required>
+
+                    <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg transition">
+                        Search
+                    </button>
                 </div>
             </form>
 
-            <div class="mt-4 flex gap-2 text-sm text-gray-400">
-                <span>Or try:</span>
-                <form action="{{ route('admin.jikan.search.results') }}" method="POST" class="inline">
+            <!-- Suggestions -->
+            <div class="mt-4 flex flex-wrap gap-2 text-sm text-gray-400">
+                <span>Try:</span>
+
+                @foreach(['One Piece','Naruto','Attack on Titan','Demon Slayer'] as $s)
+                <form action="{{ route('admin.jikan.search.results') }}" method="POST">
                     @csrf
-                    <input type="hidden" name="q" value="One Piece">
-                    <button class="text-purple-400 hover:text-purple-300 underline">One Piece</button>
+                    <input type="hidden" name="q" value="{{ $s }}">
+                    <button class="text-indigo-400 hover:text-indigo-300 underline">
+                        {{ $s }}
+                    </button>
                 </form>
-                <form action="{{ route('admin.jikan.search.results') }}" method="POST" class="inline">
-                    @csrf
-                    <input type="hidden" name="q" value="Naruto">
-                    <button class="text-purple-400 hover:text-purple-300 underline">Naruto</button>
-                </form>
-                <form action="{{ route('admin.jikan.search.results') }}" method="POST" class="inline">
-                    @csrf
-                    <input type="hidden" name="q" value="Attack on Titan">
-                    <button class="text-purple-400 hover:text-purple-300 underline">Attack on Titan</button>
-                </form>
-                <form action="{{ route('admin.jikan.search.results') }}" method="POST" class="inline">
-                    @csrf
-                    <input type="hidden" name="q" value="Demon Slayer">
-                    <button class="text-purple-400 hover:text-purple-300 underline">Demon Slayer</button>
-                </form>
+                @endforeach
             </div>
+
         </div>
 
-        <div class="bg-gray-900 rounded-lg p-6">
-            <h2 class="text-lg font-semibold mb-4">Mass Import</h2>
+        <!-- Mass Import -->
+        <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6">
+
+            <h2 class="text-lg font-medium text-white mb-3">Mass Import</h2>
+
             <p class="text-sm text-gray-400 mb-3">
-                Imported: <span class="text-white font-medium">{{ $totalImported ?? 0 }}</span> anime
-                @if(isset($lastMalId) && $lastMalId)
-                    <br>Progress: <span class="text-purple-400">MAL #{{ $lastMalId }}</span>
+                Imported: <span class="text-white">{{ $totalImported ?? 0 }}</span>
+                @if(!empty($lastMalId))
+                    <br>Progress: <span class="text-indigo-400">#{{ $lastMalId }}</span>
                 @endif
             </p>
-            <p class="text-xs text-gray-500 mb-3">Each import includes anime metadata + all episodes.</p>
+
             <div class="space-y-2">
+
+                @foreach([5,10,25] as $batch)
                 <form action="{{ route('admin.jikan.batch-import') }}" method="POST">
                     @csrf
-                    <input type="hidden" name="batch_size" value="5">
+                    <input type="hidden" name="batch_size" value="{{ $batch }}">
                     <input type="hidden" name="with_episodes" value="1">
-                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm"
-                        onclick="return confirm('Import the next 5 anime with all episodes?')">
-                        Import Next 5 + All Episodes
+
+                    <button class="w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm transition">
+                        Import Next {{ $batch }}
                     </button>
                 </form>
-                <form action="{{ route('admin.jikan.batch-import') }}" method="POST">
+                @endforeach
+
+                @if(!empty($lastMalId))
+                <form action="{{ route('admin.jikan.reset-progress') }}" method="POST">
                     @csrf
-                    <input type="hidden" name="batch_size" value="10">
-                    <input type="hidden" name="with_episodes" value="1">
-                    <button type="submit" class="w-full bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm"
-                        onclick="return confirm('Import the next 10 anime with all episodes?')">
-                        Import Next 10 + All Episodes
-                    </button>
-                </form>
-                <form action="{{ route('admin.jikan.batch-import') }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="batch_size" value="25">
-                    <input type="hidden" name="with_episodes" value="1">
-                    <button type="submit" class="w-full bg-purple-800 hover:bg-purple-900 text-white px-4 py-2 rounded-lg text-sm"
-                        onclick="return confirm('Import the next 25 anime with all episodes? This may take a while.')">
-                        Import Next 25 + All Episodes
-                    </button>
-                </form>
-                @if(isset($lastMalId) && $lastMalId)
-                <form action="{{ route('admin.jikan.reset-progress') }}" method="POST" class="pt-2 border-t border-gray-800">
-                    @csrf
-                    <button type="submit" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-400 px-4 py-2 rounded-lg text-sm"
-                        onclick="return confirm('Reset import progress? You will restart from the beginning.')">
+                    <button class="w-full bg-gray-800 hover:bg-gray-700 text-gray-400 px-4 py-2 rounded-lg text-sm">
                         Reset Progress
                     </button>
                 </form>
                 @endif
+
             </div>
+
         </div>
     </div>
 
+    <!-- Results -->
     @isset($results)
+
         @if(count($results) > 0)
-            <div class="space-y-2">
-                @foreach($results as $item)
-                <div class="bg-gray-900 rounded-lg overflow-hidden hover:bg-gray-800/80 transition-colors">
-                    <div class="flex">
-                        <div class="w-20 flex-shrink-0">
-                            @if($item['thumbnail'])
-                            <img src="{{ $item['thumbnail'] }}" alt="" class="w-full h-28 object-cover">
+
+        <div class="space-y-2">
+
+            @foreach($results as $item)
+            <div class="bg-[#111827] border border-gray-800 rounded-2xl hover:bg-[#1f2937] transition">
+
+                <div class="flex">
+
+                    <!-- Image -->
+                    <div class="w-20">
+                        @if($item['thumbnail'])
+                            <img src="{{ $item['thumbnail'] }}" class="w-full h-28 object-cover">
+                        @endif
+                    </div>
+
+                    <!-- Info -->
+                    <div class="flex-1 p-3">
+
+                        <h3 class="text-white font-medium truncate">
+                            {{ $item['title'] }}
+                        </h3>
+
+                        <div class="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
+
+                            <span class="bg-gray-800 px-2 py-1 rounded">
+                                {{ $item['type'] ?? 'N/A' }}
+                            </span>
+
+                            <span class="bg-gray-800 px-2 py-1 rounded">
+                                {{ $item['episodes_count'] ? $item['episodes_count'].' eps' : '?' }}
+                            </span>
+
+                            @if($item['score'])
+                            <span class="bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded">
+                                {{ $item['score'] }}
+                            </span>
                             @endif
+
                         </div>
-                        <div class="flex-1 p-3 flex flex-col justify-between min-w-0">
-                            <div>
-                                <h3 class="font-semibold truncate">{{ $item['title'] }}</h3>
-                                <div class="flex flex-wrap gap-1.5 mt-1">
-                                    <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">{{ $item['type'] ?: 'N/A' }}</span>
-                                    <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">{{ $item['episodes_count'] ? $item['episodes_count'].' eps' : '? eps' }}</span>
-                                    @if($item['score'])
-                                    <span class="text-xs bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded">{{ $item['score'] }}</span>
-                                    @endif
-                                    <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">{{ $item['status'] }}</span>
-                                </div>
-                            </div>
-                            <div class="flex gap-2 items-center mt-2">
-                                @if(in_array($item['mal_id'], $existingMalIds ?? []))
-                                    <span class="text-xs text-gray-500">Imported</span>
-                                @else
-                                    <a href="{{ route('admin.jikan.preview', $item['mal_id']) }}" class="text-xs text-purple-400 hover:text-purple-300 font-medium">
-                                        Preview & Import
-                                    </a>
-                                @endif
-                            </div>
+
+                        <div class="mt-2">
+
+                        @if(in_array($item['mal_id'], $existingMalIds ?? []))
+                            <span class="text-gray-500 text-xs">Imported</span>
+                        @else
+                            <a href="{{ route('admin.jikan.preview', $item['mal_id']) }}"
+                               class="text-indigo-400 hover:text-indigo-300 text-xs font-medium">
+                                Preview & Import
+                            </a>
+                        @endif
+
                         </div>
                     </div>
-                </div>
-                @endforeach
-            </div>
 
-            @if(isset($pagination))
-            <div class="mt-4 flex items-center justify-between">
-                <span class="text-sm text-gray-400">
-                    Page {{ $currentPage }} of {{ $pagination['last_visible_page'] ?? 1 }}
-                </span>
-                <div class="flex gap-2">
-                    @if(($pagination['current_page'] ?? 1) > 1)
-                    <form action="{{ route('admin.jikan.search.results') }}" method="POST" class="inline">
-                        @csrf
-                        <input type="hidden" name="q" value="{{ $query }}">
-                        <input type="hidden" name="page" value="{{ ($pagination['current_page'] ?? 1) - 1 }}">
-                        <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">Previous</button>
-                    </form>
-                    @endif
-                    @if($pagination['has_next_page'] ?? false)
-                    <form action="{{ route('admin.jikan.search.results') }}" method="POST" class="inline">
-                        @csrf
-                        <input type="hidden" name="q" value="{{ $query }}">
-                        <input type="hidden" name="page" value="{{ ($pagination['current_page'] ?? 1) + 1 }}">
-                        <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">Next</button>
-                    </form>
-                    @endif
                 </div>
+
             </div>
-            @endif
+            @endforeach
+
+        </div>
+
         @else
-            <p class="text-gray-400">No results found for "{{ $query }}".</p>
+            <p class="text-gray-400">No results found.</p>
         @endif
+
     @else
-        <div class="bg-gray-900 rounded-lg p-8 text-center text-gray-500">
-            <p class="text-lg mb-2">Search for anime on MyAnimeList</p>
-            <p class="text-sm">Enter a title above to find and import anime from MAL via the Jikan API, or use the Mass Import panel to bulk-import.</p>
+        <div class="bg-[#111827] border border-gray-800 p-8 rounded-2xl text-center text-gray-500">
+            <p class="text-lg text-gray-300 mb-2">Search for anime</p>
+            <p class="text-sm">Use the form above to import data from MAL.</p>
         </div>
     @endisset
+
 </div>
+
+<style>
+.form-input {
+    @apply w-full px-3 py-2 bg-[#1f2937] border border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500;
+}
+</style>
+
 @endsection

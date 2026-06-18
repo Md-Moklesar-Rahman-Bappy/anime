@@ -19,8 +19,12 @@
             </div>
 
             <!-- Status -->
-            <x-auth-session-status class="mb-4 text-green-500 text-center" :status="session('status')" />
+            <x-auth-session-status
+                class="mb-4 text-center"
+                :status="session('status')"
+            />
 
+            <!-- Form -->
             <form method="POST" action="{{ route('auth.password.email') }}">
                 @csrf
 
@@ -30,21 +34,24 @@
 
                     <x-text-input
                         id="email"
-                        type="email"
                         name="email"
+                        type="email"
                         :value="old('email')"
                         required
                         autofocus
-                        class="mt-1 w-full bg-[#1f2937] border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                        class="mt-1 w-full bg-[#1f2937] border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400"
                     />
 
-                    <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-500" />
+                    <x-input-error
+                        :messages="$errors->get('email')"
+                        class="mt-2 text-red-400"
+                    />
                 </div>
 
-                <!-- Button -->
+                <!-- Submit -->
                 <button
                     type="submit"
-                    class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg transition">
+                    class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg transition">
                     Send Reset Link
                 </button>
 
@@ -52,10 +59,11 @@
                 <div class="text-center mt-6 text-gray-400 text-sm">
                     Remember your password?
                     <a href="{{ route('auth.login') }}"
-                       class="text-indigo-400 hover:text-indigo-300 ml-1">
+                       class="text-indigo-400 hover:text-indigo-300 ml-1 transition">
                         Login
                     </a>
                 </div>
+
             </form>
         </div>
     </div>

@@ -1,6 +1,150 @@
 @extends('admin.layouts.app')
 
 @section('content')
+<div class="max-w-7xl mx-auto"
+     x-data="mangaDashboard({
+        typeLabels: @json($mangaByType->keys()),
+        typeData: @json($mangaByType->values()),
+        statusLabels: @json($mangaByStatus->keys()),
+        statusData: @json($mangaByStatus->values()),
+     })">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-white">Manga Dashboard</h1>
+            <p class="text-gray-400 text-sm">{{ now()->format('l, F j, Y') }}</p>
+        </div>
+
+         }}" 
+           class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm">
+            + Add Manga
+        </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+        @foreach([
+            ['Manga',$totalManga,'📖','text-emerald-400'],
+            ['Chapters',$totalChapters,'📄','text-blue-400'],
+            ['Views',$totalMangaViews,'👁','text-orange-400'],
+            ['Users',$totalUsers,'👥','text-yellow-400'],
+        ] as [$label,$value,$icon,$color])
+
+        <div class="card">
+            <div class="flex justify-between mb-2">
+                <p class="text-xs text-gray-400 uppercase">{{ $label }}</p>
+                <span class="{{ $color }}">{{ $icon }}</span>
+            </div>
+            <p class="text-xl font-bold">{{ number_format($value) }}</p>
+        </div>
+
+        @endforeach
+
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+        <div class="card">
+            <h2 class="font-semibold mb-2">Manga by Type</h2>
+            <div class="h-64"><canvas id="mangaByTypeChart"></canvas></div>
+        </div>
+
+        <div class="card">
+            <h2 class="font-semibold mb-2">Manga by Status</h2>
+            <div class="h-64"><canvas id="mangaByStatusChart"></canvas></div>
+        </div>
+
+    </div>
+
+    <!-- Recent Chapters -->
+    <div class="card mb-8">
+
+        <h2 class="font-semibold mb-4">Recent Chapters</h2>
+
+        @forelse($recentChapters as $chapter)
+        <div class="flex gap-3 py-2 border-b border-gray-800 last:border-none">
+
+            <div class="w-9 h-12 bg-gray-800 rounded"></div>
+
+            <div class="flex-1">
+                <p class="text-sm">{{ $chapter->manga->title ?? '-' }}</p>
+                <p class="text-xs text-gray-400">Ch {{ $chapter->number }}</p>
+            </div>
+
+        </div>
+        @empty
+            <p class="text-gray-500 text-sm">No chapters yet</p>
+        @endforelse
+
+    </div>
+
+    <!-- Popular Manga -->
+    <div class="card">
+
+        <h2 class="font-semibold mb-4">Popular Manga</h2>
+
+        @forelse($popularManga as $i => $manga)
+        <div class="flex items-center gap-3 py-2 border-b border-gray-800 last:border-none">
+
+            <span class="text-gray-500 w-5">{{ $i + 1 }}</span>
+
+            <div class="flex-1">
+                <p class="text-sm truncate">{{ $manga->title }}</p>
+                <p class="text-xs text-gray-400">{{ number_format($manga->views) }} views</p>
+            </div>
+
+        </div>
+        @empty
+            <p class="text-gray-500 text-sm">No manga data</p>
+        @endforelse
+
+    </div>
+
+</div>
+
+<style>
+.card {
+    @apply bg-[#111827] border border-gray-800 rounded-2xl p-4;
+}
+</style>
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{{-- @extends('admin.layouts.app')
+
+@section('content')
 <div class="max-w-7xl mx-auto" x-data="mangaDashboard({
     typeLabels: @json($mangaByType->keys()),
     typeData: @json($mangaByType->values()),
@@ -231,4 +375,4 @@ function mangaDashboard(chartData) {
     };
 }
 </script>
-@endpush
+@endpush --}}
