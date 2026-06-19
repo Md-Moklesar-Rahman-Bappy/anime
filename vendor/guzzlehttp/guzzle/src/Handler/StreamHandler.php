@@ -82,11 +82,8 @@ class StreamHandler
         $protocolVersion = $request->getProtocolVersion();
 
         if ('' === $protocolVersion) {
-<<<<<<< HEAD
             \trigger_deprecation('guzzlehttp/guzzle', '7.11', 'Sending a request with an empty protocol version is deprecated; guzzlehttp/guzzle 8.0 will reject empty protocol versions.');
 
-=======
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             $protocolVersion = '1.1';
             $request = Psr7\Utils::modifyRequest($request, ['version' => $protocolVersion]);
         }
@@ -261,16 +258,7 @@ class StreamHandler
                     // drop the now-unknown Content-Length header.
                     if (isset($normalizedKeys['content-length'])) {
                         $headers['x-encoded-content-length'] = $headers[$normalizedKeys['content-length']];
-<<<<<<< HEAD
                         unset($headers[$normalizedKeys['content-length']]);
-=======
-                        $length = (int) $stream->getSize();
-                        if ($length === 0) {
-                            unset($headers[$normalizedKeys['content-length']]);
-                        } else {
-                            $headers[$normalizedKeys['content-length']] = [(string) $length];
-                        }
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                     }
                 }
             }
@@ -899,26 +887,7 @@ class StreamHandler
      */
     private function add_cert(RequestInterface $request, array &$options, $value, array &$params): void
     {
-<<<<<<< HEAD
         [$value, $passphrase] = self::normalizeTlsFileOption('cert', $value);
-=======
-        if (\is_array($value)) {
-            if (!isset($value[0]) || !\is_string($value[0])) {
-                throw new \InvalidArgumentException('Invalid cert request option');
-            }
-            if (isset($value[1])) {
-                if (!\is_string($value[1])) {
-                    throw new \InvalidArgumentException('Invalid cert request option');
-                }
-                $options['ssl']['passphrase'] = $value[1];
-            }
-            $value = $value[0];
-        }
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
-
-        if (!\is_string($value)) {
-            throw new \InvalidArgumentException('Invalid cert request option');
-        }
 
         if (!\file_exists($value)) {
             throw new \RuntimeException("SSL certificate not found: {$value}");

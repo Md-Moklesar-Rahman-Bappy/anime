@@ -964,7 +964,6 @@
         },
         {
             "name": "guzzlehttp/guzzle",
-<<<<<<< HEAD
             "version": "7.12.1",
             "version_normalized": "7.12.1.0",
             "source": {
@@ -976,19 +975,6 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/guzzle/guzzle/zipball/d34627490fbc03bf5c5d7cfed81f2faa19519425",
                 "reference": "d34627490fbc03bf5c5d7cfed81f2faa19519425",
-=======
-            "version": "7.10.5",
-            "version_normalized": "7.10.5.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/guzzle/guzzle.git",
-                "reference": "7c8d84b39e680315f687e8662a9d6fb0865c5148"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/guzzle/zipball/7c8d84b39e680315f687e8662a9d6fb0865c5148",
-                "reference": "7c8d84b39e680315f687e8662a9d6fb0865c5148",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
@@ -1007,11 +993,7 @@
                 "bamarni/composer-bin-plugin": "^1.8.2",
                 "ext-curl": "*",
                 "guzzle/client-integration-tests": "3.0.2",
-<<<<<<< HEAD
                 "guzzlehttp/test-server": "^0.5.1",
-=======
-                "guzzlehttp/test-server": "^0.4",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "php-http/message-factory": "^1.1",
                 "phpunit/phpunit": "^8.5.52 || ^9.6.34",
                 "psr/log": "^1.1 || ^2.0 || ^3.0"
@@ -1021,11 +1003,7 @@
                 "ext-intl": "Required for Internationalized Domain Name (IDN) support",
                 "psr/log": "Required for using the Log middleware"
             },
-<<<<<<< HEAD
             "time": "2026-06-18T14:12:49+00:00",
-=======
-            "time": "2026-05-27T11:53:46+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "type": "library",
             "extra": {
                 "bamarni-bin": {
@@ -1097,11 +1075,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/guzzle/issues",
-<<<<<<< HEAD
                 "source": "https://github.com/guzzle/guzzle/tree/7.12.1"
-=======
-                "source": "https://github.com/guzzle/guzzle/tree/7.10.5"
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             },
             "funding": [
                 {
@@ -1121,7 +1095,6 @@
         },
         {
             "name": "guzzlehttp/promises",
-<<<<<<< HEAD
             "version": "2.5.0",
             "version_normalized": "2.5.0.0",
             "source": {
@@ -1133,19 +1106,6 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/guzzle/promises/zipball/4360e982f87f5f258bf872d094647791db2f4c8e",
                 "reference": "4360e982f87f5f258bf872d094647791db2f4c8e",
-=======
-            "version": "2.4.1",
-            "version_normalized": "2.4.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/guzzle/promises.git",
-                "reference": "09e8a212562fb1fb6a512c4156ed71525969d6c2"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/promises/zipball/09e8a212562fb1fb6a512c4156ed71525969d6c2",
-                "reference": "09e8a212562fb1fb6a512c4156ed71525969d6c2",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
@@ -1156,11 +1116,7 @@
                 "bamarni/composer-bin-plugin": "^1.8.2",
                 "phpunit/phpunit": "^8.5.52 || ^9.6.34"
             },
-<<<<<<< HEAD
             "time": "2026-06-02T12:23:43+00:00",
-=======
-            "time": "2026-05-20T22:57:30+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "type": "library",
             "extra": {
                 "bamarni-bin": {
@@ -1206,11 +1162,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/promises/issues",
-<<<<<<< HEAD
                 "source": "https://github.com/guzzle/promises/tree/2.5.0"
-=======
-                "source": "https://github.com/guzzle/promises/tree/2.4.1"
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             },
             "funding": [
                 {
@@ -1230,7 +1182,6 @@
         },
         {
             "name": "guzzlehttp/psr7",
-<<<<<<< HEAD
             "version": "2.12.1",
             "version_normalized": "2.12.1.0",
             "source": {
@@ -1242,19 +1193,6 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/guzzle/psr7/zipball/172ef2f4e9824c1e058b7f30be8ae25a02c0f2b7",
                 "reference": "172ef2f4e9824c1e058b7f30be8ae25a02c0f2b7",
-=======
-            "version": "2.10.4",
-            "version_normalized": "2.10.4.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/guzzle/psr7.git",
-                "reference": "d2a1a094e396da8957e797489fddaf860c340cfc"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/psr7/zipball/d2a1a094e396da8957e797489fddaf860c340cfc",
-                "reference": "d2a1a094e396da8957e797489fddaf860c340cfc",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
@@ -1278,11 +1216,7 @@
             "suggest": {
                 "laminas/laminas-httphandlerrunner": "Emit PSR-7 responses"
             },
-<<<<<<< HEAD
             "time": "2026-06-18T09:49:37+00:00",
-=======
-            "time": "2026-05-29T12:59:07+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "type": "library",
             "extra": {
                 "bamarni-bin": {
@@ -1350,11 +1284,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/psr7/issues",
-<<<<<<< HEAD
                 "source": "https://github.com/guzzle/psr7/tree/2.12.1"
-=======
-                "source": "https://github.com/guzzle/psr7/tree/2.10.4"
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             },
             "funding": [
                 {
@@ -1374,7 +1304,6 @@
         },
         {
             "name": "guzzlehttp/uri-template",
-<<<<<<< HEAD
             "version": "v1.0.7",
             "version_normalized": "1.0.7.0",
             "source": {
@@ -1386,19 +1315,6 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/guzzle/uri-template/zipball/7fe811c23a9e3cd712b4389eaeb50b5456d8c529",
                 "reference": "7fe811c23a9e3cd712b4389eaeb50b5456d8c529",
-=======
-            "version": "v1.0.6",
-            "version_normalized": "1.0.6.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/guzzle/uri-template.git",
-                "reference": "eef7f87bab6f204eba3c39224d8075c70c637946"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/uri-template/zipball/eef7f87bab6f204eba3c39224d8075c70c637946",
-                "reference": "eef7f87bab6f204eba3c39224d8075c70c637946",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
@@ -1410,11 +1326,7 @@
                 "phpunit/phpunit": "^8.5.52 || ^9.6.34",
                 "uri-template/tests": "1.0.0"
             },
-<<<<<<< HEAD
             "time": "2026-06-12T21:33:43+00:00",
-=======
-            "time": "2026-05-23T22:00:21+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "type": "library",
             "extra": {
                 "bamarni-bin": {
@@ -1461,11 +1373,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/uri-template/issues",
-<<<<<<< HEAD
                 "source": "https://github.com/guzzle/uri-template/tree/v1.0.7"
-=======
-                "source": "https://github.com/guzzle/uri-template/tree/v1.0.6"
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             },
             "funding": [
                 {
@@ -1603,7 +1511,6 @@
         },
         {
             "name": "laravel/framework",
-<<<<<<< HEAD
             "version": "v12.62.0",
             "version_normalized": "12.62.0.0",
             "source": {
@@ -1615,19 +1522,6 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/laravel/framework/zipball/f7e61eb1e0e06a38996802b769bce9127aec227c",
                 "reference": "f7e61eb1e0e06a38996802b769bce9127aec227c",
-=======
-            "version": "v11.54.0",
-            "version_normalized": "11.54.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/laravel/framework.git",
-                "reference": "4e7ae67eedd803eaea8ceb5f7e113f495d2c0c58"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/laravel/framework/zipball/4e7ae67eedd803eaea8ceb5f7e113f495d2c0c58",
-                "reference": "4e7ae67eedd803eaea8ceb5f7e113f495d2c0c58",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
@@ -1788,11 +1682,7 @@
                 "symfony/postmark-mailer": "Required to enable support for the Postmark mail transport (^7.2).",
                 "symfony/psr-http-message-bridge": "Required to use PSR-7 bridging features (^7.2)."
             },
-<<<<<<< HEAD
             "time": "2026-06-09T13:50:13+00:00",
-=======
-            "time": "2026-05-26T23:41:51+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "type": "library",
             "extra": {
                 "branch-alias": {
@@ -1979,7 +1869,6 @@
         },
         {
             "name": "laravel/sail",
-<<<<<<< HEAD
             "version": "v1.62.0",
             "version_normalized": "1.62.0.0",
             "source": {
@@ -1991,19 +1880,6 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/laravel/sail/zipball/3aaeefc979f8ba6586fbc5b6e0b1b3638058f98e",
                 "reference": "3aaeefc979f8ba6586fbc5b6e0b1b3638058f98e",
-=======
-            "version": "v1.61.0",
-            "version_normalized": "1.61.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/laravel/sail.git",
-                "reference": "68ef35015630fe510432e63e11e21749006df688"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/laravel/sail/zipball/68ef35015630fe510432e63e11e21749006df688",
-                "reference": "68ef35015630fe510432e63e11e21749006df688",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
@@ -2018,11 +1894,7 @@
                 "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0|^11.0",
                 "phpstan/phpstan": "^2.0"
             },
-<<<<<<< HEAD
             "time": "2026-05-27T04:02:01+00:00",
-=======
-            "time": "2026-05-23T23:33:57+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "bin": [
                 "bin/sail"
             ],
@@ -7883,7 +7755,6 @@
         },
         {
             "name": "symfony/polyfill-mbstring",
-<<<<<<< HEAD
             "version": "v1.38.2",
             "version_normalized": "1.38.2.0",
             "source": {
@@ -7895,19 +7766,6 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/d3d318bad5e7a1bfbd026009c8bfb8d8f99ae6b6",
                 "reference": "d3d318bad5e7a1bfbd026009c8bfb8d8f99ae6b6",
-=======
-            "version": "v1.38.1",
-            "version_normalized": "1.38.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/polyfill-mbstring.git",
-                "reference": "14c5439eec4ccff081ac14eca2dc57feb2a66d92"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/14c5439eec4ccff081ac14eca2dc57feb2a66d92",
-                "reference": "14c5439eec4ccff081ac14eca2dc57feb2a66d92",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
@@ -7920,11 +7778,7 @@
             "suggest": {
                 "ext-mbstring": "For best performance"
             },
-<<<<<<< HEAD
             "time": "2026-05-27T06:59:30+00:00",
-=======
-            "time": "2026-05-26T12:51:13+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "type": "library",
             "extra": {
                 "thanks": {
@@ -7965,11 +7819,7 @@
                 "shim"
             ],
             "support": {
-<<<<<<< HEAD
                 "source": "https://github.com/symfony/polyfill-mbstring/tree/v1.38.2"
-=======
-                "source": "https://github.com/symfony/polyfill-mbstring/tree/v1.38.1"
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             },
             "funding": [
                 {
@@ -8080,7 +7930,6 @@
         },
         {
             "name": "symfony/polyfill-php83",
-<<<<<<< HEAD
             "version": "v1.38.2",
             "version_normalized": "1.38.2.0",
             "source": {
@@ -8092,29 +7941,12 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/symfony/polyfill-php83/zipball/796a26abb75ce49f3a84433cd81bf1009d73d5f8",
                 "reference": "796a26abb75ce49f3a84433cd81bf1009d73d5f8",
-=======
-            "version": "v1.38.1",
-            "version_normalized": "1.38.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/polyfill-php83.git",
-                "reference": "8339098cae28673c15cce00d80734af0453054e2"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php83/zipball/8339098cae28673c15cce00d80734af0453054e2",
-                "reference": "8339098cae28673c15cce00d80734af0453054e2",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
                 "php": ">=7.2"
             },
-<<<<<<< HEAD
             "time": "2026-05-27T06:51:48+00:00",
-=======
-            "time": "2026-05-26T12:51:13+00:00",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "type": "library",
             "extra": {
                 "thanks": {
@@ -8157,11 +7989,7 @@
                 "shim"
             ],
             "support": {
-<<<<<<< HEAD
                 "source": "https://github.com/symfony/polyfill-php83/tree/v1.38.2"
-=======
-                "source": "https://github.com/symfony/polyfill-php83/tree/v1.38.1"
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             },
             "funding": [
                 {
@@ -8184,16 +8012,11 @@
             "install-path": "../symfony/polyfill-php83"
         },
         {
-<<<<<<< HEAD
             "name": "symfony/polyfill-php84",
-=======
-            "name": "symfony/polyfill-php85",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "version": "v1.38.1",
             "version_normalized": "1.38.1.0",
             "source": {
                 "type": "git",
-<<<<<<< HEAD
                 "url": "https://github.com/symfony/polyfill-php84.git",
                 "reference": "f4e1dfaee5b74aba5964fe1fd4dfc7ba5e3085fa"
             },
@@ -8201,21 +8024,11 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/symfony/polyfill-php84/zipball/f4e1dfaee5b74aba5964fe1fd4dfc7ba5e3085fa",
                 "reference": "f4e1dfaee5b74aba5964fe1fd4dfc7ba5e3085fa",
-=======
-                "url": "https://github.com/symfony/polyfill-php85.git",
-                "reference": "ba2ba04f3352cfa2dcbbcb90aee13ed967f505b1"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php85/zipball/ba2ba04f3352cfa2dcbbcb90aee13ed967f505b1",
-                "reference": "ba2ba04f3352cfa2dcbbcb90aee13ed967f505b1",
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 "shasum": ""
             },
             "require": {
                 "php": ">=7.2"
             },
-<<<<<<< HEAD
             "time": "2026-05-26T12:51:13+00:00",
             "type": "library",
             "extra": {
@@ -8299,8 +8112,6 @@
             "require": {
                 "php": ">=7.2"
             },
-=======
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             "time": "2026-05-26T02:25:22+00:00",
             "type": "library",
             "extra": {

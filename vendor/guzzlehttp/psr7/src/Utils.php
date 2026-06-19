@@ -308,7 +308,6 @@ final class Utils
         }
 
         return $new;
-<<<<<<< HEAD
     }
 
     /**
@@ -392,8 +391,6 @@ final class Utils
             $key,
             $expected
         );
-=======
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
     }
 
     /**

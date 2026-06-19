@@ -3,7 +3,6 @@
 Please refer to [UPGRADING](UPGRADING.md) guide for upgrading to a major version.
 
 
-<<<<<<< HEAD
 ## 7.12.1 - 2026-06-18
 
 ### Changed
@@ -113,9 +112,6 @@ Please refer to [UPGRADING](UPGRADING.md) guide for upgrading to a major version
 
 
 ## 7.10.5 - 2026-05-27
-=======
-## 7.10.5 - 2025-05-27
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 
 ### Fixed
 
@@ -123,11 +119,7 @@ Please refer to [UPGRADING](UPGRADING.md) guide for upgrading to a major version
 - Classify additional stream handler connection failures as `ConnectException`
 
 
-<<<<<<< HEAD
 ## 7.10.4 - 2026-05-22
-=======
-## 7.10.4 - 2025-05-22
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 
 ### Fixed
 
@@ -136,11 +128,7 @@ Please refer to [UPGRADING](UPGRADING.md) guide for upgrading to a major version
 - Fix magic client request methods such as `options()` to uppercase inferred HTTP methods
 
 
-<<<<<<< HEAD
 ## 7.10.3 - 2026-05-20
-=======
-## 7.10.3 - 2025-05-20
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 
 ### Fixed
 

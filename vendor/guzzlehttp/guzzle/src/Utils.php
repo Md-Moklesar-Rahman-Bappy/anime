@@ -293,7 +293,6 @@ EOT
             throw new InvalidArgumentException('Empty host provided');
         }
 
-<<<<<<< HEAD
         $target = self::parseNoProxyHostString($host);
         if ($target === null) {
             return false;
@@ -344,73 +343,19 @@ EOT
             }
 
             $area = \trim($area);
-=======
-        $host = self::normalizeNoProxyHost($host, true);
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 
             // Always match on wildcards.
             if ($area === '*') {
                 return true;
             }
 
-<<<<<<< HEAD
             $rule = self::parseNoProxyRule($area);
             if ($rule !== null && self::noProxyRuleMatches($target, $rule)) {
-=======
-            if (empty($area)) {
-                // Don't match on empty values.
-                continue;
-            }
-
-            $area = self::normalizeNoProxyHost($area, false);
-
-            if ($area === $host) {
-                // Exact matches.
-                return true;
-            }
-            // Special match if the area when prefixed with ".". Remove any
-            // existing leading "." and add a new leading ".".
-            $area = '.'.\ltrim($area, '.');
-            if (
-                \strpos($host, ':') === false
-                && \strpos($area, ':') === false
-                && \substr($host, -\strlen($area)) === $area
-            ) {
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                 return true;
             }
         }
 
         return false;
-    }
-
-    private static function normalizeNoProxyHost(string $host, bool $stripPort): string
-    {
-        if ($host !== '' && $host[0] === '[') {
-            $closingBracket = \strpos($host, ']');
-
-            if ($closingBracket !== false) {
-                $address = \substr($host, 1, $closingBracket - 1);
-                $tail = \substr($host, $closingBracket + 1);
-
-                if (
-                    ($tail === '' || ($stripPort && \preg_match('/^:\d+$/', $tail)))
-                    && \filter_var($address, \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV6)
-                ) {
-                    return \strtolower($address);
-                }
-            }
-        }
-
-        if (\filter_var($host, \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV6)) {
-            return \strtolower($host);
-        }
-
-        if ($stripPort) {
-            [$host] = \explode(':', $host, 2);
-        }
-
-        return $host;
     }
 
     /**

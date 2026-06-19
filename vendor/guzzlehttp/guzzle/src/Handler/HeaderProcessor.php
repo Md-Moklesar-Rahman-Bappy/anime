@@ -44,13 +44,10 @@ final class HeaderProcessor
             throw new \RuntimeException('HTTP status code missing from header data');
         }
 
-<<<<<<< HEAD
         if (!\preg_match('/^\d{3}$/', $status)) {
             throw new \RuntimeException('HTTP status code is invalid');
         }
 
-=======
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
         foreach ($headers as $header) {
             if (\strpos($header, ':') === false) {
                 throw new \RuntimeException('HTTP header line is invalid');

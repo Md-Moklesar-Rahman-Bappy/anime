@@ -91,15 +91,10 @@ class CurlFactory implements CurlFactoryInterface
         $protocolVersion = $request->getProtocolVersion();
 
         if ('' === $protocolVersion) {
-<<<<<<< HEAD
             \trigger_deprecation('guzzlehttp/guzzle', '7.11', 'Sending a request with an empty protocol version is deprecated; guzzlehttp/guzzle 8.0 will reject empty protocol versions.');
 
             $protocolVersion = '1.1';
             $request = Psr7\Utils::modifyRequest($request, ['version' => $protocolVersion]);
-=======
-            $protocolVersion = '1.1';
-            $request = \GuzzleHttp\Psr7\Utils::modifyRequest($request, ['version' => $protocolVersion]);
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
         }
 
         if ('2' === $protocolVersion || '2.0' === $protocolVersion) {
@@ -137,7 +132,6 @@ class CurlFactory implements CurlFactoryInterface
         $easy->effectiveProxy = self::getEffectiveProxy($conf);
 
         $conf[\CURLOPT_HEADERFUNCTION] = $this->createHeaderFn($easy);
-<<<<<<< HEAD
         if ($this->shareHandle !== null) {
             if (!\defined('CURLOPT_SHARE')) {
                 throw new \InvalidArgumentException('The configured cURL share handle requires CURLOPT_SHARE, but it is not available in the installed PHP cURL extension.');
@@ -146,8 +140,6 @@ class CurlFactory implements CurlFactoryInterface
             $conf[(int) \constant('CURLOPT_SHARE')] = $this->shareHandle;
         }
 
-=======
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
         $handle = $this->handles ? \array_pop($this->handles) : \curl_init();
         if (false === $handle) {
             throw new \RuntimeException('Can not initialize cURL handle.');
@@ -173,69 +165,6 @@ class CurlFactory implements CurlFactoryInterface
      * @param array<int|string, mixed> $conf
      */
     private function applyCurlOptions($handle, array $conf): void
-<<<<<<< HEAD
-=======
-    {
-        foreach ($conf as $option => $value) {
-            if (!\is_int($option)) {
-                throw new \InvalidArgumentException(\sprintf(
-                    'Invalid cURL option %s.',
-                    self::formatCurlOption($option)
-                ));
-            }
-
-            try {
-                $success = curl_setopt($handle, $option, $value);
-            } catch (\Throwable $e) {
-                throw new \InvalidArgumentException(
-                    \sprintf(
-                        'Unable to set cURL option %s: %s',
-                        self::formatCurlOption($option),
-                        $e->getMessage()
-                    ),
-                    0,
-                    $e
-                );
-            }
-
-            if (!$success) {
-                throw new \InvalidArgumentException(\sprintf(
-                    'Unable to set cURL option %s.',
-                    self::formatCurlOption($option)
-                ));
-            }
-        }
-    }
-
-    /**
-     * @param int|string $option
-     */
-    private static function formatCurlOption($option): string
-    {
-        if (!\is_int($option)) {
-            return \sprintf('"%s"', $option);
-        }
-
-        static $names = null;
-
-        if (null === $names) {
-            $names = [];
-            foreach (\get_defined_constants(true)['curl'] ?? [] as $name => $value) {
-                if (\is_int($value) && \strpos($name, 'CURLOPT_') === 0 && !isset($names[$value])) {
-                    $names[$value] = $name;
-                }
-            }
-        }
-
-        if (isset($names[$option])) {
-            return \sprintf('%s (%d)', $names[$option], $option);
-        }
-
-        return (string) $option;
-    }
-
-    private static function supportsHttp2(): bool
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
     {
         foreach ($conf as $option => $value) {
             if (!\is_int($option)) {

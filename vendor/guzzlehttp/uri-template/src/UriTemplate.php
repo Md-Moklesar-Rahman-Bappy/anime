@@ -78,11 +78,7 @@ final class UriTemplate
         $joiner = self::$operatorHash[$parsed['operator']]['joiner'];
         $useQuery = self::$operatorHash[$parsed['operator']]['query'];
         $allowReserved = $parsed['operator'] === '+' || $parsed['operator'] === '#';
-<<<<<<< HEAD
         $hasDefinedVariable = false;
-=======
-        $allUndefined = true;
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 
         foreach ($parsed['values'] as $value) {
             if (!isset($variables[$value['value']])) {
@@ -107,22 +103,14 @@ final class UriTemplate
                     }
 
                     if (!$isNestedArray) {
-<<<<<<< HEAD
                         $var = self::encodeValue(self::stringifyValue($var), $allowReserved);
-=======
-                        $var = self::encodeValue((string) $var, $allowReserved);
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                     }
 
                     if ($value['modifier'] === '*') {
                         if ($isAssoc) {
                             if ($isNestedArray) {
                                 // Nested arrays must allow for deeply nested structures.
-<<<<<<< HEAD
                                 $var = \http_build_query([$rawKey => self::stringifyNonFiniteFloats($var)], '', '&', \PHP_QUERY_RFC3986);
-=======
-                                $var = \http_build_query([$rawKey => $var], '', '&', \PHP_QUERY_RFC3986);
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
                                 if ($var === '') {
                                     continue;
                                 }
@@ -163,15 +151,9 @@ final class UriTemplate
                 $variable = self::stringifyValue($variable);
 
                 if ($value['modifier'] === ':' && isset($value['position'])) {
-<<<<<<< HEAD
                     $variable = \substr($variable, 0, $value['position']);
                 }
                 $expanded = self::encodeValue($variable, $allowReserved);
-=======
-                    $variable = \substr((string) $variable, 0, $value['position']);
-                }
-                $expanded = self::encodeValue((string) $variable, $allowReserved);
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             }
 
             if ($actuallyUseQuery) {
@@ -252,7 +234,6 @@ final class UriTemplate
         return $array && \array_keys($array)[0] !== 0;
     }
 
-<<<<<<< HEAD
     /**
      * Cast a variable value to its expansion string.
      *
@@ -294,10 +275,6 @@ final class UriTemplate
 
     private static function encodeValue(string $value, bool $allowReserved): string
     {
-=======
-    private static function encodeValue(string $value, bool $allowReserved): string
-    {
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
         if ($value === '') {
             return '';
         }

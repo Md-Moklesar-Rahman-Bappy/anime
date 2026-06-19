@@ -169,11 +169,8 @@ class Worker
         [$startTime, $jobsProcessed] = [$this->currentTime(), 0];
 
         $lastJobProcessedAt = $startTime;
-<<<<<<< HEAD
 
         $this->raiseWorkerStartingEvent($connectionName, $queue, $options);
-=======
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 
         while (true) {
             // Before reserving any jobs, we will make sure this queue is not paused and

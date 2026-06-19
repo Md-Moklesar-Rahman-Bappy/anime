@@ -304,7 +304,6 @@ final class RequestOptions
     public const READ_TIMEOUT = 'read_timeout';
 
     /**
-<<<<<<< HEAD
      * retries: (int) Current retry count used by the retry middleware.
      */
     public const RETRIES = 'retries';
@@ -312,9 +311,6 @@ final class RequestOptions
     /**
      * version: (string|int|float) Specifies the HTTP protocol version to attempt
      * to use.
-=======
-     * version: (string|float) Specifies the HTTP protocol version to attempt to use.
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
      */
     public const VERSION = 'version';
 

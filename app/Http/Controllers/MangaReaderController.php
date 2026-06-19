@@ -7,6 +7,7 @@ use App\Models\ChapterBookmark;
 use App\Models\Manga;
 use App\Models\MangaComment;
 use App\Services\ViewCounterService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class MangaReaderController extends Controller
@@ -15,80 +16,106 @@ class MangaReaderController extends Controller
         protected ViewCounterService $viewCounter,
     ) {}
 
-    public function __invoke(string $slug)
+    public function __invoke(Request $request, string $slug)
     {
         try {
-            // ✅ Load manga with relations
+            $user = $request->user();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Manga
+            |--------------------------------------------------------------------------
+            */
             $manga = Manga::where('slug', $slug)
-                ->with('genres')
+                ->with('genres:id,name,slug')
                 ->firstOrFail();
 
-            // ✅ Increment view safely
             $this->viewCounter->increment($manga, 'manga');
 
-            // ✅ Load all chapters once
-            $allChapters = $manga->chapters()
-                ->orderBy('number')
-                ->get(['id', 'number', 'title']);
+            /*
+            |--------------------------------------------------------------------------
+            | Chapter (OPTIMIZED — no full collection load)
+            |--------------------------------------------------------------------------
+            */
+            $chapterNumber = (float) $request->query('chapter');
 
-            if ($allChapters->isEmpty()) {
-                abort(404, 'No chapters found.');
-            }
-
-            // ✅ Determine chapter number
-            $chapterNumber = request('chapter') ?? $allChapters->first()->number;
-
-            // ✅ Find current chapter
-            $chapter = $allChapters->firstWhere('number', (int) $chapterNumber);
+            $chapter = $manga->chapters()
+                ->where('number', $chapterNumber)
+                ->first()
+                ?? $manga->chapters()->orderBy('number')->first();
 
             if (!$chapter) {
                 abort(404, 'Chapter not found.');
             }
 
-            // ✅ Load full chapter with pages
-            $chapter = Chapter::with([
+            /*
+            |--------------------------------------------------------------------------
+            | Pages
+            |--------------------------------------------------------------------------
+            */
+            $chapter->load([
                 'pages' => fn ($q) => $q->orderBy('page_number')
-            ])->findOrFail($chapter->id);
+            ]);
 
-            // ✅ Navigation (NO extra queries)
-            $index = $allChapters->search(fn ($c) => $c->id === $chapter->id);
+            /*
+            |--------------------------------------------------------------------------
+            | Navigation (DB efficient)
+            |--------------------------------------------------------------------------
+            */
+            $prevChapter = $chapter->previous();
+            $nextChapter = $chapter->next();
 
-            $prevChapter = $allChapters[$index - 1] ?? null;
-            $nextChapter = $allChapters[$index + 1] ?? null;
+            /*
+            |--------------------------------------------------------------------------
+            | Chapters list (lightweight)
+            |--------------------------------------------------------------------------
+            */
+            $allChapters = $manga->chapters()
+                ->select('id', 'number', 'title')
+                ->orderByDesc('number')
+                ->get();
 
-            // ✅ User bookmark
+            /*
+            |--------------------------------------------------------------------------
+            | Bookmark
+            |--------------------------------------------------------------------------
+            */
             $bookmark = null;
-            $user = auth()->user();
 
             if ($user) {
-                $bookmark = ChapterBookmark::firstOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'chapter_id' => $chapter->id
-                    ],
-                    [
-                        'page_number' => 1
-                    ]
+                $bookmark = ChapterBookmark::getOrCreate(
+                    $user->id,
+                    $chapter->id
                 );
             }
 
-            // ✅ Comments
-            $comments = MangaComment::with('user')
+            /*
+            |--------------------------------------------------------------------------
+            | Comments
+            |--------------------------------------------------------------------------
+            */
+            $comments = MangaComment::with('user:id,name')
                 ->where('chapter_id', $chapter->id)
                 ->latest()
                 ->paginate(20);
 
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSE
+            |--------------------------------------------------------------------------
+            */
             return view('manga-reader', [
                 'manga' => $manga,
                 'chapter' => $chapter,
                 'prevChapter' => $prevChapter,
                 'nextChapter' => $nextChapter,
-                'allChapters' => $allChapters->sortByDesc('number'),
+                'allChapters' => $allChapters,
                 'bookmark' => $bookmark,
                 'comments' => $comments,
             ]);
 
         } catch (\Throwable $e) {
+
             Log::error('Manga reader failed', [
                 'slug' => $slug,
                 'chapter' => request('chapter'),

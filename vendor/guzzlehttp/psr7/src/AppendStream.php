@@ -205,7 +205,6 @@ final class AppendStream implements StreamInterface
      */
     public function read($length): string
     {
-<<<<<<< HEAD
         if (!\is_int($length)) {
             \trigger_deprecation(
                 'guzzlehttp/psr7',
@@ -215,8 +214,6 @@ final class AppendStream implements StreamInterface
             );
         }
 
-=======
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
         if ($this->streams === []) {
             return '';
         }

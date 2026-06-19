@@ -157,13 +157,6 @@ final class Mbstring
             $fromEncoding = 'UTF-8';
         }
 
-<<<<<<< HEAD
-=======
-        if ($fromEncoding === $toEncoding) {
-            return $s;
-        }
-
->>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
         return self::iconv($fromEncoding, $toEncoding, $s);
     }
 
