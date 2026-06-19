@@ -3,17 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class Favorite extends Model
 {
+    public const CATEGORY_WATCHING      = 'watching';
+    public const CATEGORY_COMPLETED     = 'completed';
+    public const CATEGORY_PLAN          = 'plan_to_watch';
+    public const CATEGORY_ON_HOLD       = 'on_hold';
+    public const CATEGORY_DROPPED       = 'dropped';
+
     public const CATEGORIES = [
-        'watching',
-        'completed',
-        'plan_to_watch',
-        'on_hold',
-        'dropped',
+        self::CATEGORY_WATCHING,
+        self::CATEGORY_COMPLETED,
+        self::CATEGORY_PLAN,
+        self::CATEGORY_ON_HOLD,
+        self::CATEGORY_DROPPED,
     ];
 
     protected $fillable = [
@@ -22,13 +27,10 @@ class Favorite extends Model
         'category',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'user_id' => 'integer',
-            'anime_id' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'user_id' => 'integer',
+        'anime_id' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -39,13 +41,18 @@ class Favorite extends Model
     protected static function booted(): void
     {
         static::creating(function ($favorite) {
+
+            // ✅ default category
             if (empty($favorite->category)) {
-                $favorite->category = 'plan_to_watch';
+                $favorite->category = self::CATEGORY_PLAN;
             }
+
+            // ✅ normalize category
+            $favorite->category = strtolower($favorite->category);
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -59,19 +66,19 @@ class Favorite extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function anime(): BelongsTo
+    public function anime()
     {
         return $this->belongsTo(Anime::class);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (VERY IMPORTANT)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
@@ -87,12 +94,12 @@ class Favorite extends Model
 
     public function scopeByCategory($query, string $category)
     {
-        return $query->where('category', $category);
+        return $query->where('category', strtolower($category));
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers (VERY USEFUL)
+    | Helpers (VERY IMPORTANT)
     |--------------------------------------------------------------------------
     */
 
@@ -110,18 +117,43 @@ class Favorite extends Model
         static::create([
             'user_id' => $userId,
             'anime_id' => $animeId,
+            'category' => self::CATEGORY_PLAN,
         ]);
 
         return 'added';
     }
 
+    public static function setCategory(int $userId, int $animeId, string $category): self
+    {
+        return static::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'anime_id' => $animeId,
+            ],
+            [
+                'category' => strtolower($category),
+            ]
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Category Helpers
+    |--------------------------------------------------------------------------
+    */
+
     public function isWatching(): bool
     {
-        return $this->category === 'watching';
+        return $this->category === self::CATEGORY_WATCHING;
     }
 
     public function isCompleted(): bool
     {
-        return $this->category === 'completed';
+        return $this->category === self::CATEGORY_COMPLETED;
+    }
+
+    public function isPlan(): bool
+    {
+        return $this->category === self::CATEGORY_PLAN;
     }
 }

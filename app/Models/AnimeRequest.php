@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 class AnimeRequest extends Model
 {
@@ -16,14 +16,21 @@ class AnimeRequest extends Model
         'status',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'status' => 'string',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'status' => 'string',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | CONSTANTS (BETTER THAN HARD-CODING)
+    |--------------------------------------------------------------------------
+    */
+
+    public const STATUS_PENDING   = 'pending';
+    public const STATUS_RESOLVED  = 'resolved';
+    public const STATUS_DISMISSED = 'dismissed';
 
     /*
     |--------------------------------------------------------------------------
@@ -33,16 +40,24 @@ class AnimeRequest extends Model
 
     protected static function booted(): void
     {
-        // ✅ Default status
         static::creating(function ($model) {
+
+            // ✅ Default status
             if (empty($model->status)) {
-                $model->status = 'pending';
+                $model->status = self::STATUS_PENDING;
             }
+
+            // ✅ Normalize status
+            $model->status = strtolower($model->status);
         });
 
-        // ✅ Optional: clear admin dashboard cache
-        static::saved(fn () => cache()->forget('admin_requests'));
-        static::deleted(fn () => cache()->forget('admin_requests'));
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
+    }
+
+    protected static function clearCache(): void
+    {
+        Cache::forget('admin_requests');
     }
 
     /*
@@ -51,7 +66,7 @@ class AnimeRequest extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
@@ -64,16 +79,37 @@ class AnimeRequest extends Model
 
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', self::STATUS_PENDING);
     }
 
     public function scopeResolved($query)
     {
-        return $query->where('status', 'resolved');
+        return $query->where('status', self::STATUS_RESOLVED);
     }
 
     public function scopeDismissed($query)
     {
-        return $query->where('status', 'dismissed');
+        return $query->where('status', self::STATUS_DISMISSED);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING;
+    }
+
+    public function isResolved(): bool
+    {
+        return $this->status === self::STATUS_RESOLVED;
+    }
+
+    public function isDismissed(): bool
+    {
+        return $this->status === self::STATUS_DISMISSED;
     }
 }

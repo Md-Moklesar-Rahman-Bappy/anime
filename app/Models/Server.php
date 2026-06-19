@@ -3,18 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class Server extends Model
 {
+    public const TYPE_EMBED    = 'embed';
+    public const TYPE_M3U8     = 'm3u8';
+    public const TYPE_MP4      = 'mp4';
+    public const TYPE_TELEGRAM = 'telegram';
+    public const TYPE_YOUTUBE  = 'youtube';
+    public const TYPE_EXTERNAL = 'external';
+
     public const TYPES = [
-        'embed',
-        'm3u8',
-        'mp4',
-        'telegram',
-        'youtube',
-        'external',
+        self::TYPE_EMBED,
+        self::TYPE_M3U8,
+        self::TYPE_MP4,
+        self::TYPE_TELEGRAM,
+        self::TYPE_YOUTUBE,
+        self::TYPE_EXTERNAL,
     ];
 
     protected $fillable = [
@@ -23,16 +29,13 @@ class Server extends Model
         'url',
         'type',
         'language',
-        'priority', // ✅ important for ordering
+        'priority',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'episode_id' => 'integer',
-            'priority' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'episode_id' => 'integer',
+        'priority' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -43,17 +46,24 @@ class Server extends Model
     protected static function booted(): void
     {
         static::creating(function ($server) {
-            if (empty($server->priority)) {
+
+            // ✅ default priority
+            if (is_null($server->priority)) {
                 $server->priority = 0;
             }
 
-            if ($server->language) {
-                $server->language = strtolower($server->language);
-            }
+            // ✅ normalize values
+            $server->language = $server->language
+                ? strtolower($server->language)
+                : null;
+
+            $server->type = $server->type
+                ? strtolower($server->type)
+                : null;
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -67,7 +77,7 @@ class Server extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function episode(): BelongsTo
+    public function episode()
     {
         return $this->belongsTo(Episode::class);
     }
@@ -85,7 +95,7 @@ class Server extends Model
 
     public function scopeOrdered($query)
     {
-        return $query->orderByDesc('priority');
+        return $query->orderBy('priority');
     }
 
     public function scopeSub($query)
@@ -100,32 +110,37 @@ class Server extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers (VERY IMPORTANT)
+    | Helpers (PLAYER LOGIC)
     |--------------------------------------------------------------------------
     */
 
     public function isYouTube(): bool
     {
-        return $this->type === 'youtube';
+        return $this->type === self::TYPE_YOUTUBE;
     }
 
     public function isTelegram(): bool
     {
-        return $this->type === 'telegram';
+        return $this->type === self::TYPE_TELEGRAM;
     }
 
     public function isM3U8(): bool
     {
-        return $this->type === 'm3u8';
+        return $this->type === self::TYPE_M3U8;
     }
 
     public function isMP4(): bool
     {
-        return $this->type === 'mp4';
+        return $this->type === self::TYPE_MP4;
     }
 
     public function isEmbed(): bool
     {
-        return $this->type === 'embed';
+        return $this->type === self::TYPE_EMBED;
+    }
+
+    public function isExternal(): bool
+    {
+        return $this->type === self::TYPE_EXTERNAL;
     }
 }

@@ -3,13 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class Genre extends Model
 {
-    protected $fillable = ['name', 'slug', 'mal_id'];
+    protected $fillable = [
+        'name',
+        'slug',
+        'mal_id',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -20,14 +23,21 @@ class Genre extends Model
     protected static function booted(): void
     {
         static::saving(function ($genre) {
-            // ✅ Auto slug generation
+
             if (empty($genre->slug)) {
-                $genre->slug = Str::slug($genre->name);
+                $slug = Str::slug($genre->name);
+
+                // ✅ prevent duplicate slug
+                if (self::where('slug', $slug)->exists()) {
+                    $slug .= '-' . uniqid();
+                }
+
+                $genre->slug = $slug;
             }
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -41,9 +51,9 @@ class Genre extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function anime(): BelongsToMany
+    public function anime()
     {
-        return $this->belongsToMany(Anime::class)
+        return $this->belongsToMany(Anime::class, 'anime_genre')
             ->withTimestamps();
     }
 
@@ -71,7 +81,7 @@ class Genre extends Model
 
     public function animeCount(): int
     {
-        return $this->anime()->count();
+        return $this->anime_count ?? $this->anime()->count();
     }
 
     /*

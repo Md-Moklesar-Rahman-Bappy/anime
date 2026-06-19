@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class MangaReadingHistory extends Model
@@ -17,13 +16,12 @@ class MangaReadingHistory extends Model
         'completed',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'page_number' => 'integer',
-            'completed' => 'boolean',
-        ];
-    }
+    protected $casts = [
+        'page_number' => 'integer',
+        'completed' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -34,17 +32,20 @@ class MangaReadingHistory extends Model
     protected static function booted(): void
     {
         static::creating(function ($history) {
-            if ($history->page_number <= 0) {
+
+            // ✅ Safe page default
+            if (empty($history->page_number) || $history->page_number <= 0) {
                 $history->page_number = 1;
             }
 
+            // ✅ Default completed
             if ($history->completed === null) {
                 $history->completed = false;
             }
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -58,12 +59,12 @@ class MangaReadingHistory extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function chapter(): BelongsTo
+    public function chapter()
     {
         return $this->belongsTo(Chapter::class);
     }
@@ -106,6 +107,11 @@ class MangaReadingHistory extends Model
         return round(($this->page_number / $totalPages) * 100, 2);
     }
 
+    public function isCompleted(): bool
+    {
+        return $this->completed === true;
+    }
+
     public function markCompleted(): void
     {
         $this->update(['completed' => true]);
@@ -119,7 +125,7 @@ class MangaReadingHistory extends Model
                 'chapter_id' => $chapterId,
             ],
             [
-                'page_number' => $page,
+                'page_number' => max(1, $page),
                 'completed' => false,
             ]
         );

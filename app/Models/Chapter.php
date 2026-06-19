@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 
 class Chapter extends Model
@@ -13,16 +11,13 @@ class Chapter extends Model
         'manga_id',
         'number',
         'title',
-        'pages_count'
+        'pages_count',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'number' => 'decimal:1',
-            'pages_count' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'number' => 'decimal:1',   // supports 1.5, 2.5 etc
+        'pages_count' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -32,8 +27,8 @@ class Chapter extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -47,35 +42,36 @@ class Chapter extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function manga(): BelongsTo
+    public function manga()
     {
         return $this->belongsTo(Manga::class);
     }
 
-    public function pages(): HasMany
+    public function pages()
     {
-        return $this->hasMany(MangaPage::class)->orderBy('page_number');
+        return $this->hasMany(MangaPage::class)
+            ->orderBy('page_number');
     }
 
-    public function comments(): HasMany
+    public function comments()
     {
         return $this->hasMany(MangaComment::class);
     }
 
-    public function bookmarks(): HasMany
+    public function bookmarks()
     {
         return $this->hasMany(ChapterBookmark::class);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (VERY IMPORTANT)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
     public function scopeLatest($query)
     {
-        return $query->orderByDesc('created_at');
+        return $query->latest();
     }
 
     public function scopeOrdered($query)
@@ -90,7 +86,7 @@ class Chapter extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Navigation helpers
+    | Navigation (Next / Previous)
     |--------------------------------------------------------------------------
     */
 

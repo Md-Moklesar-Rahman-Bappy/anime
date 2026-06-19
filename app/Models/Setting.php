@@ -20,8 +20,8 @@ class Setting extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn ($setting) => static::clearCache($setting->key));
-        static::deleted(fn ($setting) => static::clearCache($setting->key));
+        static::saved(fn($setting) => static::clearCache($setting->key));
+        static::deleted(fn($setting) => static::clearCache($setting->key));
     }
 
     protected static function clearCache(string $key): void
@@ -31,16 +31,14 @@ class Setting extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Static Helpers (VERY IMPORTANT)
+    | Static Helpers (CORE SYSTEM)
     |--------------------------------------------------------------------------
     */
 
     public static function get(string $key, mixed $default = null): mixed
     {
-        return Cache::remember("setting_{$key}", 3600, function () use ($key, $default) {
-            $setting = static::where('key', $key)->first();
-
-            return $setting ? $setting->value : $default;
+        return Cache::remember("setting_{$key}", now()->addHour(), function () use ($key, $default) {
+            return static::where('key', $key)->value('value') ?? $default;
         });
     }
 
@@ -53,6 +51,12 @@ class Setting extends Model
 
         Cache::forget("setting_{$key}");
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Typed Helpers (VERY IMPORTANT)
+    |--------------------------------------------------------------------------
+    */
 
     public static function getInt(string $key, int $default = 0): int
     {
@@ -68,6 +72,11 @@ class Setting extends Model
     {
         $value = static::get($key);
 
-        return $value ? json_decode($value, true) : $default;
+        return $value ? json_decode($value, true) ?? $default : $default;
+    }
+
+    public static function setJson(string $key, array $value): void
+    {
+        static::set($key, json_encode($value));
     }
 }

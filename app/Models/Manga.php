@@ -4,8 +4,6 @@ namespace App\Models;
 
 use App\Services\AssetUrlService;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -14,27 +12,24 @@ class Manga extends Model
     protected $table = 'manga';
 
     protected $fillable = [
-        'title', 'slug', 'description', 'alternative_titles',
-        'type', 'status', 'year', 'rating', 'score',
-        'chapters_count', 'source', 'source_id',
-        'author', 'artist', 'publisher',
-        'thumbnail', 'banner', 'views', 'featured', 'featured_order',
+        'title','slug','description','alternative_titles',
+        'type','status','year','rating','score',
+        'chapters_count','source','source_id',
+        'author','artist','publisher',
+        'thumbnail','banner','views','featured','featured_order',
     ];
 
     protected $appends = ['thumbnail_url', 'banner_url'];
 
-    protected function casts(): array
-    {
-        return [
-            'year' => 'integer',
-            'rating' => 'decimal:1',
-            'score' => 'decimal:1',
-            'chapters_count' => 'integer',
-            'views' => 'integer',
-            'featured' => 'boolean',
-            'featured_order' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'year' => 'integer',
+        'rating' => 'decimal:1',
+        'score' => 'decimal:2',
+        'chapters_count' => 'integer',
+        'views' => 'integer',
+        'featured' => 'boolean',
+        'featured_order' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -45,11 +40,19 @@ class Manga extends Model
     protected static function booted(): void
     {
         static::saving(function ($manga) {
-            // ✅ Auto slug generation
+
+            // ✅ safe slug generation
             if (empty($manga->slug)) {
-                $manga->slug = Str::slug($manga->title) . '-' . uniqid();
+                $slug = Str::slug($manga->title);
+
+                if (self::where('slug', $slug)->exists()) {
+                    $slug .= '-' . uniqid();
+                }
+
+                $manga->slug = $slug;
             }
 
+            // ✅ fallback featured order
             if ($manga->featured_order === null) {
                 $manga->featured_order = 0;
             }
@@ -80,7 +83,7 @@ class Manga extends Model
     public function getBannerUrlAttribute(): string
     {
         return app(AssetUrlService::class)
-            ->bannerUrl($this->banner, $this->thumbnail_url);
+            ->bannerUrl($this->banner, $this->thumbnail);
     }
 
     /*
@@ -89,7 +92,7 @@ class Manga extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function genres(): BelongsToMany
+    public function genres()
     {
         return $this->belongsToMany(
             MangaGenre::class,
@@ -99,30 +102,31 @@ class Manga extends Model
         )->withTimestamps();
     }
 
-    public function chapters(): HasMany
+    public function chapters()
     {
-        return $this->hasMany(Chapter::class)->orderBy('number', 'desc');
+        return $this->hasMany(Chapter::class)
+                    ->orderByDesc('number');
     }
 
-    public function favorites(): HasMany
+    public function favorites()
     {
         return $this->hasMany(MangaFavorite::class);
     }
 
-    public function favoritedBy(): BelongsToMany
+    public function favoritedBy()
     {
         return $this->belongsToMany(User::class, 'manga_favorites');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (VERY IMPORTANT)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
     public function scopeLatest($query)
     {
-        return $query->orderByDesc('created_at');
+        return $query->latest();
     }
 
     public function scopeTrending($query)
@@ -144,6 +148,22 @@ class Manga extends Model
     public function scopeCompleted($query)
     {
         return $query->where('status', 'Completed');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function latestChapter()
+    {
+        return $this->chapters()->first();
+    }
+
+    public function hasChapters(): bool
+    {
+        return $this->chapters()->exists();
     }
 
     /*

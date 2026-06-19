@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class MangaComment extends Model
@@ -12,16 +11,25 @@ class MangaComment extends Model
         'chapter_id',
         'user_id',
         'body',
-        'status', // ✅ moderation system
+        'status',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'chapter_id' => 'integer',
-            'user_id' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'chapter_id' => 'integer',
+        'user_id' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | CONSTANTS (IMPORTANT)
+    |--------------------------------------------------------------------------
+    */
+
+    public const STATUS_VISIBLE = 'visible';
+    public const STATUS_HIDDEN  = 'hidden';
+    public const STATUS_PENDING = 'pending';
 
     /*
     |--------------------------------------------------------------------------
@@ -32,13 +40,18 @@ class MangaComment extends Model
     protected static function booted(): void
     {
         static::creating(function ($comment) {
+
+            // ✅ default status
             if (empty($comment->status)) {
-                $comment->status = 'visible';
+                $comment->status = self::STATUS_VISIBLE;
             }
+
+            // ✅ normalize status
+            $comment->status = strtolower($comment->status);
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -52,19 +65,19 @@ class MangaComment extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function chapter(): BelongsTo
+    public function chapter()
     {
         return $this->belongsTo(Chapter::class);
     }
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (VERY IMPORTANT)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
@@ -75,12 +88,12 @@ class MangaComment extends Model
 
     public function scopeVisible($query)
     {
-        return $query->where('status', 'visible');
+        return $query->where('status', self::STATUS_VISIBLE);
     }
 
     public function scopeLatestFirst($query)
     {
-        return $query->orderByDesc('created_at');
+        return $query->latest();
     }
 
     /*
@@ -91,6 +104,16 @@ class MangaComment extends Model
 
     public function isVisible(): bool
     {
-        return $this->status === 'visible';
+        return $this->status === self::STATUS_VISIBLE;
+    }
+
+    public function hide(): void
+    {
+        $this->update(['status' => self::STATUS_HIDDEN]);
+    }
+
+    public function approve(): void
+    {
+        $this->update(['status' => self::STATUS_VISIBLE]);
     }
 }

@@ -3,33 +3,40 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class Episode extends Model
 {
     protected $fillable = [
-        'anime_id', 'number', 'title', 'description', 'video_path',
-        'storage_disk', 'source_type', 'source_id', 'source_url',
-        'duration', 'thumbnail', 'has_sub', 'has_dub',
-        'air_date', 'created_by', 'telegram_message_id',
+        'anime_id',
+        'number',
+        'title',
+        'description',
+        'video_path',
+        'storage_disk',
+        'source_type',
+        'source_id',
+        'source_url',
+        'duration',
+        'thumbnail',
+        'has_sub',
+        'has_dub',
+        'air_date',
+        'created_by',
+        'telegram_message_id',
     ];
 
     protected $appends = ['thumbnail_url'];
 
-    protected function casts(): array
-    {
-        return [
-            'number' => 'integer',
-            'duration' => 'integer',
-            'has_sub' => 'boolean',
-            'has_dub' => 'boolean',
-            'air_date' => 'date',
-            'telegram_message_id' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'number' => 'integer',
+        'duration' => 'integer',
+        'has_sub' => 'boolean',
+        'has_dub' => 'boolean',
+        'air_date' => 'date',
+        'telegram_message_id' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -39,8 +46,8 @@ class Episode extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -59,10 +66,10 @@ class Episode extends Model
         if ($this->thumbnail) {
             return str_starts_with($this->thumbnail, 'http')
                 ? $this->thumbnail
-                : Storage::url($this->thumbnail);
+                : Storage::disk($this->storage_disk ?? 'public')->url($this->thumbnail);
         }
 
-        return $this->anime?->thumbnail_url ?: '';
+        return $this->anime?->thumbnail_url ?? '';
     }
 
     /*
@@ -71,27 +78,27 @@ class Episode extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function anime(): BelongsTo
+    public function anime()
     {
         return $this->belongsTo(Anime::class);
     }
 
-    public function servers(): HasMany
+    public function servers()
     {
-        return $this->hasMany(Server::class);
+        return $this->hasMany(Server::class)->orderBy('priority');
     }
 
-    public function comments(): HasMany
+    public function comments()
     {
-        return $this->hasMany(Comment::class);
+        return $this->hasMany(Comment::class)->latest();
     }
 
-    public function creator(): BelongsTo
+    public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function skipTimes(): HasMany
+    public function skipTimes()
     {
         return $this->hasMany(SkipTime::class);
     }
@@ -109,7 +116,7 @@ class Episode extends Model
 
     public function scopeLatest($query)
     {
-        return $query->orderByDesc('created_at');
+        return $query->latest();
     }
 
     public function scopeForAnime($query, int $animeId)
@@ -119,7 +126,7 @@ class Episode extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Navigation Helpers
+    | Navigation
     |--------------------------------------------------------------------------
     */
 
@@ -141,7 +148,7 @@ class Episode extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Source Helpers (VERY IMPORTANT)
+    | Source Helpers (Player Logic)
     |--------------------------------------------------------------------------
     */
 
@@ -167,8 +174,24 @@ class Episode extends Model
 
     public function hasVideo(): bool
     {
-        return !empty($this->video_path)
-            || !empty($this->source_url)
-            || !empty($this->source_id);
+        return filled($this->video_path)
+            || filled($this->source_url)
+            || filled($this->source_id);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Player Helpers (NEW - VERY IMPORTANT)
+    |--------------------------------------------------------------------------
+    */
+
+    public function bestServer()
+    {
+        return $this->servers()->first();
+    }
+
+    public function hasServers(): bool
+    {
+        return $this->servers()->exists();
     }
 }

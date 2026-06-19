@@ -3,17 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class MangaFavorite extends Model
 {
+    public const CATEGORY_READING   = 'reading';
+    public const CATEGORY_COMPLETED = 'completed';
+    public const CATEGORY_PLAN      = 'plan_to_read';
+    public const CATEGORY_ON_HOLD   = 'on_hold';
+    public const CATEGORY_DROPPED   = 'dropped';
+
     public const CATEGORIES = [
-        'reading',
-        'completed',
-        'plan_to_read',
-        'on_hold',
-        'dropped',
+        self::CATEGORY_READING,
+        self::CATEGORY_COMPLETED,
+        self::CATEGORY_PLAN,
+        self::CATEGORY_ON_HOLD,
+        self::CATEGORY_DROPPED,
     ];
 
     protected $fillable = [
@@ -22,13 +27,10 @@ class MangaFavorite extends Model
         'category',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'user_id' => 'integer',
-            'manga_id' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'user_id' => 'integer',
+        'manga_id' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -39,13 +41,18 @@ class MangaFavorite extends Model
     protected static function booted(): void
     {
         static::creating(function ($favorite) {
+
+            // ✅ default category
             if (empty($favorite->category)) {
-                $favorite->category = 'plan_to_read';
+                $favorite->category = self::CATEGORY_PLAN;
             }
+
+            // ✅ normalize category
+            $favorite->category = strtolower($favorite->category);
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -59,12 +66,12 @@ class MangaFavorite extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function manga(): BelongsTo
+    public function manga()
     {
         return $this->belongsTo(Manga::class);
     }
@@ -87,12 +94,12 @@ class MangaFavorite extends Model
 
     public function scopeByCategory($query, string $category)
     {
-        return $query->where('category', $category);
+        return $query->where('category', strtolower($category));
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers (VERY IMPORTANT)
+    | Helpers
     |--------------------------------------------------------------------------
     */
 
@@ -110,18 +117,37 @@ class MangaFavorite extends Model
         static::create([
             'user_id' => $userId,
             'manga_id' => $mangaId,
+            'category' => self::CATEGORY_PLAN,
         ]);
 
         return 'added';
     }
 
+    public static function setCategory(int $userId, int $mangaId, string $category): self
+    {
+        return static::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'manga_id' => $mangaId,
+            ],
+            [
+                'category' => strtolower($category),
+            ]
+        );
+    }
+
     public function isReading(): bool
     {
-        return $this->category === 'reading';
+        return $this->category === self::CATEGORY_READING;
     }
 
     public function isCompleted(): bool
     {
-        return $this->category === 'completed';
+        return $this->category === self::CATEGORY_COMPLETED;
+    }
+
+    public function isPlan(): bool
+    {
+        return $this->category === self::CATEGORY_PLAN;
     }
 }

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class ChapterBookmark extends Model
@@ -11,15 +10,12 @@ class ChapterBookmark extends Model
     protected $fillable = [
         'user_id',
         'chapter_id',
-        'page_number'
+        'page_number',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'page_number' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'page_number' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -29,16 +25,16 @@ class ChapterBookmark extends Model
 
     protected static function booted(): void
     {
-        // ✅ Default page
         static::creating(function ($bookmark) {
-            if ($bookmark->page_number <= 0) {
+
+            // ✅ ensure valid page number
+            if (empty($bookmark->page_number) || $bookmark->page_number <= 0) {
                 $bookmark->page_number = 1;
             }
         });
 
-        // ✅ Cache invalidation
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -52,19 +48,19 @@ class ChapterBookmark extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function chapter(): BelongsTo
+    public function chapter()
     {
         return $this->belongsTo(Chapter::class);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (VERY IMPORTANT)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
@@ -80,7 +76,7 @@ class ChapterBookmark extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers
+    | Helpers (VERY IMPORTANT)
     |--------------------------------------------------------------------------
     */
 
@@ -95,5 +91,12 @@ class ChapterBookmark extends Model
                 'page_number' => 1,
             ]
         );
+    }
+
+    public function updatePage(int $page): void
+    {
+        $this->update([
+            'page_number' => max(1, $page),
+        ]);
     }
 }

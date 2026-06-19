@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class WatchHistory extends Model
@@ -12,16 +11,15 @@ class WatchHistory extends Model
         'user_id',
         'episode_id',
         'progress',
-        'completed'
+        'completed',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'progress' => 'integer',
-            'completed' => 'boolean',
-        ];
-    }
+    protected $casts = [
+        'progress' => 'integer',
+        'completed' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -32,10 +30,13 @@ class WatchHistory extends Model
     protected static function booted(): void
     {
         static::creating(function ($model) {
-            if ($model->progress < 0) {
+
+            // ✅ prevent negative progress
+            if (empty($model->progress) || $model->progress < 0) {
                 $model->progress = 0;
             }
 
+            // ✅ default completion
             if ($model->completed === null) {
                 $model->completed = false;
             }
@@ -56,12 +57,12 @@ class WatchHistory extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function episode(): BelongsTo
+    public function episode()
     {
         return $this->belongsTo(Episode::class);
     }
@@ -104,6 +105,11 @@ class WatchHistory extends Model
         return round(($this->progress / $duration) * 100, 2);
     }
 
+    public function isCompleted(): bool
+    {
+        return $this->completed === true;
+    }
+
     public function markCompleted(): void
     {
         $this->update([
@@ -119,7 +125,7 @@ class WatchHistory extends Model
                 'episode_id' => $episodeId,
             ],
             [
-                'progress' => $progress,
+                'progress' => max(0, $progress),
                 'completed' => false,
             ]
         );

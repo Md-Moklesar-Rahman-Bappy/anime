@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,12 +16,9 @@ class MangaPage extends Model
 
     protected $appends = ['image_url'];
 
-    protected function casts(): array
-    {
-        return [
-            'page_number' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'page_number' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -55,7 +51,7 @@ class MangaPage extends Model
 
         return str_starts_with($this->image_path, 'http')
             ? $this->image_path
-            : Storage::url($this->image_path);
+            : Storage::disk('public')->url($this->image_path);
     }
 
     /*
@@ -64,14 +60,14 @@ class MangaPage extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function chapter(): BelongsTo
+    public function chapter()
     {
         return $this->belongsTo(Chapter::class);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (VERY IMPORTANT)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
@@ -87,7 +83,7 @@ class MangaPage extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Navigation Helpers
+    | Navigation (Reader logic)
     |--------------------------------------------------------------------------
     */
 
@@ -105,5 +101,23 @@ class MangaPage extends Model
             ->where('page_number', '<', $this->page_number)
             ->orderByDesc('page_number')
             ->first();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers (NEW)
+    |--------------------------------------------------------------------------
+    */
+
+    public function isFirst(): bool
+    {
+        return $this->page_number === 1;
+    }
+
+    public function isLast(): bool
+    {
+        return ! static::where('chapter_id', $this->chapter_id)
+            ->where('page_number', '>', $this->page_number)
+            ->exists();
     }
 }

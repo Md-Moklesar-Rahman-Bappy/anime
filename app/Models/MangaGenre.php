@@ -3,13 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class MangaGenre extends Model
 {
-    protected $fillable = ['name', 'slug'];
+    protected $fillable = [
+        'name',
+        'slug'
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -20,14 +22,21 @@ class MangaGenre extends Model
     protected static function booted(): void
     {
         static::saving(function ($genre) {
-            // ✅ Auto slug generation
+
+            // ✅ Safe unique slug
             if (empty($genre->slug)) {
-                $genre->slug = Str::slug($genre->name);
+                $slug = Str::slug($genre->name);
+
+                if (self::where('slug', $slug)->exists()) {
+                    $slug .= '-' . uniqid();
+                }
+
+                $genre->slug = $slug;
             }
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -41,19 +50,19 @@ class MangaGenre extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function manga(): BelongsToMany
+    public function manga()
     {
         return $this->belongsToMany(
             Manga::class,
             'manga_genre_relation',
             'manga_genre_id',
             'manga_id'
-        )->withTimestamps(); // ✅ improved tracking
+        )->withTimestamps();
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (VERY IMPORTANT)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
@@ -75,12 +84,13 @@ class MangaGenre extends Model
 
     public function mangaCount(): int
     {
-        return $this->manga()->count();
+        // ✅ use withCount if loaded (performance)
+        return $this->manga_count ?? $this->manga()->count();
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Route model binding
+    | Route binding
     |--------------------------------------------------------------------------
     */
 

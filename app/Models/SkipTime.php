@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class SkipTime extends Model
@@ -14,18 +13,15 @@ class SkipTime extends Model
         'intro_end',
         'outro_start',
         'outro_end',
-        'user_id'
+        'user_id',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'intro_start' => 'integer',
-            'intro_end' => 'integer',
-            'outro_start' => 'integer',
-            'outro_end' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'intro_start' => 'integer',
+        'intro_end' => 'integer',
+        'outro_start' => 'integer',
+        'outro_end' => 'integer',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -36,6 +32,7 @@ class SkipTime extends Model
     protected static function booted(): void
     {
         static::saving(function ($model) {
+
             // ✅ Validate intro
             if ($model->intro_start >= $model->intro_end) {
                 $model->intro_start = 0;
@@ -49,8 +46,8 @@ class SkipTime extends Model
             }
         });
 
-        static::saved(fn () => static::clearCache());
-        static::deleted(fn () => static::clearCache());
+        static::saved(fn() => static::clearCache());
+        static::deleted(fn() => static::clearCache());
     }
 
     protected static function clearCache(): void
@@ -64,12 +61,12 @@ class SkipTime extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function episode(): BelongsTo
+    public function episode()
     {
         return $this->belongsTo(Episode::class);
     }
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
@@ -87,7 +84,7 @@ class SkipTime extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers (VERY IMPORTANT)
+    | Helpers (PLAYER CORE)
     |--------------------------------------------------------------------------
     */
 
@@ -117,11 +114,27 @@ class SkipTime extends Model
 
     public function getIntroDuration(): int
     {
-        return $this->intro_end - $this->intro_start;
+        return max(0, $this->intro_end - $this->intro_start);
     }
 
     public function getOutroDuration(): int
     {
-        return $this->outro_end - $this->outro_start;
+        return max(0, $this->outro_end - $this->outro_start);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | NEW HELPERS (IMPORTANT)
+    |--------------------------------------------------------------------------
+    */
+
+    public function skipIntroTime(): int
+    {
+        return $this->intro_end;
+    }
+
+    public function skipOutroTime(): int
+    {
+        return $this->outro_end;
     }
 }
