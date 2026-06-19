@@ -17,6 +17,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
         Paginator::useBootstrapFive();
 
         /*
@@ -26,17 +31,17 @@ class AppServiceProvider extends ServiceProvider
         */
         RateLimiter::for('comments', function (Request $request) {
             return Limit::perMinute(30)
-                ->by($request->user()?->id ?: $request->ip());
+                ->by($this->userOrIp($request));
         });
 
         /*
         |--------------------------------------------------------------------------
-        | Report Rate Limiter (stricter)
+        | Report Rate Limiter (Stricter)
         |--------------------------------------------------------------------------
         */
         RateLimiter::for('reports', function (Request $request) {
-            return Limit::perMinute(5) // ✅ reduced for safety
-                ->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(5)
+                ->by($this->userOrIp($request));
         });
 
         /*
@@ -46,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
         */
         RateLimiter::for('favorites', function (Request $request) {
             return Limit::perMinute(50)
-                ->by($request->user()?->id ?: $request->ip());
+                ->by($this->userOrIp($request));
         });
 
         /*
@@ -57,24 +62,30 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('stream', function (Request $request) {
             return Limit::perMinute(30)
                 ->by($request->ip())
-                ->response(function () {
-                    return response('Too many streaming requests', 429);
-                });
+                ->response(fn () => response('Too many streaming requests', 429));
         });
 
         /*
         |--------------------------------------------------------------------------
-        | Global API Rate Limiter (IMPORTANT)
+        | Global API Rate Limiter
         |--------------------------------------------------------------------------
         */
         RateLimiter::for('global', function (Request $request) {
             return Limit::perMinute(120)
-                ->by($request->user()?->id ?: $request->ip())
-                ->response(function () {
-                    return response()->json([
-                        'error' => 'Too many requests',
-                    ], 429);
-                });
+                ->by($this->userOrIp($request))
+                ->response(fn () => response()->json([
+                    'error' => 'Too many requests',
+                ], 429));
         });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helper: User or IP Key
+    |--------------------------------------------------------------------------
+    */
+    protected function userOrIp(Request $request): string
+    {
+        return (string) ($request->user()?->id ?: $request->ip());
     }
 }

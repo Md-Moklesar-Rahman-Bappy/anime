@@ -3,17 +3,26 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
-        return auth()->check();
+        return (bool) $this->user();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
@@ -29,20 +38,24 @@ class ProfileUpdateRequest extends FormRequest
         ];
     }
 
-    /**
-     * ✅ Normalize input before validation
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'name' => trim($this->name),
-            'email' => strtolower(trim($this->email)),
+            'name' => $this->clean($this->input('name')),
+            'email' => strtolower($this->clean($this->input('email'))),
         ]);
     }
 
-    /**
-     * ✅ Custom validation messages (better UX)
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM MESSAGES
+    |--------------------------------------------------------------------------
+    */
     public function messages(): array
     {
         return [
@@ -51,5 +64,15 @@ class ProfileUpdateRequest extends FormRequest
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'This email is already in use.',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+    protected function clean(?string $value): string
+    {
+        return trim((string) $value);
     }
 }

@@ -9,68 +9,87 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 
 class CommentController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
-    | Index (Unified Comments List)
+    | INDEX (UNIFIED COMMENTS LIST)
     |--------------------------------------------------------------------------
     */
+
     public function index(Request $request)
     {
         try {
             $perPage = 20;
             $page = Paginator::resolveCurrentPage();
 
-            // ✅ Load more records for better UX
-            $animeComments = Comment::with(['episode.anime:id,title,slug', 'user:id,name'])
+            /*
+            |--------------------------------------------------------------------------
+            | LOAD COMMENTS (LIMITED FOR PERFORMANCE)
+            |--------------------------------------------------------------------------
+            */
+            $animeComments = Comment::with([
+                    'episode.anime:id,title,slug',
+                    'user:id,name'
+                ])
+                ->select('id', 'user_id', 'episode_id', 'body', 'created_at')
                 ->latest()
                 ->take(150)
                 ->get()
-                ->map(fn($c) => $this->mapAnimeComment($c));
+                ->map(fn ($c) => $this->mapAnimeComment($c));
 
-            $mangaComments = MangaComment::with(['chapter.manga:id,title,slug', 'user:id,name'])
+            $mangaComments = MangaComment::with([
+                    'chapter.manga:id,title,slug',
+                    'user:id,name'
+                ])
+                ->select('id', 'user_id', 'chapter_id', 'body', 'created_at')
                 ->latest()
                 ->take(150)
                 ->get()
-                ->map(fn($c) => $this->mapMangaComment($c));
+                ->map(fn ($c) => $this->mapMangaComment($c));
 
-            // ✅ Merge and sort
+            /*
+            |--------------------------------------------------------------------------
+            | MERGE + SORT
+            |--------------------------------------------------------------------------
+            */
             $all = $animeComments
                 ->merge($mangaComments)
                 ->sortByDesc('created_at')
                 ->values();
 
-            $total = $all->count();
-
-            // ✅ Proper pagination after merge
+            /*
+            |--------------------------------------------------------------------------
+            | MANUAL PAGINATION
+            |--------------------------------------------------------------------------
+            */
             $paginated = new LengthAwarePaginator(
                 $all->forPage($page, $perPage),
-                $total,
+                $all->count(),
                 $perPage,
                 $page,
-                ['path' => request()->url()]
+                ['path' => $request->url()]
             );
 
             return view('admin.comments.index', [
                 'comments' => $paginated,
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Admin Comment Index Failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load comments.');
+        } catch (\Throwable $e) {
+
+            $this->logError('Admin Comment Index Failed', $e);
+
+            return $this->redirectError('Failed to load comments.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Mapping: Anime Comments
+    | MAP ANIME COMMENT
     |--------------------------------------------------------------------------
     */
+
     protected function mapAnimeComment(Comment $comment): object
     {
         return (object) [
@@ -89,9 +108,10 @@ class CommentController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Mapping: Manga Comments
+    | MAP MANGA COMMENT
     |--------------------------------------------------------------------------
     */
+
     protected function mapMangaComment(MangaComment $comment): object
     {
         return (object) [
@@ -110,51 +130,58 @@ class CommentController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Delete Anime Comment
+    | DELETE ANIME COMMENT
     |--------------------------------------------------------------------------
     */
+
     public function destroyAnime(Comment $comment)
     {
         try {
             $comment->delete();
 
-            return redirect()->back()->with('success', 'Anime comment deleted.');
+            return redirect()->back()
+                ->with('success', 'Anime comment deleted.');
+
         } catch (\Throwable $e) {
-            Log::error('Delete Anime Comment Failed', [
+
+            $this->logError('Delete Anime Comment Failed', $e, [
                 'id' => $comment->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Delete failed.');
+            return $this->redirectError('Delete failed.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Delete Manga Comment
+    | DELETE MANGA COMMENT
     |--------------------------------------------------------------------------
     */
+
     public function destroyManga(MangaComment $mangaComment)
     {
         try {
             $mangaComment->delete();
 
-            return redirect()->back()->with('success', 'Manga comment deleted.');
+            return redirect()->back()
+                ->with('success', 'Manga comment deleted.');
+
         } catch (\Throwable $e) {
-            Log::error('Delete Manga Comment Failed', [
+
+            $this->logError('Delete Manga Comment Failed', $e, [
                 'id' => $mangaComment->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Delete failed.');
+            return $this->redirectError('Delete failed.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Safe Route Builder (Prevents crashes)
+    | SAFE ROUTE BUILDER
     |--------------------------------------------------------------------------
     */
+
     protected function safeRoute(string $name, array $params = []): string
     {
         try {
@@ -163,6 +190,7 @@ class CommentController extends Controller
             }
 
             return route($name, $params);
+
         } catch (\Throwable $e) {
             return '#';
         }

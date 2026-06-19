@@ -3,38 +3,50 @@
 namespace App\Http\Controllers;
 
 use App\Models\Genre;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 
 class GenreController extends Controller
 {
-    public function show(string $slug)
+    public function show(Request $request, string $slug)
     {
         try {
-            // ✅ Cache genre + anime list
-            $cacheKey = "genre_page_{$slug}";
+            /*
+            |--------------------------------------------------------------------------
+            | Genre (Cache Only Static Data)
+            |--------------------------------------------------------------------------
+            */
+            $genre = cache()->remember(
+                "genre_{$slug}",
+                now()->addMinutes(10),
+                fn() => Genre::where('slug', $slug)
+                    ->select('id', 'name', 'slug')
+                    ->firstOrFail()
+            );
 
-            [$genre, $animeList] = Cache::remember($cacheKey, 300, function () use ($slug) {
+            /*
+            |--------------------------------------------------------------------------
+            | Anime List (NO CACHE - because pagination)
+            |--------------------------------------------------------------------------
+            */
+            $animeList = $genre->anime()
+                ->select('anime.id', 'title', 'slug', 'thumbnail', 'views')
+                ->with('genres:id,name,slug')
+                ->latest()
+                ->paginate(24);
 
-                $genre = Genre::where('slug', $slug)->firstOrFail();
-
-                $animeList = $genre->anime()
-                    ->with(['genres']) // ✅ eager load
-                    ->latest()
-                    ->paginate(24);
-
-                return [$genre, $animeList];
-            });
-
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSE
+            |--------------------------------------------------------------------------
+            */
             return view('genre', [
                 'genre' => $genre,
                 'animeList' => $animeList,
             ]);
-
         } catch (\Throwable $e) {
-            Log::error('Genre page load failed', [
+
+            $this->logError('Genre page load failed', $e, [
                 'slug' => $slug,
-                'error' => $e->getMessage(),
             ]);
 
             abort(404, 'Genre not found.');

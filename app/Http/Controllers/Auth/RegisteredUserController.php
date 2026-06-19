@@ -9,67 +9,93 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | SHOW REGISTER FORM
+    |--------------------------------------------------------------------------
+    */
     public function create(): View
     {
         return view('auth.register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | REGISTER USER
+    |--------------------------------------------------------------------------
+    */
     public function store(Request $request): RedirectResponse
     {
-        // ✅ Validate input
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+
             'email' => [
                 'required',
                 'string',
-                'lowercase',
                 'email',
                 'max:255',
+                'lowercase',
                 'unique:' . User::class,
             ],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+
+            'password' => [
+                'required',
+                'confirmed',
+                Rules\Password::defaults(),
+            ],
         ]);
 
         try {
-            // ✅ Create user safely
+            /*
+            |--------------------------------------------------------------------------
+            | Create user
+            |--------------------------------------------------------------------------
+            */
             $user = User::create([
                 'name' => trim($validated['name']),
                 'email' => strtolower($validated['email']),
                 'password' => Hash::make($validated['password']),
-                'role' => 'user', // ✅ ensure default role
+                'role' => 'user', // ✅ enforce default role
             ]);
 
-            // ✅ Fire event (email verification etc.)
+            /*
+            |--------------------------------------------------------------------------
+            | Fire registered event (email verification)
+            |--------------------------------------------------------------------------
+            */
             event(new Registered($user));
 
-            // ✅ Login user
+            /*
+            |--------------------------------------------------------------------------
+            | Login + secure session
+            |--------------------------------------------------------------------------
+            */
             Auth::login($user);
-
-            // ✅ Optional: regenerate session for security
             $request->session()->regenerate();
 
-            // ✅ Support redirect flow
+            /*
+            |--------------------------------------------------------------------------
+            | Redirect
+            |--------------------------------------------------------------------------
+            */
             return redirect()->intended(
                 route('admin.dashboard', absolute: false)
             );
 
+        } catch (ValidationException $e) {
+            throw $e;
+
         } catch (\Throwable $e) {
-            Log::error('User registration failed', [
+
+            $this->logError('User registration failed', $e, [
                 'email' => $validated['email'] ?? null,
-                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
 
             throw ValidationException::withMessages([

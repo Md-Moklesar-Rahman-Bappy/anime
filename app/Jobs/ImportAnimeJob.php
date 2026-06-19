@@ -8,7 +8,7 @@ use App\Services\AnimeImportService;
 use App\Services\JikanService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ImportAnimeJob implements ShouldQueue
 {
@@ -24,52 +24,58 @@ class ImportAnimeJob implements ShouldQueue
 
     public function handle(JikanService $jikan, AnimeImportService $importer): void
     {
+        $malId = $this->animeData['mal_id'] ?? null;
+
+        if (!$malId) {
+            return;
+        }
+
         try {
-            $malId = $this->animeData['mal_id'] ?? null;
+            DB::transaction(function () use ($jikan, $importer, $malId) {
 
-            if (!$malId) {
-                return;
-            }
+                // ✅ Safe deduplication inside transaction
+                if (Anime::where('mal_id', $malId)->lockForUpdate()->exists()) {
+                    return;
+                }
 
-            // ✅ Prevent duplicates safely
-            if (Anime::where('mal_id', $malId)->exists()) {
-                return;
-            }
+                $data = $jikan->getAnime($malId);
 
-            // ✅ Fetch anime
-            $data = $jikan->getAnime($malId);
+                if (!$data) {
+                    return;
+                }
 
-            $episodes = collect();
+                $episodes = collect();
 
-            if ($this->fetchEpisodes) {
-                $episodes = $jikan->getAllEpisodes($malId) ?? collect();
-            }
+                if ($this->fetchEpisodes) {
+                    $episodes = collect($jikan->getAllEpisodes($malId) ?? []);
+                }
 
-            $anime = $this->storeAnime($data, $episodes, $importer);
+                $anime = $this->storeAnime($data, $episodes, $importer);
 
-            if ($anime) {
-                $anime->update([
-                    'episodes_count' => $anime->episodes()->count()
-                ]);
-            }
+                if ($anime) {
+                    $anime->update([
+                        'episodes_count' => $anime->episodes()->count(),
+                    ]);
+                }
 
-            // ✅ Save progress
-            Setting::updateOrCreate(
-                ['key' => 'jikan_last_mal_id'],
-                ['value' => $malId]
-            );
+                Setting::updateOrCreate(
+                    ['key' => 'jikan_last_mal_id'],
+                    ['value' => $malId]
+                );
+            });
 
         } catch (\Throwable $e) {
-            Log::error('Anime import job failed', [
-                'mal_id' => $this->animeData['mal_id'] ?? null,
+
+            logger()->error('Anime import job failed', [
+                'mal_id' => $malId,
                 'error' => $e->getMessage(),
             ]);
 
-            throw $e; // ✅ Allow retry
+            throw $e;
         }
     }
 
-    protected function storeAnime(array $data, $episodes, AnimeImportService $importer): ?Anime
+    protected function storeAnime($data, $episodes, AnimeImportService $importer): ?Anime
     {
         try {
             $genreIds = $importer->syncGenres($data['genres'] ?? []);
@@ -78,44 +84,54 @@ class ImportAnimeJob implements ShouldQueue
 
             $existingEpisodes = $anime->episodes()
                 ->pluck('number')
-                ->toArray();
+                ->all();
 
             $newEpisodes = [];
 
             foreach ($episodes as $ep) {
-                // ✅ Validation of external data
+
+                $number = (int) ($ep['number'] ?? 0);
+
                 if (
-                    empty($ep['number']) ||
-                    $ep['filler'] ||
-                    $ep['recap'] ||
-                    in_array($ep['number'], $existingEpisodes)
+                    !$number ||
+                    ($ep['filler'] ?? false) ||
+                    ($ep['recap'] ?? false) ||
+                    in_array($number, $existingEpisodes, true)
                 ) {
                     continue;
                 }
 
                 $newEpisodes[] = [
-                    'anime_id' => $anime->id,
-                    'number' => (int) $ep['number'],
-                    'title' => $ep['title'] ?: 'Episode ' . $ep['number'],
+                    'anime_id'    => $anime->id,
+                    'number'      => $number,
+                    'title'       => $ep['title'] ?: "Episode {$number}",
                     'description' => $ep['synopsis'] ?? null,
-                    'thumbnail' => $ep['thumbnail'] ?? null,
-                    'air_date' => $ep['air_date'] ?? null,
-                    'duration' => $ep['duration'] ?? null,
-                    'has_sub' => false,
-                    'has_dub' => false,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'thumbnail'   => $ep['thumbnail'] ?? null,
+                    'air_date'    => $ep['air_date'] ?? null,
+                    'duration'    => $ep['duration'] ?? null,
+                    'has_sub'     => false,
+                    'has_dub'     => false,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
                 ];
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Batch insert for performance
+            |--------------------------------------------------------------------------
+            */
             if (!empty($newEpisodes)) {
-                $anime->episodes()->insert($newEpisodes);
+                foreach (array_chunk($newEpisodes, 200) as $chunk) {
+                    $anime->episodes()->insert($chunk);
+                }
             }
 
             return $anime;
 
         } catch (\Throwable $e) {
-            Log::error('Store anime failed', [
+
+            logger()->error('Store anime failed', [
                 'mal_id' => $data['mal_id'] ?? null,
                 'error' => $e->getMessage(),
             ]);

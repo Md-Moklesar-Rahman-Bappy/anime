@@ -14,11 +14,21 @@ class UpdateFavoriteListRequest extends FormRequest
         'dropped',
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
-        return auth()->check();
+        return (bool) $this->user();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
@@ -36,22 +46,27 @@ class UpdateFavoriteListRequest extends FormRequest
         ];
     }
 
-    /**
-     * ✅ Normalize input
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'anime_id' => (int) $this->anime_id,
-            'category' => $this->category
-                ? strtolower(trim($this->category))
-                : null,
+            'anime_id' => (int) $this->input('anime_id'),
+
+            'category' => $this->cleanNullableLower(
+                $this->input('category')
+            ),
         ]);
     }
 
-    /**
-     * ✅ Custom messages
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM MESSAGES
+    |--------------------------------------------------------------------------
+    */
     public function messages(): array
     {
         return [
@@ -60,5 +75,17 @@ class UpdateFavoriteListRequest extends FormRequest
 
             'category.in' => 'Invalid category selected.',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+    protected function cleanNullableLower(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? strtolower($value) : null;
     }
 }

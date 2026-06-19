@@ -4,76 +4,120 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreMangaRequest extends FormRequest
+class StoreEpisodeRequest extends FormRequest
 {
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->role !== 'user';
+        $user = $this->user();
+
+        return $user && in_array($user->role, ['admin', 'super_admin'], true);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:5000',
-            'alternative_titles' => 'nullable|string|max:500',
+            'number'       => ['required', 'integer', 'min:1'],
+            'title'        => ['nullable', 'string', 'max:255'],
+            'description'  => ['nullable', 'string', 'max:3000'],
 
-            'type' => 'nullable|string|in:Manga,Manhwa,Manhua,One-shot,Doujinshi',
-            'status' => 'nullable|string|in:Ongoing,Completed,Hiatus,Canceled',
+            'video_path'   => ['nullable', 'string', 'max:500'],
+            'storage_disk' => ['nullable', 'string', 'in:local,s3,streaming'],
 
-            'year' => 'nullable|integer|min:1900|max:' . date('Y'),
-            'rating' => 'nullable|numeric|min:0|max:10',
-            'score' => 'nullable|numeric|min:0|max:10',
+            'source_type'  => ['required', 'string', 'in:upload,youtube,telegram,external'],
 
-            'source' => 'nullable|string|max:255',
+            'source_id'    => ['nullable', 'string', 'max:255'],
+            'source_url'   => ['nullable', 'url', 'max:1000'],
 
-            'author' => 'nullable|string|max:255',
-            'artist' => 'nullable|string|max:255',
-            'publisher' => 'nullable|string|max:255',
+            /*
+            |--------------------------------------------------------------------------
+            | SOURCE-SPECIFIC INPUTS
+            |--------------------------------------------------------------------------
+            */
+            'youtube_url'          => ['nullable', 'url', 'required_if:source_type,youtube'],
+            'uploaded_video_path'  => ['nullable', 'string', 'max:500', 'required_if:source_type,upload'],
 
-            // ✅ Media safety
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,webp|max:2048',
-            'banner' => 'nullable|image|mimes:jpeg,png,webp|max:4096',
+            'telegram_direct_url'  => ['nullable', 'url'],
+            'telegram_file_id'     => ['nullable', 'string', 'max:255', 'required_if:source_type,telegram'],
+            'telegram_duration'    => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'telegram_thumb'       => ['nullable', 'string', 'max:500'],
 
-            // ✅ Genres
-            'genres' => 'nullable|array',
-            'genres.*' => 'integer|exists:manga_genres,id',
+            'duration' => ['nullable', 'integer', 'min:0', 'max:20000'],
 
-            // ✅ Feature flag
-            'featured' => 'nullable|boolean',
+            /*
+            |--------------------------------------------------------------------------
+            | MEDIA
+            |--------------------------------------------------------------------------
+            */
+            'thumbnail' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+
+            /*
+            |--------------------------------------------------------------------------
+            | FLAGS
+            |--------------------------------------------------------------------------
+            */
+            'has_sub' => ['nullable', 'boolean'],
+            'has_dub' => ['nullable', 'boolean'],
+
+            /*
+            |--------------------------------------------------------------------------
+            | META
+            |--------------------------------------------------------------------------
+            */
+            'air_date'     => ['nullable', 'date', 'before_or_equal:today'],
+            'language'     => ['nullable', 'string', 'max:50'],
+            'source_label' => ['nullable', 'string', 'max:255'],
         ];
     }
 
-    /**
-     * ✅ Normalize data before validation
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'title' => trim($this->title),
-            'description' => $this->description ? trim($this->description) : null,
-            'alternative_titles' => $this->alternative_titles ? trim($this->alternative_titles) : null,
+            'title' => $this->cleanNullable($this->input('title')),
+            'description' => $this->cleanNullable($this->input('description')),
 
-            'type' => $this->type ? ucfirst(strtolower($this->type)) : null,
-            'status' => $this->status ? ucfirst(strtolower($this->status)) : null,
-
-            'author' => $this->author ? trim($this->author) : null,
-            'artist' => $this->artist ? trim($this->artist) : null,
-            'publisher' => $this->publisher ? trim($this->publisher) : null,
+            'source_type' => strtolower((string) $this->input('source_type')),
+            'language'    => $this->cleanNullable($this->input('language')),
         ]);
     }
 
-    /**
-     * ✅ Custom error messages (better UX)
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | MESSAGES
+    |--------------------------------------------------------------------------
+    */
     public function messages(): array
     {
         return [
-            'type.in' => 'Invalid manga type selected.',
-            'status.in' => 'Invalid status value.',
-            'year.max' => 'Year cannot be in the future.',
-            'rating.max' => 'Rating must be between 0 and 10.',
-            'score.max' => 'Score must be between 0 and 10.',
+            'youtube_url.required_if' => 'YouTube URL is required when using YouTube source.',
+            'telegram_file_id.required_if' => 'Telegram file ID is required for Telegram source.',
+            'uploaded_video_path.required_if' => 'Upload path is required for uploaded videos.',
+            'source_url.required_if' => 'External URL is required for external source.',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+    protected function cleanNullable(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        return $value !== '' ? $value : null;
     }
 }

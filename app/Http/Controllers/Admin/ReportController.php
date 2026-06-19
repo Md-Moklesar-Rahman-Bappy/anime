@@ -7,31 +7,37 @@ use App\Http\Requests\Admin\UpdateReportRequest;
 use App\Http\Requests\StoreReportRequest;
 use App\Models\Report;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
-    | Index (List + Filters)
+    | INDEX (LIST + FILTERS)
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
     {
         try {
+            $status = $request->input('status');
+            $type   = $request->input('type');
+
             $query = Report::with([
-                'episode.anime:id,title,slug',
-                'user:id,name'
-            ])
+                    'episode.anime:id,title,slug',
+                    'user:id,name'
+                ])
+                ->select('id', 'episode_id', 'user_id', 'issue_type', 'status', 'created_at')
                 ->latest();
 
-            // ✅ Filter by status
-            if ($status = $request->input('status')) {
+            /*
+            |--------------------------------------------------------------------------
+            | Filters
+            |--------------------------------------------------------------------------
+            */
+            if (!empty($status)) {
                 $query->where('status', $status);
             }
 
-            // ✅ Filter by issue type
-            if ($type = $request->input('type')) {
+            if (!empty($type)) {
                 $query->where('issue_type', $type);
             }
 
@@ -40,25 +46,25 @@ class ReportController extends Controller
                 ->withQueryString();
 
             return view('admin.reports.index', compact('reports'));
-        } catch (\Throwable $e) {
-            Log::error('Report index failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load reports.');
+        } catch (\Throwable $e) {
+
+            $this->logError('Report index failed', $e);
+
+            return $this->redirectError('Failed to load reports.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Update Report Status
+    | UPDATE REPORT STATUS
     |--------------------------------------------------------------------------
     */
     public function update(UpdateReportRequest $request, Report $report)
     {
         try {
             $report->update([
-                'status' => $request->status,
+                'status' => $request->input('status'),
             ]);
 
             if ($request->ajax()) {
@@ -68,26 +74,29 @@ class ReportController extends Controller
                 ]);
             }
 
-            return back()->with('success', 'Report updated.');
+            return back()->with('success', 'Report updated successfully.');
+
         } catch (\Throwable $e) {
-            Log::error('Report update failed', [
+
+            $this->logError('Report update failed', $e, [
                 'report_id' => $report->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to update report.');
+            return $this->redirectError('Failed to update report.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Store Report (Frontend)
+    | STORE REPORT (FRONTEND)
     |--------------------------------------------------------------------------
     */
     public function store(StoreReportRequest $request)
     {
         try {
-            if (!auth()->check()) {
+            $user = $request->user();
+
+            if (!$user) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Authentication required.',
@@ -95,21 +104,23 @@ class ReportController extends Controller
             }
 
             Report::create([
-                'episode_id' => $request->episode_id,
-                'user_id' => auth()->id(),
-                'issue_type' => $request->issue_type,
-                'description' => $request->description,
-                'status' => 'pending',
+                'episode_id' => $request->input('episode_id'),
+                'user_id'    => $user->id,
+                'issue_type' => $request->input('issue_type'),
+                'description'=> $request->input('description'),
+                'status'     => 'pending',
             ]);
 
             return response()->json([
-                'status' => 'ok',
+                'status'  => 'ok',
                 'message' => 'Report submitted successfully.',
             ]);
+
         } catch (\Throwable $e) {
-            Log::error('Report submission failed', [
-                'episode_id' => $request->episode_id,
-                'error' => $e->getMessage(),
+
+            $this->logError('Report submission failed', $e, [
+                'episode_id' => $request->input('episode_id'),
+                'ip' => $request->ip(),
             ]);
 
             return response()->json([

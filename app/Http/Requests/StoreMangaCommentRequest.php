@@ -6,11 +6,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreMangaCommentRequest extends FormRequest
 {
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
-        return auth()->check();
+        return (bool) $this->user();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
@@ -21,24 +31,33 @@ class StoreMangaCommentRequest extends FormRequest
                 'string',
                 'min:2',
                 'max:5000',
-                'not_regex:/^(.)\1+$/', // ✅ prevent spam like "aaaaaaa"
+
+                // ✅ Prevent spam like "aaaaaaa"
+                'not_regex:/^(.)\1+$/',
+
+                // ✅ Prevent whitespace-only spam
+                'not_regex:/^\s+$/',
             ],
         ];
     }
 
-    /**
-     * ✅ Normalize input before validation
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'body' => $this->body ? trim($this->body) : null,
+            'body' => $this->cleanNullable($this->input('body')),
         ]);
     }
 
-    /**
-     * ✅ Custom error messages (better UX)
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM MESSAGES
+    |--------------------------------------------------------------------------
+    */
     public function messages(): array
     {
         return [
@@ -48,7 +67,19 @@ class StoreMangaCommentRequest extends FormRequest
             'body.required' => 'Comment cannot be empty.',
             'body.min' => 'Comment must be at least 2 characters.',
             'body.max' => 'Comment is too long (max 5000 characters).',
-            'body.not_regex' => 'Spam-like comment detected.',
+            'body.not_regex' => 'Spam-like or invalid comment detected.',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+    protected function cleanNullable(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
     }
 }

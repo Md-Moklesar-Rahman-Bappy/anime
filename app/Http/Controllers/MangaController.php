@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Manga;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class MangaController extends Controller
 {
@@ -19,18 +18,22 @@ class MangaController extends Controller
             $manga = Manga::where('slug', $slug)
                 ->with([
                     'genres:id,name,slug',
-                    'chapters' => fn($q) => $q->orderByDesc('number')->limit(50),
+                    'chapters' => fn($q) =>
+                    $q->select('id', 'manga_id', 'number', 'title')
+                        ->orderByDesc('number')
+                        ->limit(50), // ✅ prevent heavy load
                 ])
                 ->withCount('chapters')
                 ->firstOrFail();
 
             /*
             |--------------------------------------------------------------------------
-            | Related Manga
+            | Related Manga (Optimized)
             |--------------------------------------------------------------------------
             */
             $related = Manga::where('id', '!=', $manga->id)
-                ->latest()
+                ->select('id', 'title', 'slug', 'thumbnail', 'views')
+                ->orderByDesc('views') // ✅ better than latest()
                 ->take(8)
                 ->get();
 
@@ -60,9 +63,8 @@ class MangaController extends Controller
             ]);
         } catch (\Throwable $e) {
 
-            Log::error('Manga detail failed', [
+            $this->logError('Manga detail failed', $e, [
                 'slug' => $slug,
-                'error' => $e->getMessage(),
             ]);
 
             abort(404);

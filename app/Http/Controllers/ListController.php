@@ -8,7 +8,6 @@ use App\Models\Episode;
 use App\Models\Genre;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 class ListController extends Controller
 {
@@ -44,22 +43,35 @@ class ListController extends Controller
         return 'Anime';
     }
 
-    public function azList(?string $letter = null)
+    /*
+    |--------------------------------------------------------------------------
+    | A-Z LIST
+    |--------------------------------------------------------------------------
+    */
+
+    public function azList(Request $request, ?string $letter = null)
     {
         try {
-            $query = Anime::query()->with('genres');
+            $query = Anime::query()
+                ->with('genres:id,name,slug');
 
+            /*
+            |--------------------------------------------------------------------------
+            | Letter Filter
+            |--------------------------------------------------------------------------
+            */
             if ($letter && strtolower($letter) !== 'all') {
                 $safeLetter = addcslashes($letter, '%_');
                 $query->where('title', 'like', $safeLetter . '%');
             }
 
             $list = $query
+                ->select('id', 'title', 'slug', 'thumbnail', 'type', 'year')
                 ->orderBy('title')
                 ->paginate(24)
                 ->withQueryString();
 
-            $title = $letter
+            $title = $letter && strtolower($letter) !== 'all'
                 ? "Anime starting with {$letter}"
                 : 'All Anime';
 
@@ -71,21 +83,27 @@ class ListController extends Controller
                 'genres' => $genres,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Anime A-Z list failed', [
+
+            $this->logError('Anime A-Z list failed', $e, [
                 'letter' => $letter,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to load anime list.');
+            return $this->redirectError('Failed to load anime list.');
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | AJAX SEARCH
+    |--------------------------------------------------------------------------
+    */
 
     public function searchAjax(Request $request)
     {
         $q = trim((string) $request->input('q', ''));
 
         if (mb_strlen($q) < 1) {
-            return response()->json([
+            return $this->success([
                 'anime' => [],
                 'episodes' => [],
             ]);
@@ -95,15 +113,21 @@ class ListController extends Controller
             $cacheKey = 'anime_search_ajax_' . md5($q);
 
             $payload = Cache::remember($cacheKey, 60, function () use ($q) {
+
                 $safeQ = '%' . addcslashes($q, '%_') . '%';
 
+                /*
+                |--------------------------------------------------------------------------
+                | Anime Results
+                |--------------------------------------------------------------------------
+                */
                 $anime = Anime::query()
                     ->where('title', 'like', $safeQ)
                     ->select('id', 'title', 'slug', 'thumbnail', 'type', 'year')
                     ->orderByDesc('views')
                     ->take(6)
                     ->get()
-                    ->map(fn ($a) => [
+                    ->map(fn($a) => [
                         'id' => $a->id,
                         'title' => $a->title,
                         'slug' => $a->slug,
@@ -114,6 +138,11 @@ class ListController extends Controller
                     ])
                     ->values();
 
+                /*
+                |--------------------------------------------------------------------------
+                | Episode Results
+                |--------------------------------------------------------------------------
+                */
                 $episodes = Episode::query()
                     ->where('title', 'like', $safeQ)
                     ->with('anime:id,title,slug,thumbnail')
@@ -121,7 +150,7 @@ class ListController extends Controller
                     ->latest('created_at')
                     ->take(5)
                     ->get()
-                    ->map(fn ($e) => [
+                    ->map(fn($e) => [
                         'id' => $e->id,
                         'title' => $e->title,
                         'number' => $e->number,
@@ -135,7 +164,7 @@ class ListController extends Controller
                             ])
                             : null,
                     ])
-                    ->filter(fn ($item) => !is_null($item['url']))
+                    ->filter(fn($item) => !is_null($item['url']))
                     ->values();
 
                 return [
@@ -144,18 +173,14 @@ class ListController extends Controller
                 ];
             });
 
-            return response()->json($payload);
+            return $this->success($payload);
         } catch (\Throwable $e) {
-            Log::error('Anime AJAX search failed', [
+
+            $this->logError('Anime AJAX search failed', $e, [
                 'query' => $q,
-                'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'anime' => [],
-                'episodes' => [],
-                'error' => 'Search failed.',
-            ], 500);
+            return $this->error('Search failed.', 500);
         }
     }
 }

@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Anime;
 use App\Models\Comment;
+use App\Models\WatchHistory;
 use App\Services\RelatedContentService;
 use App\Services\ServerResolverService;
 use App\Services\ViewCounterService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 
 class WatchController extends Controller
 {
@@ -17,42 +18,60 @@ class WatchController extends Controller
         protected ServerResolverService $serverResolver,
     ) {}
 
-    public function index(string $slug)
+    public function index(Request $request, string $slug)
     {
         try {
-            $user = auth()->user();
+            $user = $request->user();
+            $epNumber = (int) $request->query('ep');
 
-            // ✅ Load anime with optimized relations
+            /*
+            |--------------------------------------------------------------------------
+            | Load Anime (LIGHTWEIGHT)
+            |--------------------------------------------------------------------------
+            */
             $anime = Anime::where('slug', $slug)
-                ->with([
-                    'genres:id,name,slug',
-                    'episodes:id,anime_id,number,title,thumbnail,has_sub,has_dub'
-                ])
+                ->with('genres:id,name,slug')
                 ->firstOrFail();
 
             $this->viewCounter->increment($anime, 'anime');
 
-            // ✅ Resolve episode
-            $epNumber = (int) request('ep');
-
-            $episode = $anime->episodes
-                ->firstWhere('number', $epNumber) ?? $anime->episodes->first();
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Episode (NO COLLECTION LOAD)
+            |--------------------------------------------------------------------------
+            */
+            $episode = $anime->episodes()
+                ->where('number', $epNumber)
+                ->select('id', 'anime_id', 'number', 'title', 'thumbnail', 'has_sub', 'has_dub')
+                ->first()
+                ?? $anime->episodes()
+                ->orderBy('number')
+                ->first();
 
             if (!$episode) {
                 abort(404);
             }
 
-            // ✅ Load episode relations
+            /*
+            |--------------------------------------------------------------------------
+            | Load Episode Relations
+            |--------------------------------------------------------------------------
+            */
             $episode->load(['servers', 'skipTimes']);
 
-            // ✅ Episode navigation (no extra queries)
-            $episodes = $anime->episodes->sortBy('number')->values();
-            $index = $episodes->search(fn ($e) => $e->id === $episode->id);
+            /*
+            |--------------------------------------------------------------------------
+            | Navigation (MODEL METHODS)
+            |--------------------------------------------------------------------------
+            */
+            $prevEpisode = $episode->previous();
+            $nextEpisode = $episode->next();
 
-            $prevEpisode = $episodes[$index - 1] ?? null;
-            $nextEpisode = $episodes[$index + 1] ?? null;
-
-            // ✅ Favorite state
+            /*
+            |--------------------------------------------------------------------------
+            | Favorite State
+            |--------------------------------------------------------------------------
+            */
             $isFavorited = false;
             $favCategory = null;
 
@@ -67,22 +86,52 @@ class WatchController extends Controller
                 }
             }
 
-            // ✅ Server resolution
-            $serverData = $this->serverResolver->resolveAll($episode);
+            /*
+            |--------------------------------------------------------------------------
+            | Server Resolution
+            |--------------------------------------------------------------------------
+            */
+            $serverData = $this->serverResolver->resolveAll($episode) ?? [];
 
-            // ✅ Comments
-            $comments = Comment::with('user')
+            /*
+            |--------------------------------------------------------------------------
+            | Watch History
+            |--------------------------------------------------------------------------
+            */
+            $watchHistory = null;
+
+            if ($user) {
+                $watchHistory = WatchHistory::where('user_id', $user->id)
+                    ->where('episode_id', $episode->id)
+                    ->first();
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Comments (OPTIMIZED)
+            |--------------------------------------------------------------------------
+            */
+            $comments = Comment::with('user:id,name')
                 ->where('episode_id', $episode->id)
                 ->latest()
                 ->paginate(20);
 
-            // ✅ Related
+            /*
+            |--------------------------------------------------------------------------
+            | Related Anime
+            |--------------------------------------------------------------------------
+            */
             $related = $this->relatedContent->byGenres(
                 $anime,
                 $anime->genres ?? collect(),
                 'genres'
             );
 
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSE
+            |--------------------------------------------------------------------------
+            */
             return view('watch', array_merge([
                 'anime' => $anime,
                 'episode' => $episode,
@@ -92,13 +141,17 @@ class WatchController extends Controller
                 'related' => $related,
                 'isFavorited' => $isFavorited,
                 'favCategory' => $favCategory,
-            ], $serverData));
 
+                // ✅ Player data
+                'watchProgress' => $watchHistory?->progress ?? 0,
+                'isCompleted' => $watchHistory?->completed ?? false,
+                'skipTimes' => $episode->skipTimes->first(),
+            ], $serverData));
         } catch (\Throwable $e) {
-            Log::error('Watch page failed', [
+
+            $this->logError('Watch page failed', $e, [
                 'slug' => $slug,
-                'ep' => request('ep'),
-                'error' => $e->getMessage(),
+                'ep' => $request->query('ep'),
             ]);
 
             abort(404, 'Video not found');

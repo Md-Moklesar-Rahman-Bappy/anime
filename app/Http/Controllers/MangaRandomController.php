@@ -4,35 +4,62 @@ namespace App\Http\Controllers;
 
 use App\Models\Manga;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Log;
 
 class MangaRandomController extends Controller
 {
     public function index(): RedirectResponse
     {
         try {
-            // ✅ Single efficient query
+            /*
+            |--------------------------------------------------------------------------
+            | Random Manga (Efficient)
+            |--------------------------------------------------------------------------
+            */
             $manga = Manga::query()
                 ->select('id', 'slug')
+                ->whereNotNull('slug') // ✅ safety
                 ->inRandomOrder()
                 ->first();
 
-            if (!$manga || !$manga->slug) {
-                return redirect()
-                    ->route('manga.index')
-                    ->with('error', 'No manga found.');
+            /*
+            |--------------------------------------------------------------------------
+            | Fallback if nothing found
+            |--------------------------------------------------------------------------
+            */
+            if (!$manga) {
+                return $this->redirectErrorRoute(
+                    'manga.index',
+                    'No manga found.'
+                );
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Redirect to detail page
+            |--------------------------------------------------------------------------
+            */
             return redirect()->route('manga.detail', $manga->slug);
-
         } catch (\Throwable $e) {
-            Log::error('Random manga selection failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return redirect()
-                ->route('manga.index')
-                ->with('error', 'Failed to load random manga.');
+            $this->logError('Random manga selection failed', $e);
+
+            return $this->redirectErrorRoute(
+                'manga.index',
+                'Failed to load random manga.'
+            );
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | OPTIONAL HELPER (CLEAN REDIRECT)
+    |--------------------------------------------------------------------------
+    */
+
+    protected function redirectErrorRoute(string $route, string $message): RedirectResponse
+    {
+        return redirect()
+            ->route($route)
+            ->with('error', $message);
     }
 }

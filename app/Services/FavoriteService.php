@@ -2,59 +2,119 @@
 
 namespace App\Services;
 
-use Illuminate\Http\JsonResponse;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class FavoriteService
 {
-    public function toggle(string $modelClass, string $foreignKey, int $userId, int $entityId): JsonResponse
+    /*
+    |--------------------------------------------------------------------------
+    | TOGGLE FAVORITE
+    |--------------------------------------------------------------------------
+    */
+    public function toggle(string $modelClass, string $foreignKey, int $userId, int $entityId): string
     {
-        $exists = $modelClass::where('user_id', $userId)
-            ->where($foreignKey, $entityId)
-            ->first();
+        return DB::transaction(function () use ($modelClass, $foreignKey, $userId, $entityId) {
 
-        if ($exists) {
-            $exists->delete();
-
-            return response()->json(['status' => 'removed']);
-        }
-
-        $modelClass::create([
-            'user_id' => $userId,
-            $foreignKey => $entityId,
-        ]);
-
-        return response()->json(['status' => 'added']);
-    }
-
-    public function updateList(string $modelClass, string $foreignKey, int $userId, int $entityId, ?string $category): JsonResponse
-    {
-        if (! $category || $category === 'null') {
-            $modelClass::where('user_id', $userId)
+            $existing = $modelClass::where('user_id', $userId)
                 ->where($foreignKey, $entityId)
-                ->delete();
+                ->lockForUpdate()
+                ->first();
 
-            return response()->json(['status' => 'ok', 'category' => null]);
-        }
+            if ($existing) {
+                $existing->delete();
+                return 'removed';
+            }
 
-        $fav = $modelClass::updateOrCreate(
-            ['user_id' => $userId, $foreignKey => $entityId],
-            ['category' => $category]
-        );
+            $modelClass::create([
+                'user_id' => $userId,
+                $foreignKey => $entityId,
+            ]);
 
-        return response()->json(['status' => 'ok', 'category' => $fav->category]);
+            return 'added';
+        });
     }
 
-    public function myList(string $modelClass, int $userId, ?string $activeCategory, array $categories, string $withRelation, int $perPage = 24)
-    {
-        $query = $modelClass::where('user_id', $userId)
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE LIST CATEGORY
+    |--------------------------------------------------------------------------
+    */
+    public function updateList(
+        string $modelClass,
+        string $foreignKey,
+        int $userId,
+        int $entityId,
+        ?string $category
+    ): array {
+        return DB::transaction(function () use ($modelClass, $foreignKey, $userId, $entityId, $category) {
+
+            $category = $this->normalizeCategory($category);
+
+            if (!$category) {
+                $modelClass::where('user_id', $userId)
+                    ->where($foreignKey, $entityId)
+                    ->delete();
+
+                return ['status' => 'ok', 'category' => null];
+            }
+
+            $fav = $modelClass::updateOrCreate(
+                ['user_id' => $userId, $foreignKey => $entityId],
+                ['category' => $category]
+            );
+
+            return [
+                'status' => 'ok',
+                'category' => $fav->category,
+            ];
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | USER LIST
+    |--------------------------------------------------------------------------
+    */
+    public function myList(
+        string $modelClass,
+        int $userId,
+        ?string $activeCategory,
+        array $categories,
+        string $withRelation,
+        int $perPage = 24
+    ) {
+        $query = $modelClass::query()
+            ->where('user_id', $userId)
             ->with($withRelation);
 
-        if ($activeCategory && array_key_exists($activeCategory, $categories)) {
+        $activeCategory = $this->normalizeCategory($activeCategory);
+
+        if ($activeCategory && in_array($activeCategory, $categories, true)) {
             $query->where('category', $activeCategory);
         } elseif ($activeCategory === 'favorites') {
             $query->whereNull('category');
         }
 
-        return $query->latest()->paginate($perPage)->withQueryString();
+        return $query
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+    protected function normalizeCategory(?string $category): ?string
+    {
+        $category = trim((string) $category);
+
+        if ($category === '' || $category === 'null') {
+            return null;
+        }
+
+        return strtolower($category);
     }
 }

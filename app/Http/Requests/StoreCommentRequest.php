@@ -6,11 +6,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreCommentRequest extends FormRequest
 {
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
-        return auth()->check();
+        return (bool) $this->user();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
@@ -25,19 +35,23 @@ class StoreCommentRequest extends FormRequest
         ];
     }
 
-    /**
-     * ✅ Normalize input before validation
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'body' => $this->body ? trim($this->body) : null,
+            'body' => $this->cleanNullable($this->input('body')),
         ]);
     }
 
-    /**
-     * ✅ Custom messages (better UX)
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM MESSAGES
+    |--------------------------------------------------------------------------
+    */
     public function messages(): array
     {
         return [
@@ -48,5 +62,17 @@ class StoreCommentRequest extends FormRequest
             'body.min' => 'Comment must be at least 2 characters.',
             'body.max' => 'Comment is too long (max 1000 characters).',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+    protected function cleanNullable(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
     }
 }

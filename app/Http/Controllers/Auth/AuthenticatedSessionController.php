@@ -11,37 +11,71 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Display the login view.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | SHOW LOGIN
+    |--------------------------------------------------------------------------
+    */
     public function create(): View
     {
         return view('auth.login');
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | LOGIN
+    |--------------------------------------------------------------------------
+    */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
+        try {
+            // ✅ Attempt login (handled in LoginRequest)
+            $request->authenticate();
 
-        $request->session()->regenerate();
+            // ✅ Prevent session fixation
+            $request->session()->regenerate();
 
-        return redirect()->intended(route('admin.dashboard', absolute: false));
+            return redirect()->intended(
+                route('admin.dashboard', absolute: false)
+            );
+        } catch (\Throwable $e) {
+
+            $this->logError('Login failed', $e, [
+                'email' => $request->input('email'),
+                'ip' => $request->ip(),
+            ]);
+
+            return back()->withErrors([
+                'email' => 'Login failed. Please try again.',
+            ]);
+        }
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | LOGOUT
+    |--------------------------------------------------------------------------
+    */
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('web')->logout();
+        try {
+            Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
+            // ✅ Invalidate session
+            $request->session()->invalidate();
 
-        $request->session()->regenerateToken();
+            // ✅ Prevent CSRF reuse
+            $request->session()->regenerateToken();
 
-        return redirect('/');
+            return redirect('/');
+        } catch (\Throwable $e) {
+
+            $this->logError('Logout failed', $e, [
+                'user_id' => $request->user()?->id,
+                'ip' => $request->ip(),
+            ]);
+
+            return redirect('/')->with('error', 'Logout failed.');
+        }
     }
 }

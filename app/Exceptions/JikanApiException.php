@@ -4,17 +4,16 @@ namespace App\Exceptions;
 
 use Exception;
 use Throwable;
-use Illuminate\Support\Facades\Log;
 
 class JikanApiException extends Exception
 {
     /**
-     * HTTP status code returned by Jikan API
+     * HTTP status code from Jikan API
      */
     public ?int $statusCode;
 
     /**
-     * Raw API response body (optional)
+     * Raw API response body
      */
     public ?string $responseBody;
 
@@ -35,22 +34,22 @@ class JikanApiException extends Exception
 
     /*
     |--------------------------------------------------------------------------
-    | Factory Methods (Clean + reusable)
+    | FACTORY METHODS
     |--------------------------------------------------------------------------
     */
 
     public static function connectionFailed(string $detail): self
     {
         return new self(
-            "Failed to connect to Jikan API: {$detail}",
-            null
+            "Failed to connect to Jikan API: {$detail}"
         );
     }
 
     public static function rateLimited(int $retryAfter = 0): self
     {
         return new self(
-            "Jikan API rate limit reached" . ($retryAfter ? " (retry after {$retryAfter}s)" : ''),
+            'Jikan API rate limit reached'
+                . ($retryAfter > 0 ? " (retry after {$retryAfter}s)" : ''),
             429
         );
     }
@@ -67,7 +66,7 @@ class JikanApiException extends Exception
     public static function notFound(): self
     {
         return new self(
-            "Resource not found on MyAnimeList",
+            'Resource not found on MyAnimeList',
             404
         );
     }
@@ -75,13 +74,14 @@ class JikanApiException extends Exception
     public static function invalidData(string $detail = ''): self
     {
         return new self(
-            "Invalid or unexpected data from Jikan API" . ($detail ? " ({$detail})" : '')
+            'Invalid or unexpected data from Jikan API'
+                . ($detail ? " ({$detail})" : '')
         );
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Helper Methods
+    | HELPERS
     |--------------------------------------------------------------------------
     */
 
@@ -97,22 +97,22 @@ class JikanApiException extends Exception
 
     public function isServerError(): bool
     {
-        return $this->statusCode >= 500;
+        return $this->statusCode !== null
+            && $this->statusCode >= 500;
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Logging (Laravel integration)
+    | REPORT (Laravel integration)
     |--------------------------------------------------------------------------
     */
 
     public function report(): void
     {
-        Log::error('Jikan API Exception', [
+        logger()->error('Jikan API Exception', [
             'message' => $this->getMessage(),
             'status_code' => $this->statusCode,
             'response' => $this->responseBody,
-            'trace' => $this->getTraceAsString(),
         ]);
     }
 }

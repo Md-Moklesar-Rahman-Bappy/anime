@@ -2,165 +2,198 @@
 
 namespace App\Services;
 
-use Exception;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use App\Models\Episode;
+use Illuminate\Support\Facades\Storage;
 
-class TelegramService
+class ServerResolverService
 {
-    protected string $token;
-    protected string $apiBase;
+    private const MIME_MAP = [
+        'mp4'   => 'video/mp4',
+        'webm'  => 'video/webm',
+        'm3u8'  => 'application/x-mpegURL',
+    ];
 
-    public function __construct()
+    public function __construct(
+        protected YouTubeService $youtube,
+    ) {}
+
+    /*
+    |--------------------------------------------------------------------------
+    | RESOLVE ALL SERVERS
+    |--------------------------------------------------------------------------
+    */
+    public function resolveAll(Episode $episode): array
     {
-        $this->token = config('services.telegram.bot_token');
+        // ✅ prevent N+1 queries
+        $episode->loadMissing(['servers', 'skipTimes']);
 
-        if (empty($this->token)) {
-            throw new Exception('Telegram bot token missing');
+        $servers = $episode->servers ?? collect();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Separate servers
+        |--------------------------------------------------------------------------
+        */
+        $videoServers = $servers
+            ->where('type', '!=', 'youtube')
+            ->sortBy('priority') // ✅ lowest = best
+            ->values();
+
+        $youtubeServer = $servers->firstWhere('type', 'youtube');
+
+        $allServers = [];
+        $ytVideoId = null;
+
+        /*
+        |--------------------------------------------------------------------------
+        | YouTube Server
+        |--------------------------------------------------------------------------
+        */
+        if ($youtubeServer && !empty($youtubeServer->url)) {
+
+            $ytVideoId = $this->youtube->extractVideoId($youtubeServer->url);
+
+            $allServers[] = $this->entry(
+                'youtube',
+                'YouTube',
+                $youtubeServer->url,
+                'youtube',
+                $this->normalizeLanguage($youtubeServer->language)
+            );
         }
 
-        $this->apiBase = "https://api.telegram.org/bot{$this->token}";
-    }
+        /*
+        |--------------------------------------------------------------------------
+        | Video Servers
+        |--------------------------------------------------------------------------
+        */
+        foreach ($videoServers as $index => $server) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Resolve Message (via URL)
-    |--------------------------------------------------------------------------
-    */
-
-    public function resolveMessage(string $url): ?array
-    {
-        return Cache::remember("telegram_msg_" . md5($url), 600, function () use ($url) {
-
-            try {
-                $parsed = $this->parseTmeUrl($url);
-
-                if (!$parsed || empty($parsed['message_id'])) {
-                    return null;
-                }
-
-                $streamService = new TelegramStreamService;
-
-                $info = $streamService->getMessageInfo($parsed['message_id']);
-
-                if (!$info) {
-                    return null;
-                }
-
-                return $this->buildResponse([
-                    'message_id' => $parsed['message_id'],
-                    'file_size' => $info['file_size'] ?? null,
-                    'duration' => $info['duration'] ?? null,
-                    'width' => $info['width'] ?? null,
-                    'height' => $info['height'] ?? null,
-                    'mime_type' => $info['mime_type'] ?? 'video/mp4',
-                    'needs_streaming' => true,
-                ]);
-
-            } catch (Exception $e) {
-                Log::warning("Telegram resolveMessage failed", [
-                    'url' => $url,
-                    'error' => $e->getMessage(),
-                ]);
-
-                return null;
+            if (empty($server->url)) {
+                continue;
             }
-        });
-    }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Resolve File ID via Bot API
-    |--------------------------------------------------------------------------
-    */
+            $type = $server->type;
+            $language = $this->normalizeLanguage($server->language);
 
-    public function resolveFileId(string $fileId): ?array
-    {
-        return Cache::remember("telegram_file_" . $fileId, 600, function () use ($fileId) {
+            $url = $this->shouldProxy($server->url, $type)
+                ? $this->proxy($server->url)
+                : $server->url;
 
-            try {
-                $response = Http::timeout(10)
-                    ->retry(3, 300)
-                    ->post("{$this->apiBase}/getFile", [
-                        'file_id' => $fileId,
-                    ]);
+            $allServers[] = $this->entry(
+                "video_{$server->id}",
+                $server->label ?: "Server " . ($index + 1),
+                $url,
+                $type,
+                $language
+            );
+        }
 
-                if (!$response->successful() || !($response['ok'] ?? false)) {
-                    return null;
-                }
+        /*
+        |--------------------------------------------------------------------------
+        | Fallback (video_path)
+        |--------------------------------------------------------------------------
+        */
+        if ($videoServers->isEmpty() && !empty($episode->video_path)) {
 
-                $filePath = $response['result']['file_path'] ?? null;
+            $url = str_starts_with($episode->video_path, 'http')
+                ? $this->proxy($episode->video_path)
+                : Storage::url($episode->video_path);
 
-                if (!$filePath) {
-                    return null;
-                }
+            $allServers[] = $this->entry(
+                'default',
+                'Default',
+                $url,
+                'mp4',
+                'sub'
+            );
+        }
 
-                $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        /*
+        |--------------------------------------------------------------------------
+        | Group by language
+        |--------------------------------------------------------------------------
+        */
+        $groups = collect($allServers)->groupBy('language');
 
-                return $this->buildResponse([
-                    'file_id' => $fileId,
-                    'file_path' => $filePath,
-                    'direct_url' => "https://api.telegram.org/file/bot{$this->token}/{$filePath}",
-                    'file_size' => $response['result']['file_size'] ?? null,
-                    'mime_type' => $this->normalizeMime($ext),
-                    'type' => $ext ?: 'mp4',
-                    'needs_streaming' => false,
-                ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Select best initial server
+        |--------------------------------------------------------------------------
+        */
+        $initial = collect($allServers)
+            ->filter(fn($s) => $s['type'] !== 'youtube') // prefer real video
+            ->sortByDesc(fn($s) => match ($s['type']) {
+                'm3u8' => 3,
+                'mp4'  => 2,
+                'embed' => 1,
+                default => 0,
+            })
+            ->first();
 
-            } catch (Exception $e) {
-                Log::warning("Telegram resolveFileId failed", [
-                    'file_id' => $fileId,
-                    'error' => $e->getMessage(),
-                ]);
+        // ✅ fallback to YouTube if no video server
+        if (!$initial) {
+            $initial = collect($allServers)
+                ->first(fn($s) => $s['type'] === 'youtube');
+        }
 
-                return null;
-            }
-        });
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Helpers
-    |--------------------------------------------------------------------------
-    */
-
-    protected function buildResponse(array $data): array
-    {
         return [
-            'file_id' => $data['file_id'] ?? null,
-            'file_path' => $data['file_path'] ?? null,
-            'direct_url' => $data['direct_url'] ?? null,
-            'file_size' => $data['file_size'] ?? null,
-            'duration' => $data['duration'] ?? null,
-            'width' => $data['width'] ?? null,
-            'height' => $data['height'] ?? null,
-            'mime_type' => $data['mime_type'] ?? 'video/mp4',
-            'type' => $data['type'] ?? 'mp4',
-            'message_id' => $data['message_id'] ?? null,
-            'caption' => $data['caption'] ?? null,
-            'needs_streaming' => $data['needs_streaming'] ?? false,
+            'allServers'      => $allServers,
+            'languageGroups' => $groups,
+            'languages'      => $groups->keys()->values()->toArray(),
+            'initialServer'  => $initial,
+            'isYoutubeInit'  => ($initial['type'] ?? null) === 'youtube',
+            'youtubeVideoId' => $ytVideoId,
+            'skipTimes'      => $episode->skipTimes->first(),
         ];
     }
 
-    protected function normalizeMime(string $ext): string
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+
+    private function shouldProxy(string $url, string $type): bool
     {
-        return match ($ext) {
-            'mp4' => 'video/mp4',
-            'webm' => 'video/webm',
-            default => 'video/mp4',
+        // ✅ don't proxy YouTube
+        if ($type === 'youtube') {
+            return false;
+        }
+
+        // ✅ only proxy external URLs
+        return str_starts_with($url, 'http');
+    }
+
+    private function proxy(string $url): string
+    {
+        return route('stream.proxy', [
+            'url' => base64_encode($url),
+        ]);
+    }
+
+    private function normalizeLanguage(?string $language): string
+    {
+        return match (strtolower(trim((string) $language))) {
+            'dub', 'dubbed' => 'dub',
+            default => 'sub',
         };
     }
 
-    protected function parseTmeUrl(string $url): ?array
-    {
-        if (preg_match('/t\.me\/([a-zA-Z0-9_]+)\/(\d+)/', $url, $m)) {
-            return [
-                'chat_id' => '@' . $m[1],
-                'message_id' => (int)$m[2],
-            ];
-        }
-
-        return null;
+    private function entry(
+        string $id,
+        string $label,
+        string $url,
+        string $type,
+        string $language
+    ): array {
+        return [
+            'server_id' => $id,
+            'label'     => $label,
+            'url'       => $url,
+            'type'      => $type,
+            'language'  => $language,
+            'mime'      => self::MIME_MAP[$type] ?? null,
+        ];
     }
 }

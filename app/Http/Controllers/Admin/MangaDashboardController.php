@@ -8,36 +8,40 @@ use App\Models\Manga;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class MangaDashboardController extends Controller
 {
-    protected const TTL = 300;       // 5 minutes
-    protected const SHORT_TTL = 120; // 2 minutes
+    protected const TTL = 300;
+    protected const SHORT_TTL = 120;
 
     /*
     |--------------------------------------------------------------------------
-    | Dashboard
+    | DASHBOARD
     |--------------------------------------------------------------------------
     */
     public function index()
     {
         try {
             $data = Cache::remember('manga.dashboard.main', self::TTL, function () {
-
                 return [
-                    'stats' => $this->getStats(),
-                    'recentManga' => $this->getRecentManga(),
-                    'popularManga' => $this->getPopularManga(),
-                    'mangaByType' => $this->getMangaByType(),
-                    'mangaByStatus' => $this->getMangaByStatus(),
+                    'stats'            => $this->getStats(),
+                    'recentManga'      => $this->getRecentManga(),
+                    'popularManga'     => $this->getPopularManga(),
+                    'mangaByType'      => $this->getMangaByType(),
+                    'mangaByStatus'    => $this->getMangaByStatus(),
                 ];
             });
 
+            /*
+            |--------------------------------------------------------------------------
+            | RECENT CHAPTERS (SHORT CACHE)
+            |--------------------------------------------------------------------------
+            */
             $recentChapters = Cache::remember(
                 'manga.dashboard.chapters',
                 self::SHORT_TTL,
                 fn() => Chapter::with('manga:id,title,slug,thumbnail')
+                    ->select('id', 'manga_id', 'number', 'title', 'created_at')
                     ->latest()
                     ->limit(5)
                     ->get()
@@ -48,37 +52,39 @@ class MangaDashboardController extends Controller
                 'recentChapters' => $recentChapters,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Manga dashboard failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load dashboard.');
+            $this->logError('Manga dashboard failed', $e);
+
+            return $this->redirectError('Failed to load dashboard.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Stats
+    | STATS
     |--------------------------------------------------------------------------
     */
     protected function getStats(): array
     {
         return [
-            'totalManga' => Manga::count(),
-            'totalChapters' => Chapter::count(),
-            'totalUsers' => User::count(),
-            'totalViews' => Manga::sum('views') ?? 0,
+            'totalManga'     => Manga::count(),
+            'totalChapters'  => Chapter::count(),
+            'totalUsers'     => User::count(),
+
+            // ✅ safe numeric casting
+            'totalViews'     => (int) Manga::sum('views'),
         ];
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Recent Manga
+    | RECENT MANGA
     |--------------------------------------------------------------------------
     */
     protected function getRecentManga()
     {
         return Manga::with('genres:id,name')
+            ->select('id', 'title', 'slug', 'thumbnail', 'updated_at')
             ->latest()
             ->limit(5)
             ->get();
@@ -86,25 +92,26 @@ class MangaDashboardController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Popular Manga
+    | POPULAR MANGA
     |--------------------------------------------------------------------------
     */
     protected function getPopularManga()
     {
-        return Manga::orderByDesc('views')
+        return Manga::select('id', 'title', 'slug', 'thumbnail', 'views')
+            ->orderByDesc('views')
             ->limit(5)
             ->get();
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Manga by Type (Chart Ready)
+    | MANGA BY TYPE
     |--------------------------------------------------------------------------
     */
     protected function getMangaByType(): array
     {
-        return Manga::select('type', DB::raw('COUNT(*) as count'))
-            ->whereNotNull('type')
+        return Manga::whereNotNull('type')
+            ->select('type', DB::raw('COUNT(*) as count'))
             ->groupBy('type')
             ->pluck('count', 'type')
             ->toArray();
@@ -112,13 +119,13 @@ class MangaDashboardController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Manga by Status (Chart Ready)
+    | MANGA BY STATUS
     |--------------------------------------------------------------------------
     */
     protected function getMangaByStatus(): array
     {
-        return Manga::select('status', DB::raw('COUNT(*) as count'))
-            ->whereNotNull('status')
+        return Manga::whereNotNull('status')
+            ->select('status', DB::raw('COUNT(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();

@@ -3,38 +3,51 @@
 namespace App\Http\Controllers;
 
 use App\Models\MangaGenre;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 
 class MangaGenreController extends Controller
 {
-    public function show(string $slug)
+    public function show(Request $request, string $slug)
     {
         try {
-            $cacheKey = "manga_genre_{$slug}";
+            /*
+            |--------------------------------------------------------------------------
+            | Genre (CACHE SAFE)
+            |--------------------------------------------------------------------------
+            */
+            $genre = cache()->remember(
+                "manga_genre_{$slug}",
+                now()->addMinutes(10),
+                fn() => MangaGenre::where('slug', $slug)
+                    ->select('id', 'name', 'slug')
+                    ->firstOrFail()
+            );
 
-            [$genre, $mangaList] = Cache::remember($cacheKey, 300, function () use ($slug) {
+            /*
+            |--------------------------------------------------------------------------
+            | Manga List (NO CACHE - pagination safe)
+            |--------------------------------------------------------------------------
+            */
+            $mangaList = $genre->manga()
+                ->select('manga.id', 'title', 'slug', 'thumbnail', 'views')
+                ->with('genres:id,name,slug')
+                ->latest()
+                ->paginate(24)
+                ->withQueryString();
 
-                $genre = MangaGenre::where('slug', $slug)->firstOrFail();
-
-                $mangaList = $genre->manga()
-                    ->with('genres') // ✅ prevent N+1
-                    ->latest()
-                    ->paginate(24)
-                    ->withQueryString();
-
-                return [$genre, $mangaList];
-            });
-
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSE
+            |--------------------------------------------------------------------------
+            */
             return view('manga-list', [
                 'mangaList' => $mangaList,
                 'title' => $genre->name,
             ]);
-
         } catch (\Throwable $e) {
-            Log::error('Manga genre page failed', [
+
+            $this->logError('Manga genre page failed', $e, [
                 'slug' => $slug,
-                'error' => $e->getMessage(),
             ]);
 
             abort(404, 'Genre not found.');

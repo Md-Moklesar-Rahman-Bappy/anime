@@ -5,29 +5,45 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | INDEX
+    |--------------------------------------------------------------------------
+    */
     public function index(Request $request)
     {
         try {
-            $query = User::query()->latest('created_at');
+            $search = trim((string) $request->input('search'));
 
-            // ✅ Optional search filter
-            if ($search = $request->input('search')) {
-                $query->where(function ($q) use ($search) {
-                    $safeSearch = '%' . addcslashes($search, '%_') . '%';
+            $query = User::query()
+                ->select('id', 'name', 'email', 'role', 'created_at')
+                ->latest('created_at');
 
-                    $q->where('name', 'like', $safeSearch)
-                        ->orWhere('email', 'like', $safeSearch)
-                        ->orWhere('role', 'like', $safeSearch);
+            /*
+            |--------------------------------------------------------------------------
+            | SEARCH
+            |--------------------------------------------------------------------------
+            */
+            if ($search !== '') {
+                $safe = '%' . addcslashes($search, '%_') . '%';
+
+                $query->where(function ($q) use ($safe) {
+                    $q->where('name', 'like', $safe)
+                        ->orWhere('email', 'like', $safe)
+                        ->orWhere('role', 'like', $safe);
                 });
             }
 
-            $users = $query->paginate(20);
+            $users = $query->paginate(20)->withQueryString();
 
-            // ✅ AJAX support
+            /*
+            |--------------------------------------------------------------------------
+            | AJAX RESPONSE
+            |--------------------------------------------------------------------------
+            */
             if ($request->wantsJson()) {
                 return response()->json([
                     'html' => view('admin.users._table', compact('users'))->render(),
@@ -38,14 +54,18 @@ class UserController extends Controller
 
             return view('admin.users.index', compact('users'));
         } catch (\Throwable $e) {
-            Log::error('User index load failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load users.');
+            $this->logError('User index load failed', $e);
+
+            return $this->redirectError('Failed to load users.');
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE ROLE
+    |--------------------------------------------------------------------------
+    */
     public function updateRole(Request $request, User $user)
     {
         $data = $request->validate([
@@ -53,25 +73,37 @@ class UserController extends Controller
         ]);
 
         try {
-            $authUser = auth()->user();
+            $authUser = $request->user();
 
-            // ✅ Only super admin can change roles
+            /*
+            |--------------------------------------------------------------------------
+            | Permission Check
+            |--------------------------------------------------------------------------
+            */
             if (!$authUser || $authUser->role !== 'super_admin') {
-                return back()->with('error', 'Only super admins can change roles.');
+                return $this->redirectError('Only super admins can change roles.');
             }
 
-            // ✅ Prevent self role downgrade
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent self downgrade
+            |--------------------------------------------------------------------------
+            */
             if ($user->id === $authUser->id && $data['role'] !== 'super_admin') {
-                return back()->with('error', 'You cannot remove your own super admin role.');
+                return $this->redirectError('You cannot remove your own super admin role.');
             }
 
-            // ✅ Prevent removing last super admin
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent removing last super admin
+            |--------------------------------------------------------------------------
+            */
             if (
                 $user->role === 'super_admin' &&
                 $data['role'] !== 'super_admin' &&
                 User::where('role', 'super_admin')->count() <= 1
             ) {
-                return back()->with('error', 'Cannot remove the last super admin.');
+                return $this->redirectError('Cannot remove the last super admin.');
             }
 
             $user->update([
@@ -79,52 +111,71 @@ class UserController extends Controller
             ]);
 
             if ($request->wantsJson()) {
-                return response()->json(['success' => true]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'User role updated successfully.',
+                ]);
             }
 
-            return back()->with('success', 'User role updated.');
+            return back()->with('success', 'User role updated successfully.');
         } catch (\Throwable $e) {
-            Log::error('User role update failed', [
+
+            $this->logError('User role update failed', $e, [
                 'user_id' => $user->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to update role.');
+            return $this->redirectError('Failed to update role.');
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | DELETE USER
+    |--------------------------------------------------------------------------
+    */
     public function destroy(Request $request, User $user)
     {
         try {
-            $authUser = auth()->user();
+            $authUser = $request->user();
 
-            // ✅ Cannot delete yourself
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent self deletion
+            |--------------------------------------------------------------------------
+            */
             if ($user->id === $authUser?->id) {
-                return back()->with('error', 'You cannot delete yourself.');
+                return $this->redirectError('You cannot delete yourself.');
             }
 
-            // ✅ Prevent deleting last super admin
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent deleting last super admin
+            |--------------------------------------------------------------------------
+            */
             if (
                 $user->role === 'super_admin' &&
                 User::where('role', 'super_admin')->count() <= 1
             ) {
-                return back()->with('error', 'Cannot delete the last super admin.');
+                return $this->redirectError('Cannot delete the last super admin.');
             }
 
             $user->delete();
 
             if ($request->wantsJson()) {
-                return response()->json(['success' => true]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'User deleted successfully.',
+                ]);
             }
 
-            return back()->with('success', 'User deleted.');
+            return back()->with('success', 'User deleted successfully.');
         } catch (\Throwable $e) {
-            Log::error('User delete failed', [
+
+            $this->logError('User delete failed', $e, [
                 'user_id' => $user->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to delete user.');
+            return $this->redirectError('Failed to delete user.');
         }
     }
 }

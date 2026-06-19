@@ -5,12 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Anime;
 use App\Models\Episode;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
 {
-    const TTL = 300;
-    const SHORT_TTL = 120;
+    protected const TTL = 300;
+    protected const SHORT_TTL = 120;
 
     protected array $selectFields = [
         'id',
@@ -25,21 +24,26 @@ class HomeController extends Controller
         'age_rating',
         'episodes_count',
         'views',
-        'description'
+        'description',
     ];
 
     public function index()
     {
         try {
 
+            /*
+            |--------------------------------------------------------------------------
+            | MAIN HOME DATA (CACHED)
+            |--------------------------------------------------------------------------
+            */
             $data = Cache::remember('home_all', self::TTL, function () {
 
                 $featured = Anime::where('featured', true)
                     ->orderBy('featured_order')
                     ->take(5)
-                    ->get();
+                    ->get($this->selectFields);
 
-                $newAnime = Anime::with('genres')
+                $newAnime = Anime::with('genres:id,name,slug')
                     ->latest()
                     ->take(10)
                     ->get($this->selectFields);
@@ -48,7 +52,7 @@ class HomeController extends Controller
                     ->take(10)
                     ->get($this->selectFields);
 
-                $ongoing = Anime::with('genres')
+                $ongoing = Anime::with('genres:id,name,slug')
                     ->where('status', 'Ongoing')
                     ->latest()
                     ->take(8)
@@ -64,51 +68,54 @@ class HomeController extends Controller
                     ->take(5)
                     ->get($this->selectFields);
 
-                // ✅ FIX ALL MISSING VARIABLES
-                $newlyAdded = $newAnime;
-                $justCompleted = $completed;
-                $topAnime = $trending;
-
                 return compact(
                     'featured',
                     'newAnime',
                     'trending',
                     'ongoing',
                     'upcoming',
-                    'completed',
-                    'newlyAdded',
-                    'justCompleted',
-                    'topAnime'
+                    'completed'
                 );
             });
 
+            /*
+            |--------------------------------------------------------------------------
+            | LATEST EPISODES (SHORT CACHE)
+            |--------------------------------------------------------------------------
+            */
             $latestEpisodes = Cache::remember(
                 'home_latest_episodes',
                 self::SHORT_TTL,
                 fn() => Episode::with('anime:id,title,slug,thumbnail,type')
+                    ->select('id', 'anime_id', 'number', 'title', 'thumbnail', 'created_at')
                     ->latest()
                     ->take(12)
                     ->get()
             );
 
-            // ✅ FIXED VARIABLES FOR VIEW
-            $newlyAdded = $data['newAnime'];
-            $justCompleted = $data['completed'];
-            $topAnime = $data['trending'];
-
+            /*
+            |--------------------------------------------------------------------------
+            | NORMALIZED VARIABLES (VIEW FRIENDLY)
+            |--------------------------------------------------------------------------
+            */
             return view('home', [
                 ...$data,
                 'latestEpisodes' => $latestEpisodes,
-                'newlyAdded' => $newlyAdded,
-                'justCompleted' => $justCompleted,
-                'topAnime' => $topAnime,
+
+                // ✅ aliases
+                'newlyAdded' => $data['newAnime'],
+                'justCompleted' => $data['completed'],
+                'topAnime' => $data['trending'],
             ]);
         } catch (\Throwable $e) {
 
-            Log::error('Homepage load failed', [
-                'error' => $e->getMessage(),
-            ]);
+            $this->logError('Homepage load failed', $e);
 
+            /*
+            |--------------------------------------------------------------------------
+            | SAFE FALLBACK
+            |--------------------------------------------------------------------------
+            */
             return view('home', [
                 'featured' => collect(),
                 'latestEpisodes' => collect(),

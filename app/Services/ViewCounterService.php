@@ -9,43 +9,53 @@ class ViewCounterService
 {
     protected const SESSION_PREFIX = 'viewed_';
     protected const CACHE_PREFIX = 'view_';
-    protected const CACHE_TTL = 600; // 10 mins
+    protected const BUFFER_PREFIX = 'views_buffer_';
+
+    protected const CACHE_TTL = 600; // 10 minutes
 
     /*
     |--------------------------------------------------------------------------
-    | Increment View
+    | INCREMENT VIEW (SAFE + ROBUST)
     |--------------------------------------------------------------------------
     */
-
     public function increment(Model $model, ?string $type = null): void
     {
         $sessionKey = $this->sessionKey($model, $type);
         $cacheKey = $this->cacheKey($model);
 
-        // ✅ session-level protection
+        /*
+        |--------------------------------------------------------------------------
+        | Session-level protection (per browser session)
+        |--------------------------------------------------------------------------
+        */
         if (session()->has($sessionKey)) {
             return;
         }
 
         session()->put($sessionKey, true);
 
-        // ✅ cache-level protection (cross request / device safer)
-        if (Cache::has($cacheKey)) {
+        /*
+        |--------------------------------------------------------------------------
+        | Cache-level protection (per IP/User)
+        |--------------------------------------------------------------------------
+        */
+        if (!Cache::add($cacheKey, true, self::CACHE_TTL)) {
             return;
         }
 
-        Cache::put($cacheKey, true, self::CACHE_TTL);
-
-        // ✅ increment DB safely
+        /*
+        |--------------------------------------------------------------------------
+        | Increment (atomic DB operation)
+        |--------------------------------------------------------------------------
+        */
         $model->increment('views');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Check Viewed
+    | CHECK VIEWED
     |--------------------------------------------------------------------------
     */
-
     public function hasViewed(Model $model, ?string $type = null): bool
     {
         return session()->has($this->sessionKey($model, $type));
@@ -53,49 +63,59 @@ class ViewCounterService
 
     /*
     |--------------------------------------------------------------------------
-    | Cache-only increment (high traffic mode)
+    | HIGH TRAFFIC MODE (BUFFERED)
     |--------------------------------------------------------------------------
     */
-
     public function incrementBuffered(Model $model): void
     {
-        $key = "views_buffer_" . class_basename($model) . "_" . $model->getKey();
+        $key = $this->bufferKey($model);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Atomic increment (safe in Redis)
+        |--------------------------------------------------------------------------
+        */
         Cache::increment($key);
     }
 
     public function flushBuffered(Model $model): void
     {
-        $key = "views_buffer_" . class_basename($model) . "_" . $model->getKey();
+        $key = $this->bufferKey($model);
 
         $count = Cache::pull($key, 0);
 
         if ($count > 0) {
-            $model->increment('views', $count);
+            $model->increment('views', (int) $count);
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Key Builders
+    | KEY BUILDERS
     |--------------------------------------------------------------------------
     */
 
     protected function sessionKey(Model $model, ?string $type = null): string
     {
-        $class = $type ?? class_basename($model);
+        $class = strtolower($type ?? class_basename($model));
 
-        return self::SESSION_PREFIX . strtolower($class) . "_{$model->getKey()}";
+        return self::SESSION_PREFIX . $class . '_' . $model->getKey();
     }
 
     protected function cacheKey(Model $model): string
     {
-        $identifier =
-            request()->user()?->id
-            ?? request()->ip();
+        $identifier = request()->user()?->id ?: request()->ip();
 
         return self::CACHE_PREFIX
-            . class_basename($model) . "_"
-            . $model->getKey() . "_"
-            . md5($identifier);
+            . strtolower(class_basename($model)) . '_'
+            . $model->getKey() . '_'
+            . md5((string) $identifier);
+    }
+
+    protected function bufferKey(Model $model): string
+    {
+        return self::BUFFER_PREFIX
+            . strtolower(class_basename($model)) . '_'
+            . $model->getKey();
     }
 }

@@ -6,49 +6,68 @@ use App\Http\Controllers\Controller;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Log;
 
 class VerifyEmailController extends Controller
 {
-    /**
-     * Mark the authenticated user's email address as verified.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | VERIFY EMAIL
+    |--------------------------------------------------------------------------
+    */
     public function __invoke(EmailVerificationRequest $request): RedirectResponse
     {
         try {
             $user = $request->user();
 
-            // ✅ Safety check
+            /*
+            |--------------------------------------------------------------------------
+            | Ensure authenticated
+            |--------------------------------------------------------------------------
+            */
             if (!$user) {
                 return redirect()
-                    ->route('auth.login')
+                    ->route('login')
                     ->with('error', 'Authentication required.');
             }
 
-            // ✅ Already verified
+            /*
+            |--------------------------------------------------------------------------
+            | Already verified
+            |--------------------------------------------------------------------------
+            */
             if ($user->hasVerifiedEmail()) {
                 return redirect()->intended(
                     route('admin.dashboard', absolute: false) . '?verified=1'
                 );
             }
 
-            // ✅ Verify email
+            /*
+            |--------------------------------------------------------------------------
+            | Verify email
+            |--------------------------------------------------------------------------
+            */
             if ($user->markEmailAsVerified()) {
                 event(new Verified($user));
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Redirect after verification
+            |--------------------------------------------------------------------------
+            */
             return redirect()->intended(
                 route('admin.dashboard', absolute: false) . '?verified=1'
             );
 
         } catch (\Throwable $e) {
-            Log::error('Email verification failed', [
+
+            $this->logError('Email verification failed', $e, [
                 'user_id' => $request->user()?->id,
-                'error'   => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
 
             return redirect()
-                ->route('auth.login')
+                ->route('login')
                 ->with('error', 'Email verification failed. Please try again.');
         }
     }

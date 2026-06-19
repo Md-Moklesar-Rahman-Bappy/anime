@@ -6,22 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\Anime;
 use App\Models\Episode;
 use App\Models\Server;
-use App\Services\TelegramService;
 use App\Services\YouTubeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class ScraperController extends Controller
 {
+    protected const TYPE_YOUTUBE = 'youtube';
+    protected const TYPE_STREAM = 'stream';
+    protected const TYPE_TELEGRAM = 'telegram';
+
+    protected const DISK_STREAMING = 'streaming';
+
     public function __construct(
-        protected YouTubeService $youtube,
-        protected TelegramService $telegram
+        protected YouTubeService $youtube
     ) {}
 
     /*
     |--------------------------------------------------------------------------
-    | YouTube Preview
+    | YOUTUBE PREVIEW
     |--------------------------------------------------------------------------
     */
     public function youtubePreview(Request $request)
@@ -45,9 +48,9 @@ class ScraperController extends Controller
                 'data' => $info,
             ]);
         } catch (\Throwable $e) {
-            Log::error('YouTube preview failed', [
+
+            $this->logError('YouTube preview failed', $e, [
                 'url' => $data['url'],
-                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
@@ -59,7 +62,7 @@ class ScraperController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | YouTube Import
+    | YOUTUBE IMPORT
     |--------------------------------------------------------------------------
     */
     public function youtubeImport(Request $request)
@@ -73,7 +76,9 @@ class ScraperController extends Controller
             'thumbnail' => 'nullable|string',
         ]);
 
-        if (!auth()->check()) {
+        $user = $request->user();
+
+        if (!$user) {
             return back()->with('error', 'Authentication required.');
         }
 
@@ -84,30 +89,32 @@ class ScraperController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data, $anime, &$episode) {
+            $episode = null;
+
+            DB::transaction(function () use ($data, $anime, $user, &$episode) {
 
                 $episode = Episode::create([
-                    'anime_id' => $anime->id,
-                    'number' => $data['episode_number'],
-                    'title' => $data['title'] ?? "Episode {$data['episode_number']}",
-                    'source_type' => 'youtube',
-                    'source_id' => $data['video_id'],
-                    'source_url' => "https://www.youtube.com/watch?v={$data['video_id']}",
-                    'video_path' => "https://www.youtube.com/embed/{$data['video_id']}",
-                    'storage_disk' => 'streaming',
-                    'duration' => $data['duration'],
-                    'thumbnail' => $data['thumbnail'],
-                    'has_sub' => true,
-                    'has_dub' => false,
-                    'created_by' => auth()->id(),
+                    'anime_id'    => $anime->id,
+                    'number'      => $data['episode_number'],
+                    'title'       => $data['title'] ?? "Episode {$data['episode_number']}",
+                    'source_type' => self::TYPE_YOUTUBE,
+                    'source_id'   => $data['video_id'],
+                    'source_url'  => "https://www.youtube.com/watch?v={$data['video_id']}",
+                    'video_path'  => "https://www.youtube.com/embed/{$data['video_id']}",
+                    'storage_disk' => self::DISK_STREAMING,
+                    'duration'    => $data['duration'],
+                    'thumbnail'   => $data['thumbnail'],
+                    'has_sub'     => true,
+                    'has_dub'     => false,
+                    'created_by'  => $user->id,
                 ]);
 
                 Server::create([
                     'episode_id' => $episode->id,
-                    'label' => 'YouTube',
-                    'url' => $episode->video_path,
-                    'type' => 'youtube',
-                    'language' => 'english',
+                    'label'      => 'YouTube',
+                    'url'        => $episode->video_path,
+                    'type'       => self::TYPE_YOUTUBE,
+                    'language'   => 'english',
                 ]);
             });
 
@@ -115,9 +122,9 @@ class ScraperController extends Controller
                 ->route('admin.anime.episodes.index', $anime)
                 ->with('success', 'YouTube episode imported.');
         } catch (\Throwable $e) {
-            Log::error('YouTube import failed', [
+
+            $this->logError('YouTube import failed', $e, [
                 'anime_id' => $anime->id,
-                'error' => $e->getMessage(),
             ]);
 
             return back()->with('error', 'Import failed.');
@@ -126,7 +133,7 @@ class ScraperController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Telegram Import
+    | TELEGRAM IMPORT
     |--------------------------------------------------------------------------
     */
     public function telegramImport(Request $request)
@@ -137,7 +144,9 @@ class ScraperController extends Controller
             'direct_url' => 'required|url',
         ]);
 
-        if (!auth()->check()) {
+        $user = $request->user();
+
+        if (!$user) {
             return back()->with('error', 'Authentication required.');
         }
 
@@ -148,27 +157,29 @@ class ScraperController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data, $anime, &$episode) {
+            $episode = null;
+
+            DB::transaction(function () use ($data, $anime, $user, &$episode) {
 
                 $episode = Episode::create([
-                    'anime_id' => $anime->id,
-                    'number' => $data['episode_number'],
-                    'title' => "Episode {$data['episode_number']}",
-                    'video_path' => $data['direct_url'],
-                    'storage_disk' => 'streaming',
-                    'source_type' => 'telegram',
-                    'source_url' => $data['direct_url'],
-                    'has_sub' => true,
-                    'has_dub' => false,
-                    'created_by' => auth()->id(),
+                    'anime_id'     => $anime->id,
+                    'number'       => $data['episode_number'],
+                    'title'        => "Episode {$data['episode_number']}",
+                    'video_path'   => $data['direct_url'],
+                    'storage_disk' => self::DISK_STREAMING,
+                    'source_type'  => self::TYPE_TELEGRAM,
+                    'source_url'   => $data['direct_url'],
+                    'has_sub'      => true,
+                    'has_dub'      => false,
+                    'created_by'   => $user->id,
                 ]);
 
                 Server::create([
                     'episode_id' => $episode->id,
-                    'label' => 'Telegram',
-                    'url' => $data['direct_url'],
-                    'type' => 'stream',
-                    'language' => 'english',
+                    'label'      => 'Telegram',
+                    'url'        => $data['direct_url'],
+                    'type'       => self::TYPE_STREAM,
+                    'language'   => 'english',
                 ]);
             });
 
@@ -176,9 +187,9 @@ class ScraperController extends Controller
                 ->route('admin.anime.episodes.index', $anime)
                 ->with('success', 'Telegram episode imported.');
         } catch (\Throwable $e) {
-            Log::error('Telegram import failed', [
+
+            $this->logError('Telegram import failed', $e, [
                 'anime_id' => $anime->id,
-                'error' => $e->getMessage(),
             ]);
 
             return back()->with('error', 'Import failed.');
@@ -187,7 +198,7 @@ class ScraperController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Helper: Check Duplicate Episode
+    | HELPER: DUPLICATE CHECK
     |--------------------------------------------------------------------------
     */
     protected function episodeExists(int $animeId, int $number): bool

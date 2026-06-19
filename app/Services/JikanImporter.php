@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Anime;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
 
 class JikanImporter
 {
@@ -12,19 +12,34 @@ class JikanImporter
         protected AnimeImportService $animeImport,
     ) {}
 
+    /*
+    |--------------------------------------------------------------------------
+    | Genre Sync Proxy
+    |--------------------------------------------------------------------------
+    */
+
     public function syncGenres(array $genreData): array
     {
         return $this->animeImport->syncGenres($genreData);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Anime Upsert Proxy
+    |--------------------------------------------------------------------------
+    */
 
     public function upsertAnime(array $data, array $genreIds): Anime
     {
         return $this->animeImport->upsertAnime($data, $genreIds);
     }
 
-    /**
-     * Insert or update episodes depending on chosen strategy.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Upsert Episodes
+    |--------------------------------------------------------------------------
+    */
+
     public function upsertEpisodes(
         Anime $anime,
         array $episodes,
@@ -48,16 +63,21 @@ class JikanImporter
         });
     }
 
-    /**
-     * Update existing episodes if found, otherwise create new ones.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Update Existing or Create Missing Episodes
+    |--------------------------------------------------------------------------
+    */
+
     protected function updateOrCreateEpisodes(Anime $anime, array $episodes): int
     {
         $count = 0;
+        $seenIncoming = [];
 
         $existingEpisodes = $anime->episodes()
+            ->select('id', 'anime_id', 'number', 'title', 'description', 'thumbnail', 'air_date', 'duration')
             ->get()
-            ->keyBy(fn ($episode) => (string) $episode->number);
+            ->keyBy(fn($episode) => (string) $episode->number);
 
         foreach ($episodes as $ep) {
             $normalized = $this->normalizeEpisode($ep);
@@ -66,8 +86,20 @@ class JikanImporter
                 continue;
             }
 
-            $key = (string) $normalized['number'];
-            $existing = $existingEpisodes->get($key);
+            $numberKey = (string) $normalized['number'];
+
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent duplicate incoming payload numbers
+            |--------------------------------------------------------------------------
+            */
+            if (isset($seenIncoming[$numberKey])) {
+                continue;
+            }
+
+            $seenIncoming[$numberKey] = true;
+
+            $existing = $existingEpisodes->get($numberKey);
 
             if ($existing) {
                 $existing->update([
@@ -96,20 +128,24 @@ class JikanImporter
         return $count;
     }
 
-    /**
-     * Bulk insert only new episodes for performance.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Bulk Insert New Episodes Only
+    |--------------------------------------------------------------------------
+    */
+
     protected function bulkInsertEpisodes(Anime $anime, array $episodes): int
     {
         $existingNumbers = $anime->episodes()
             ->pluck('number')
-            ->map(fn ($n) => (string) $n)
+            ->map(fn($number) => (string) $number)
             ->toArray();
 
         $existingLookup = array_flip($existingNumbers);
 
         $newEpisodes = [];
         $seenIncoming = [];
+        $now = now();
 
         foreach ($episodes as $ep) {
             $normalized = $this->normalizeEpisode($ep);
@@ -136,31 +172,37 @@ class JikanImporter
                 'duration' => $normalized['duration'],
                 'has_sub' => false,
                 'has_dub' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => $now,
+                'updated_at' => $now,
             ];
         }
 
         if (!empty($newEpisodes)) {
-            $anime->episodes()->insert($newEpisodes);
+            foreach (array_chunk($newEpisodes, 200) as $chunk) {
+                $anime->episodes()->insert($chunk);
+            }
         }
 
         return count($newEpisodes);
     }
 
-    /**
-     * Insert episodes one-by-one, skipping existing episode numbers.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Insert New Episodes One-by-One
+    |--------------------------------------------------------------------------
+    */
+
     protected function individualInsertEpisodes(Anime $anime, array $episodes): int
     {
         $count = 0;
 
         $existingNumbers = $anime->episodes()
             ->pluck('number')
-            ->map(fn ($n) => (string) $n)
+            ->map(fn($number) => (string) $number)
             ->toArray();
 
         $existingLookup = array_flip($existingNumbers);
+        $seenIncoming = [];
 
         foreach ($episodes as $ep) {
             $normalized = $this->normalizeEpisode($ep);
@@ -171,7 +213,7 @@ class JikanImporter
 
             $numberKey = (string) $normalized['number'];
 
-            if (isset($existingLookup[$numberKey])) {
+            if (isset($existingLookup[$numberKey]) || isset($seenIncoming[$numberKey])) {
                 continue;
             }
 
@@ -187,16 +229,19 @@ class JikanImporter
             ]);
 
             $existingLookup[$numberKey] = true;
+            $seenIncoming[$numberKey] = true;
             $count++;
         }
 
         return $count;
     }
 
-    /**
-     * Normalize and validate incoming Jikan episode data.
-     * Returns null when episode should be skipped.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Normalize Episode Payload
+    |--------------------------------------------------------------------------
+    */
+
     protected function normalizeEpisode(array $ep): ?array
     {
         try {
@@ -206,6 +251,11 @@ class JikanImporter
                 return null;
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Skip filler / recap episodes
+            |--------------------------------------------------------------------------
+            */
             if (($ep['filler'] ?? false) || ($ep['recap'] ?? false)) {
                 return null;
             }
@@ -217,20 +267,15 @@ class JikanImporter
             }
 
             $title = trim((string) ($ep['title'] ?? ''));
+
             if ($title === '') {
                 $title = 'Episode ' . $number;
             }
 
-            $description = $ep['synopsis'] ?? null;
-            $thumbnail = $ep['thumbnail'] ?? null;
-            $airDate = $ep['air_date'] ?? null;
-            $duration = $ep['duration'] ?? null;
-
-            if ($duration !== null && is_numeric($duration)) {
-                $duration = (int) $duration;
-            } else {
-                $duration = null;
-            }
+            $description = $this->cleanNullable($ep['synopsis'] ?? null);
+            $thumbnail = $this->cleanNullable($ep['thumbnail'] ?? null);
+            $airDate = $this->normalizeDate($ep['air_date'] ?? null);
+            $duration = $this->normalizeDuration($ep['duration'] ?? null);
 
             return [
                 'number' => $number,
@@ -241,11 +286,54 @@ class JikanImporter
                 'duration' => $duration,
             ];
         } catch (\Throwable $e) {
-            Log::warning('Failed to normalize Jikan episode payload', [
+            logger()->warning('Failed to normalize Jikan episode payload', [
                 'episode_payload' => $ep,
                 'error' => $e->getMessage(),
             ]);
 
+            return null;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    protected function cleanNullable(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
+    }
+
+    protected function normalizeDuration(mixed $duration): ?int
+    {
+        if ($duration === null || $duration === '') {
+            return null;
+        }
+
+        if (is_numeric($duration)) {
+            return (int) $duration;
+        }
+
+        return null;
+    }
+
+    protected function normalizeDate(mixed $date): ?string
+    {
+        if (!$date) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($date)->toDateString();
+        } catch (\Throwable) {
             return null;
         }
     }

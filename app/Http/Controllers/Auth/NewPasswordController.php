@@ -8,7 +8,6 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
@@ -17,9 +16,11 @@ use Illuminate\View\View;
 
 class NewPasswordController extends Controller
 {
-    /**
-     * Display the password reset view.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | SHOW RESET FORM
+    |--------------------------------------------------------------------------
+    */
     public function create(Request $request): View
     {
         return view('auth.reset-password', [
@@ -27,12 +28,13 @@ class NewPasswordController extends Controller
         ]);
     }
 
-    /**
-     * Handle an incoming new password request.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | RESET PASSWORD
+    |--------------------------------------------------------------------------
+    */
     public function store(Request $request): RedirectResponse
     {
-        // ✅ Validate input
         $request->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
@@ -45,34 +47,52 @@ class NewPasswordController extends Controller
 
                 function (User $user) use ($request) {
 
-                    // ✅ Update password safely
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Set new password
+                    |--------------------------------------------------------------------------
+                    */
                     $user->forceFill([
-                        'password' => Hash::make($request->password),
+                        'password' => Hash::make($request->input('password')),
                         'remember_token' => Str::random(60),
                     ])->save();
 
-                    // ✅ Dispatch event
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Fire password reset event
+                    |--------------------------------------------------------------------------
+                    */
                     event(new PasswordReset($user));
                 }
             );
 
-            // ✅ Success
+            /*
+            |--------------------------------------------------------------------------
+            | SUCCESS
+            |--------------------------------------------------------------------------
+            */
             if ($status === Password::PASSWORD_RESET) {
                 return redirect()
-                    ->route('auth.login')
+                    ->route('login')
                     ->with('status', __($status));
             }
 
-            // ✅ Failure response
+            /*
+            |--------------------------------------------------------------------------
+            | FAILURE
+            |--------------------------------------------------------------------------
+            */
             return back()
                 ->withInput($request->only('email'))
                 ->withErrors([
                     'email' => __($status),
                 ]);
+
         } catch (\Throwable $e) {
-            Log::error('Password reset failed', [
+
+            $this->logError('Password reset failed', $e, [
                 'email' => $request->input('email'),
-                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
 
             throw ValidationException::withMessages([

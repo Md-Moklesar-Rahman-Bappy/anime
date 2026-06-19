@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Services\TelegramStreamService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TgStreamController extends Controller
@@ -13,22 +12,39 @@ class TgStreamController extends Controller
         protected TelegramStreamService $telegramStream
     ) {}
 
+    /*
+    |--------------------------------------------------------------------------
+    | STREAM TELEGRAM VIDEO
+    |--------------------------------------------------------------------------
+    */
+
     public function stream(int $messageId, Request $request): StreamedResponse
     {
         try {
-            // ✅ Basic validation safeguard
+            /*
+            |--------------------------------------------------------------------------
+            | Basic Validation
+            |--------------------------------------------------------------------------
+            */
             if ($messageId <= 0) {
                 abort(400, 'Invalid message ID');
             }
 
-            // ✅ Delegate logic to service
-            return $this->telegramStream->streamMessage($messageId, $request);
-
+            /*
+            |--------------------------------------------------------------------------
+            | Delegate to Service (CORE LOGIC)
+            |--------------------------------------------------------------------------
+            */
+            return $this->telegramStream->streamMessage(
+                $messageId,
+                $request
+            );
         } catch (\Throwable $e) {
-            Log::error('Telegram stream failed', [
+
+            $this->logError('Telegram stream failed', $e, [
                 'message_id' => $messageId,
                 'user_id' => $request->user()?->id,
-                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
 
             abort(500, 'Streaming failed');

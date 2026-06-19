@@ -3,21 +3,29 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Auth\Events\Lockout;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
         return true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
@@ -26,32 +34,34 @@ class LoginRequest extends FormRequest
         ];
     }
 
-    /**
-     * ✅ Normalize input before validation
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'email' => strtolower(trim($this->email)),
+            'email' => strtolower(trim((string) $this->input('email'))),
         ]);
     }
 
-    /**
-     * Attempt to authenticate the request's credentials.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHENTICATE
+    |--------------------------------------------------------------------------
+    */
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
         try {
-            if (!Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            if (!Auth::attempt(
+                $this->only('email', 'password'),
+                $this->boolean('remember')
+            )) {
 
                 RateLimiter::hit($this->throttleKey());
-
-                Log::warning('Login failed attempt', [
-                    'email' => $this->email,
-                    'ip' => $this->ip(),
-                ]);
 
                 throw ValidationException::withMessages([
                     'email' => trans('auth.failed'),
@@ -60,10 +70,14 @@ class LoginRequest extends FormRequest
 
             RateLimiter::clear($this->throttleKey());
 
+        } catch (ValidationException $e) {
+            throw $e;
+
         } catch (\Throwable $e) {
-            Log::error('Login authentication error', [
-                'email' => $this->email,
-                'error' => $e->getMessage(),
+
+            $this->logError('Login authentication error', $e, [
+                'email' => $this->input('email'),
+                'ip' => $this->ip(),
             ]);
 
             throw ValidationException::withMessages([
@@ -72,9 +86,11 @@ class LoginRequest extends FormRequest
         }
     }
 
-    /**
-     * Ensure the login request is not rate limited.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | RATE LIMIT CHECK
+    |--------------------------------------------------------------------------
+    */
     public function ensureIsNotRateLimited(): void
     {
         if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
@@ -85,8 +101,8 @@ class LoginRequest extends FormRequest
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
-        Log::warning('Login rate limit triggered', [
-            'email' => $this->email,
+        logger()->warning('Login rate limit triggered', [
+            'email' => $this->input('email'),
             'ip' => $this->ip(),
             'seconds' => $seconds,
         ]);
@@ -99,13 +115,25 @@ class LoginRequest extends FormRequest
         ]);
     }
 
-    /**
-     * Get the rate limiting throttle key for the request.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | THROTTLE KEY
+    |--------------------------------------------------------------------------
+    */
     public function throttleKey(): string
     {
-        return Str::transliterate(
-            Str::lower($this->string('email')) . '|' . $this->ip()
-        );
+        return Str::lower($this->string('email')) . '|' . $this->ip();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOG HELPER
+    |--------------------------------------------------------------------------
+    */
+    protected function logError(string $message, \Throwable $e, array $context = []): void
+    {
+        logger()->error($message, array_merge($context, [
+            'error' => $e->getMessage(),
+        ]));
     }
 }

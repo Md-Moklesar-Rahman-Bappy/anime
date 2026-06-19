@@ -8,7 +8,6 @@ use App\Models\Manga;
 use App\Models\MangaGenre;
 use App\Services\ContentCrudService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class MangaController extends Controller
 {
@@ -18,19 +17,35 @@ class MangaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Index (List + Search + AJAX)
+    | INDEX (LIST + SEARCH + AJAX)
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
     {
         try {
-            $search = trim($request->input('search'));
+            $search = trim((string) $request->input('search'));
 
             $query = Manga::query()
                 ->with('genres:id,name')
+                ->withCount('chapters') // ✅ useful for admin table
+                ->select(
+                    'id',
+                    'title',
+                    'slug',
+                    'type',
+                    'status',
+                    'author',
+                    'views',
+                    'updated_at'
+                )
                 ->latest('updated_at');
 
-            if ($search) {
+            /*
+            |--------------------------------------------------------------------------
+            | SEARCH
+            |--------------------------------------------------------------------------
+            */
+            if ($search !== '') {
                 $safe = '%' . addcslashes($search, '%_') . '%';
 
                 $query->where(function ($q) use ($safe) {
@@ -47,7 +62,7 @@ class MangaController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | AJAX Response
+            | AJAX RESPONSE
             |--------------------------------------------------------------------------
             */
             if ($request->ajax()) {
@@ -60,17 +75,16 @@ class MangaController extends Controller
 
             return view('admin.manga.index', compact('mangaList'));
         } catch (\Throwable $e) {
-            Log::error('Manga index failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load manga list.');
+            $this->logError('Manga index failed', $e);
+
+            return $this->redirectError('Failed to load manga list.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Create Form
+    | CREATE FORM
     |--------------------------------------------------------------------------
     */
     public function create()
@@ -82,7 +96,7 @@ class MangaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Store Manga
+    | STORE
     |--------------------------------------------------------------------------
     */
     public function store(StoreMangaRequest $request)
@@ -99,9 +113,8 @@ class MangaController extends Controller
                 ->route('admin.manga.index')
                 ->with('success', 'Manga created successfully.');
         } catch (\Throwable $e) {
-            Log::error('Manga create failed', [
-                'error' => $e->getMessage(),
-            ]);
+
+            $this->logError('Manga create failed', $e);
 
             return back()
                 ->withInput()
@@ -111,7 +124,7 @@ class MangaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Edit Form
+    | EDIT
     |--------------------------------------------------------------------------
     */
     public function edit(Manga $manga)
@@ -125,7 +138,7 @@ class MangaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Update Manga
+    | UPDATE
     |--------------------------------------------------------------------------
     */
     public function update(StoreMangaRequest $request, Manga $manga)
@@ -142,9 +155,9 @@ class MangaController extends Controller
                 ->route('admin.manga.index')
                 ->with('success', 'Manga updated successfully.');
         } catch (\Throwable $e) {
-            Log::error('Manga update failed', [
+
+            $this->logError('Manga update failed', $e, [
                 'manga_id' => $manga->id,
-                'error' => $e->getMessage(),
             ]);
 
             return back()
@@ -155,7 +168,7 @@ class MangaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Delete Manga
+    | DELETE
     |--------------------------------------------------------------------------
     */
     public function destroy(Request $request, Manga $manga)
@@ -163,6 +176,11 @@ class MangaController extends Controller
         try {
             $this->crud->delete($manga);
 
+            /*
+            |--------------------------------------------------------------------------
+            | AJAX DELETE
+            |--------------------------------------------------------------------------
+            */
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
@@ -174,12 +192,12 @@ class MangaController extends Controller
                 ->route('admin.manga.index')
                 ->with('success', 'Manga deleted successfully.');
         } catch (\Throwable $e) {
-            Log::error('Manga delete failed', [
+
+            $this->logError('Manga delete failed', $e, [
                 'manga_id' => $manga->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Delete failed.');
+            return $this->redirectError('Delete failed.');
         }
     }
 }

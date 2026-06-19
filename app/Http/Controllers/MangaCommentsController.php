@@ -5,63 +5,126 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMangaCommentRequest;
 use App\Models\MangaComment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class MangaCommentsController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | STORE COMMENT
+    |--------------------------------------------------------------------------
+    */
+
     public function store(StoreMangaCommentRequest $request)
     {
         try {
-            $user = auth()->user();
+            $user = $request->user();
 
             if (!$user) {
-                return back()->with('error', 'Please login to comment.');
+                return $this->response(
+                    $request,
+                    false,
+                    'Please login to comment.',
+                    401
+                );
             }
 
-            if (session()->has('last_manga_comment_time')) {
-                if (time() - session('last_manga_comment_time') < 30) {
-                    return back()->with('error', 'Please wait before posting.');
-                }
+            /*
+            |--------------------------------------------------------------------------
+            | Anti-Spam (Session Based)
+            |--------------------------------------------------------------------------
+            */
+            $lastCommentTime = session('last_manga_comment_time');
+
+            if ($lastCommentTime && (time() - $lastCommentTime < 30)) {
+                return $this->response(
+                    $request,
+                    false,
+                    'Please wait before posting.',
+                    429
+                );
             }
 
-            MangaComment::create([
+            /*
+            |--------------------------------------------------------------------------
+            | Create Comment
+            |--------------------------------------------------------------------------
+            */
+            $comment = MangaComment::create([
                 'chapter_id' => $request->chapter_id,
                 'user_id' => $user->id,
                 'body' => trim($request->body),
+                'status' => MangaComment::STATUS_VISIBLE,
             ]);
 
             session()->put('last_manga_comment_time', time());
 
-            return back()->with('success', 'Comment posted.');
+            return $this->response($request, true, 'Comment posted.', 200, [
+                'comment' => $comment->load('user:id,name'),
+            ]);
         } catch (\Throwable $e) {
-            Log::error('Manga comment failed', [
-                'error' => $e->getMessage(),
+
+            $this->logError('Manga comment create failed', $e, [
+                'user_id' => $request->user()?->id,
+                'chapter_id' => $request->chapter_id,
             ]);
 
-            return back()->with('error', 'Failed to post comment.');
+            return $this->response(
+                $request,
+                false,
+                'Failed to post comment.',
+                500
+            );
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | DELETE COMMENT
+    |--------------------------------------------------------------------------
+    */
 
     public function destroy(Request $request, MangaComment $mangaComment)
     {
         try {
-            $user = auth()->user();
+            $user = $request->user();
 
-            if (!$user) abort(403);
+            if (!$user) {
+                abort(403);
+            }
 
-            if ($mangaComment->user_id !== $user->id && !$user->isSuperAdmin()) {
+            /*
+            |--------------------------------------------------------------------------
+            | Authorization (owner or admin)
+            |--------------------------------------------------------------------------
+            */
+            if (
+                $mangaComment->user_id !== $user->id &&
+                !$user->isAdmin()
+            ) {
                 abort(403);
             }
 
             $mangaComment->delete();
 
-            return back()->with('success', 'Comment deleted.');
+            return $this->response(
+                $request,
+                true,
+                'Comment deleted.',
+                200
+            );
         } catch (\Throwable $e) {
-            Log::error('Delete failed', [
-                'error' => $e->getMessage(),
+
+            $this->logError('Manga comment delete failed', $e, [
+                'comment_id' => $mangaComment->id,
+                'user_id' => $request->user()?->id,
             ]);
 
-            return back()->with('error', 'Delete failed.');
+            return $this->response(
+                $request,
+                false,
+                'Delete failed.',
+                500
+            );
         }
     }
 }

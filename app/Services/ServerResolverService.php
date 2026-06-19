@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Episode;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class ServerResolverService
 {
@@ -18,13 +17,26 @@ class ServerResolverService
         protected YouTubeService $youtube,
     ) {}
 
+    /*
+    |--------------------------------------------------------------------------
+    | RESOLVE ALL SERVERS
+    |--------------------------------------------------------------------------
+    */
     public function resolveAll(Episode $episode): array
     {
+        // ✅ Prevent N+1 queries
+        $episode->loadMissing(['servers', 'skipTimes']);
+
         $servers = $episode->servers ?? collect();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Separate servers
+        |--------------------------------------------------------------------------
+        */
         $videoServers = $servers
             ->where('type', '!=', 'youtube')
-            ->sortByDesc('priority')
+            ->sortBy('priority') // ✅ FIXED (ascending = better first)
             ->values();
 
         $youtubeServer = $servers->firstWhere('type', 'youtube');
@@ -34,10 +46,9 @@ class ServerResolverService
 
         /*
         |--------------------------------------------------------------------------
-        | YouTube handling
+        | YouTube Server
         |--------------------------------------------------------------------------
         */
-
         if ($youtubeServer) {
             $ytVideoId = $this->youtube->extractVideoId($youtubeServer->url);
 
@@ -52,22 +63,21 @@ class ServerResolverService
 
         /*
         |--------------------------------------------------------------------------
-        | Video servers
+        | Video Servers
         |--------------------------------------------------------------------------
         */
-
         foreach ($videoServers as $index => $server) {
 
             $type = $server->type;
             $language = $this->normalizeLanguage($server->language);
 
-            $url = $this->shouldProxy($type)
+            $url = $this->shouldProxy($server->url, $type)
                 ? $this->proxy($server->url)
                 : $server->url;
 
             $allServers[] = $this->entry(
                 "video_{$server->id}",
-                $server->label ?? "Server " . ($index + 1),
+                $server->label ?: "Server " . ($index + 1),
                 $url,
                 $type,
                 $language
@@ -79,7 +89,6 @@ class ServerResolverService
         | Fallback (video_path)
         |--------------------------------------------------------------------------
         */
-
         if ($videoServers->isEmpty() && $episode->video_path) {
 
             $url = str_starts_with($episode->video_path, 'http')
@@ -97,71 +106,88 @@ class ServerResolverService
 
         /*
         |--------------------------------------------------------------------------
-        | Language grouping
+        | Language Groups
         |--------------------------------------------------------------------------
         */
-
         $groups = collect($allServers)->groupBy('language');
 
         /*
         |--------------------------------------------------------------------------
-        | Select best initial server
+        | Select Best Initial Server
         |--------------------------------------------------------------------------
         */
-
-        $initial = collect($allServers)->sortByDesc(function ($s) {
-            return match ($s['type']) {
+        $initial = collect($allServers)
+            ->filter(fn($s) => $s['type'] !== 'youtube') // ✅ prefer real video
+            ->sortByDesc(fn($s) => match ($s['type']) {
                 'm3u8' => 3,
-                'mp4' => 2,
+                'mp4'  => 2,
                 'embed' => 1,
                 default => 0,
-            };
-        })->first();
+            })
+            ->first();
+
+        // ✅ fallback to YouTube if no video found
+        if (!$initial) {
+            $initial = collect($allServers)
+                ->first(fn($s) => $s['type'] === 'youtube');
+        }
 
         return [
-            'allServers' => $allServers,
+            'allServers'      => $allServers,
             'languageGroups' => $groups,
-            'languages' => $groups->keys()->values()->toArray(),
-            'initialServer' => $initial,
-            'isYoutubeInit' => $initial['type'] === 'youtube',
+            'languages'      => $groups->keys()->values()->toArray(),
+            'initialServer'  => $initial,
+            'isYoutubeInit'  => $initial['type'] === 'youtube',
             'youtubeVideoId' => $ytVideoId,
-            'skipTimes' => $episode->skipTimes->first(),
+            'skipTimes'      => $episode->skipTimes->first(),
         ];
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers
+    | HELPERS
     |--------------------------------------------------------------------------
     */
 
-    private function shouldProxy(string $type): bool
+    // ✅ Only proxy external URLs
+    private function shouldProxy(string $url, string $type): bool
     {
-        return !in_array($type, ['youtube']);
+        if ($type === 'youtube') {
+            return false;
+        }
+
+        return str_starts_with($url, 'http');
     }
 
     private function proxy(string $url): string
     {
-        return route('stream.proxy', ['url' => base64_encode($url)]);
+        return route('stream.proxy', [
+            'url' => base64_encode($url),
+        ]);
     }
 
     private function normalizeLanguage(?string $language): string
     {
-        return match (strtolower(trim($language ?? ''))) {
+        return match (strtolower(trim((string) $language))) {
             'dub', 'dubbed' => 'dub',
             default => 'sub',
         };
     }
 
-    private function entry(string $id, string $label, string $url, string $type, string $language): array
-    {
+    private function entry(
+        string $id,
+        string $label,
+        string $url,
+        string $type,
+        string $language
+    ): array {
         return [
             'server_id' => $id,
-            'label' => $label,
-            'url' => $url,
-            'type' => $type,
-            'language' => $language,
-            'mime' => self::MIME_MAP[$type] ?? null,
+            'label'     => $label,
+            'url'       => $url,
+            'type'      => $type,
+            'language'  => $language,
+            'mime'      => self::MIME_MAP[$type] ?? null,
         ];
     }
 }

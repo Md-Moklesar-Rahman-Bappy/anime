@@ -6,36 +6,50 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateReportRequest extends FormRequest
 {
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
-        // ✅ Only admins / super admins can update reports
-        return auth()->check() && in_array(
-            strtolower(auth()->user()->role),
-            ['admin', 'super_admin'],
-            true
-        );
+        $user = $this->user();
+
+        return $user && in_array(strtolower((string) $user->role), [
+            'admin',
+            'super_admin',
+        ], true);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
-            'status' => 'required|string|in:pending,resolved,dismissed',
+            'status' => ['required', 'string', 'in:pending,resolved,dismissed'],
         ];
     }
 
-    /**
-     * ✅ Normalize data before validation
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'status' => strtolower(trim($this->status)),
+            'status' => strtolower(trim((string) $this->input('status'))),
         ]);
     }
 
-    /**
-     * ✅ Custom error messages
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM MESSAGES
+    |--------------------------------------------------------------------------
+    */
     public function messages(): array
     {
         return [

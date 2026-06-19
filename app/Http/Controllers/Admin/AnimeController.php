@@ -8,7 +8,6 @@ use App\Models\Anime;
 use App\Models\Genre;
 use App\Services\ContentCrudService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class AnimeController extends Controller
 {
@@ -18,19 +17,25 @@ class AnimeController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Index (List + Search + AJAX)
+    | INDEX (LIST + SEARCH + AJAX)
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
     {
         try {
-            $search = trim($request->input('search'));
+            $search = trim((string) $request->input('search'));
 
             $query = Anime::query()
                 ->withCount('episodes')
+                ->select('id', 'title', 'slug', 'type', 'status', 'studio', 'updated_at')
                 ->latest('updated_at');
 
-            if ($search) {
+            /*
+            |--------------------------------------------------------------------------
+            | Search
+            |--------------------------------------------------------------------------
+            */
+            if ($search !== '') {
                 $safe = '%' . addcslashes($search, '%_') . '%';
 
                 $query->where(function ($q) use ($safe) {
@@ -43,7 +48,11 @@ class AnimeController extends Controller
 
             $animeList = $query->paginate(20)->withQueryString();
 
-            // ✅ AJAX response (for live search / table updates)
+            /*
+            |--------------------------------------------------------------------------
+            | AJAX Response
+            |--------------------------------------------------------------------------
+            */
             if ($request->ajax()) {
                 return response()->json([
                     'html' => view('admin.anime._table', compact('animeList'))->render(),
@@ -55,17 +64,16 @@ class AnimeController extends Controller
             return view('admin.anime.index', compact('animeList'));
 
         } catch (\Throwable $e) {
-            Log::error('Admin Anime Index Failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load anime list.');
+            $this->logError('Admin Anime Index Failed', $e);
+
+            return $this->redirectError('Failed to load anime list.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Create Form
+    | CREATE FORM
     |--------------------------------------------------------------------------
     */
     public function create()
@@ -77,13 +85,13 @@ class AnimeController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Store New Anime
+    | STORE
     |--------------------------------------------------------------------------
     */
     public function store(StoreAnimeRequest $request)
     {
         try {
-            $anime = $this->crud->create(
+            $this->crud->create(
                 Anime::class,
                 $request->validated(),
                 $request->input('genres', []),
@@ -95,17 +103,18 @@ class AnimeController extends Controller
                 ->with('success', 'Anime created successfully.');
 
         } catch (\Throwable $e) {
-            Log::error('Anime Create Failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->withInput()->with('error', 'Failed to create anime.');
+            $this->logError('Anime Create Failed', $e);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create anime.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Edit Form
+    | EDIT
     |--------------------------------------------------------------------------
     */
     public function edit(Anime $anime)
@@ -118,7 +127,7 @@ class AnimeController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Update Anime
+    | UPDATE
     |--------------------------------------------------------------------------
     */
     public function update(StoreAnimeRequest $request, Anime $anime)
@@ -136,18 +145,20 @@ class AnimeController extends Controller
                 ->with('success', 'Anime updated successfully.');
 
         } catch (\Throwable $e) {
-            Log::error('Anime Update Failed', [
+
+            $this->logError('Anime Update Failed', $e, [
                 'id' => $anime->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->withInput()->with('error', 'Update failed.');
+            return back()
+                ->withInput()
+                ->with('error', 'Update failed.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Delete Anime
+    | DELETE
     |--------------------------------------------------------------------------
     */
     public function destroy(Request $request, Anime $anime)
@@ -158,7 +169,7 @@ class AnimeController extends Controller
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Anime deleted successfully.'
+                    'message' => 'Anime deleted successfully.',
                 ]);
             }
 
@@ -167,18 +178,18 @@ class AnimeController extends Controller
                 ->with('success', 'Anime deleted.');
 
         } catch (\Throwable $e) {
-            Log::error('Anime Delete Failed', [
+
+            $this->logError('Anime Delete Failed', $e, [
                 'id' => $anime->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Delete failed.');
+            return $this->redirectError('Delete failed.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Redirect Show → Edit
+    | SHOW → REDIRECT TO EDIT
     |--------------------------------------------------------------------------
     */
     public function show(Anime $anime)

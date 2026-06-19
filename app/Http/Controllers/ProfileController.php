@@ -3,18 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | EDIT PROFILE
+    |--------------------------------------------------------------------------
+    */
+
     public function edit(Request $request): View
     {
         return view('profile.edit', [
@@ -22,44 +25,50 @@ class ProfileController extends Controller
         ]);
     }
 
-    /**
-     * Update the user's profile information.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE PROFILE
+    |--------------------------------------------------------------------------
+    */
+
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         try {
             $user = $request->user();
 
             if (!$user) {
-                return Redirect::route('login')
-                    ->with('error', 'Authentication required.');
+                return $this->redirectError('Authentication required.');
             }
 
             $user->fill($request->validated());
 
-            // ✅ If email changed → force re-verification
+            // ✅ Reset email verification if email changed
             if ($user->isDirty('email')) {
                 $user->email_verified_at = null;
             }
 
             $user->save();
 
-            return Redirect::route('profile.edit')
+            return redirect()
+                ->route('profile.edit')
                 ->with('status', 'profile-updated');
 
         } catch (\Throwable $e) {
-            Log::error('Profile update failed', [
+
+            $this->logError('Profile update failed', $e, [
                 'user_id' => $request->user()?->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to update profile.');
+            return $this->redirectError('Failed to update profile.');
         }
     }
 
-    /**
-     * Delete the user's account.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | DELETE ACCOUNT
+    |--------------------------------------------------------------------------
+    */
+
     public function destroy(Request $request): RedirectResponse
     {
         $request->validateWithBag('userDeletion', [
@@ -70,36 +79,50 @@ class ProfileController extends Controller
             $user = $request->user();
 
             if (!$user) {
-                return Redirect::route('login')
-                    ->with('error', 'Authentication required.');
+                return $this->redirectError('Authentication required.');
             }
 
-            // ✅ Prevent deleting last super admin (important safety)
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent deleting last super admin
+            |--------------------------------------------------------------------------
+            */
             if (
-                $user->role === 'super_admin' &&
-                \App\Models\User::where('role', 'super_admin')->count() <= 1
+                $user->role === User::ROLE_SUPER_ADMIN &&
+                User::where('role', User::ROLE_SUPER_ADMIN)->count() <= 1
             ) {
-                return back()->with('error', 'Cannot delete the last super admin.');
+                return $this->redirectError(
+                    'Cannot delete the last super admin.'
+                );
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Logout + Delete
+            |--------------------------------------------------------------------------
+            */
             Auth::logout();
 
             $user->delete();
 
-            // ✅ Session security
+            /*
+            |--------------------------------------------------------------------------
+            | Session Security
+            |--------------------------------------------------------------------------
+            */
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return Redirect::to('/')
+            return redirect('/')
                 ->with('success', 'Account deleted.');
 
         } catch (\Throwable $e) {
-            Log::error('Account deletion failed', [
+
+            $this->logError('Account deletion failed', $e, [
                 'user_id' => $request->user()?->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to delete account.');
+            return $this->redirectError('Failed to delete account.');
         }
     }
 }

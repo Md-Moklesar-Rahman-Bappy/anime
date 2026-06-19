@@ -6,7 +6,6 @@ use App\Http\Controllers\Concerns\HandlesListing;
 use App\Models\Manga;
 use App\Models\MangaGenre;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class MangaListController extends Controller
 {
@@ -42,6 +41,12 @@ class MangaListController extends Controller
         return 'Manga';
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | COMPLETED
+    |--------------------------------------------------------------------------
+    */
+
     public function completed()
     {
         return $this->renderList(
@@ -52,10 +57,22 @@ class MangaListController extends Controller
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | DEFAULT
+    |--------------------------------------------------------------------------
+    */
+
     public function index()
     {
         return $this->newest();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM SORT
+    |--------------------------------------------------------------------------
+    */
 
     protected function applySort($query, ?string $sort): void
     {
@@ -67,55 +84,101 @@ class MangaListController extends Controller
         parent::applySort($query, $sort);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | FILTER SYSTEM
+    |--------------------------------------------------------------------------
+    */
+
     public function filter(Request $request)
     {
         try {
             $query = $this->baseQuery();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Search
+            |--------------------------------------------------------------------------
+            */
             if ($request->filled('q')) {
-                $safe = '%' . addcslashes($request->q, '%_') . '%';
+                $safe = '%' . addcslashes($request->input('q'), '%_') . '%';
                 $query->where('title', 'like', $safe);
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Type
+            |--------------------------------------------------------------------------
+            */
             if ($request->filled('type')) {
-                $query->where('type', $request->type);
+                $query->where('type', $request->input('type'));
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Status
+            |--------------------------------------------------------------------------
+            */
             if ($request->filled('status')) {
-                $query->where('status', $request->status);
+                $query->where('status', $request->input('status'));
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Year / Decade
+            |--------------------------------------------------------------------------
+            */
             if ($request->filled('year')) {
-                if (str_ends_with($request->year, 's')) {
-                    $decade = (int) substr($request->year, 0, -1);
-                    $query->whereBetween('year', [$decade * 10, $decade * 10 + 9]);
+                $year = $request->input('year');
+
+                if (str_ends_with($year, 's')) {
+                    $decade = (int) substr($year, 0, -1);
+                    $query->whereBetween('year', [
+                        $decade * 10,
+                        $decade * 10 + 9,
+                    ]);
                 } else {
-                    $query->where('year', (int) $request->year);
+                    $query->where('year', (int) $year);
                 }
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Genres
+            |--------------------------------------------------------------------------
+            */
             if ($request->filled('genres')) {
-                $genreSlugs = (array) $request->genres;
+                $genreSlugs = (array) $request->input('genres');
 
                 $query->whereHas('genres', function ($q) use ($genreSlugs) {
                     $q->whereIn('slug', $genreSlugs);
                 });
             }
 
-            $this->applySort($query, $request->sort);
+            /*
+            |--------------------------------------------------------------------------
+            | Sort
+            |--------------------------------------------------------------------------
+            */
+            $this->applySort($query, $request->input('sort'));
 
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSE
+            |--------------------------------------------------------------------------
+            */
             return $this->renderList(
                 $query->withQueryString(),
                 'Filter Results'
             );
 
         } catch (\Throwable $e) {
-            Log::error('Manga list filter failed', [
+
+            $this->logError('Manga list filter failed', $e, [
                 'params' => $request->all(),
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to filter results.');
+            return $this->redirectError('Failed to filter results.');
         }
     }
 }

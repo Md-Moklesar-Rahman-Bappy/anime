@@ -6,11 +6,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ToggleFavoriteRequest extends FormRequest
 {
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZE
+    |--------------------------------------------------------------------------
+    */
     public function authorize(): bool
     {
-        return auth()->check();
+        return (bool) $this->user();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RULES
+    |--------------------------------------------------------------------------
+    */
     public function rules(): array
     {
         return [
@@ -22,19 +32,23 @@ class ToggleFavoriteRequest extends FormRequest
         ];
     }
 
-    /**
-     * ✅ Normalize input
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE INPUT
+    |--------------------------------------------------------------------------
+    */
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'anime_id' => (int) $this->anime_id,
+            'anime_id' => (int) $this->input('anime_id'),
         ]);
     }
 
-    /**
-     * ✅ Custom messages
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM MESSAGES
+    |--------------------------------------------------------------------------
+    */
     public function messages(): array
     {
         return [

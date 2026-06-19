@@ -4,38 +4,53 @@ namespace App\Services;
 
 use App\Models\Episode;
 use App\Models\Server;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ServerBuilderService
 {
+    /*
+    |--------------------------------------------------------------------------
+    | MAIN ENTRY
+    |--------------------------------------------------------------------------
+    */
     public function createForSource(Episode $episode, array $data): void
     {
-        if (empty($data['video_path']) && empty($data['source_url'])) {
+        $sourceType = strtolower(trim($data['source_type'] ?? 'upload'));
+        $language = $this->normalizeLanguage($data['language'] ?? 'sub');
+
+        $url = $this->resolveUrl($data);
+
+        if (!$url) {
             return;
         }
 
-        $sourceType = strtolower($data['source_type'] ?? 'upload');
-        $url = $data['video_path'] ?? $data['source_url'];
-        $language = $this->normalizeLanguage($data['language'] ?? 'sub');
-
         try {
-            match ($sourceType) {
-                'youtube' => $this->createYouTubeServer($episode, $url, $language),
-                'upload' => $this->createUploadServer($episode, $data['video_path'] ?? null, $language),
-                'external' => $this->createExternalServer($episode, $url, $data['source_label'] ?? null, $language),
-                'telegram' => $this->createTelegramServer($episode, $url, $language),
-                default => null,
-            };
+            DB::transaction(function () use ($episode, $data, $sourceType, $url, $language) {
+
+                match ($sourceType) {
+                    'youtube' => $this->createYouTubeServer($episode, $url, $language),
+                    'upload' => $this->createUploadServer($episode, $data['video_path'] ?? null, $language),
+                    'external' => $this->createExternalServer($episode, $url, $data['source_label'] ?? null, $language),
+                    'telegram' => $this->createTelegramServer($episode, $url, $language),
+                    default => null,
+                };
+            });
         } catch (\Throwable $e) {
-            Log::error('Server creation failed', [
+            logger()->error('Server creation failed', [
                 'episode_id' => $episode->id,
                 'source_type' => $sourceType,
                 'error' => $e->getMessage(),
             ]);
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SERVER TYPES
+    |--------------------------------------------------------------------------
+    */
 
     protected function createYouTubeServer(Episode $episode, string $url, string $language): void
     {
@@ -44,12 +59,11 @@ class ServerBuilderService
 
     protected function createUploadServer(Episode $episode, ?string $videoPath, string $language): void
     {
-        if (!$videoPath) {
-            return;
-        }
+        if (!$videoPath) return;
 
         $ext = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
-        $type = in_array($ext, ['mp4', 'webm', 'mkv']) ? $ext : 'mp4';
+
+        $type = in_array($ext, ['mp4', 'webm', 'mkv'], true) ? $ext : 'mp4';
 
         $url = Storage::url($videoPath);
 
@@ -58,11 +72,9 @@ class ServerBuilderService
 
     protected function createExternalServer(Episode $episode, string $url, ?string $label, string $language): void
     {
-        if (!$url) {
-            return;
-        }
+        $path = parse_url($url, PHP_URL_PATH);
 
-        $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+        $ext = strtolower(pathinfo($path ?? '', PATHINFO_EXTENSION));
 
         $type = match ($ext) {
             'm3u8' => 'm3u8',
@@ -74,7 +86,7 @@ class ServerBuilderService
             $episode,
             $url,
             $type,
-            $label ?? 'Server',
+            $label ?: 'Server',
             $language
         );
     }
@@ -86,7 +98,7 @@ class ServerBuilderService
 
     /*
     |--------------------------------------------------------------------------
-    | Core Safe Creator
+    | SAFE CREATOR (CRITICAL)
     |--------------------------------------------------------------------------
     */
 
@@ -100,6 +112,9 @@ class ServerBuilderService
 
         $exists = Server::where('episode_id', $episode->id)
             ->where('url', $url)
+            ->where('type', $type)
+            ->where('language', $language)
+            ->lockForUpdate()
             ->exists();
 
         if ($exists) {
@@ -112,15 +127,22 @@ class ServerBuilderService
             'url' => $url,
             'type' => $type,
             'language' => $language,
-            'priority' => 0,
+            'priority' => $this->resolvePriority($type),
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers
+    | HELPERS
     |--------------------------------------------------------------------------
     */
+
+    protected function resolveUrl(array $data): ?string
+    {
+        return $data['video_path']
+            ?? $data['source_url']
+            ?? null;
+    }
 
     protected function normalizeLanguage(string $language): string
     {
@@ -130,6 +152,16 @@ class ServerBuilderService
             'english', 'sub', 'subtitle' => 'sub',
             'dub', 'dubbed' => 'dub',
             default => 'sub',
+        };
+    }
+
+    protected function resolvePriority(string $type): int
+    {
+        return match ($type) {
+            'm3u8' => 1,
+            'mp4' => 2,
+            'youtube' => 3,
+            default => 5,
         };
     }
 }

@@ -7,37 +7,37 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class SettingController extends Controller
 {
+    protected const CACHE_KEY = 'app_settings';
+    protected const CACHE_TTL = 300;
+
     /*
     |--------------------------------------------------------------------------
-    | Index (Load Settings)
+    | INDEX
     |--------------------------------------------------------------------------
     */
     public function index()
     {
         try {
-            $settings = Cache::remember('settings', 300, function () {
+            $settings = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
                 return Setting::pluck('value', 'key')->toArray();
             });
 
             return view('admin.settings.index', compact('settings'));
-
         } catch (\Throwable $e) {
-            Log::error('Settings load failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load settings.');
+            $this->logError('Settings load failed', $e);
+
+            return $this->redirectError('Failed to load settings.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Update Settings
+    | UPDATE
     |--------------------------------------------------------------------------
     */
     public function update(Request $request)
@@ -48,8 +48,8 @@ class SettingController extends Controller
             'footer_text',
         ];
 
-        $validated = $request->validate([
-            'logo' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048',
+        $request->validate([
+            'logo'   => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048',
             'favicon' => 'nullable|image|mimes:png,ico|max:1024',
         ]);
 
@@ -66,7 +66,7 @@ class SettingController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Save Text Settings
+                | TEXT SETTINGS
                 |--------------------------------------------------------------------------
                 */
                 foreach ($request->except('_token', 'logo', 'favicon') as $key => $value) {
@@ -75,15 +75,21 @@ class SettingController extends Controller
                         continue;
                     }
 
+                    $cleanValue = trim((string) $value);
+
+                    if ($cleanValue === '') {
+                        continue;
+                    }
+
                     Setting::updateOrCreate(
                         ['key' => $key],
-                        ['value' => trim((string) $value)]
+                        ['value' => $cleanValue]
                     );
                 }
 
                 /*
                 |--------------------------------------------------------------------------
-                | Logo Upload
+                | FILE SETTINGS
                 |--------------------------------------------------------------------------
                 */
                 if ($request->hasFile('logo')) {
@@ -95,11 +101,6 @@ class SettingController extends Controller
                     );
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Favicon Upload
-                |--------------------------------------------------------------------------
-                */
                 if ($request->hasFile('favicon')) {
                     $this->replaceFileSetting(
                         'favicon',
@@ -110,29 +111,34 @@ class SettingController extends Controller
                 }
             });
 
-            // ✅ delete old files AFTER DB success
+            /*
+            |--------------------------------------------------------------------------
+            | CLEANUP AFTER COMMIT
+            |--------------------------------------------------------------------------
+            */
             $this->deleteUploadedFiles($filesToDeleteAfterCommit);
 
-            // ✅ clear cache
-            Cache::forget('settings');
+            Cache::forget(self::CACHE_KEY);
 
             return back()->with('success', 'Settings updated successfully.');
-
         } catch (\Throwable $e) {
-            // ❌ rollback uploaded new files if DB failed
+
+            /*
+            |--------------------------------------------------------------------------
+            | ROLLBACK FILE UPLOADS
+            |--------------------------------------------------------------------------
+            */
             $this->deleteUploadedFiles($uploadedFiles);
 
-            Log::error('Settings update failed', [
-                'error' => $e->getMessage(),
-            ]);
+            $this->logError('Settings update failed', $e);
 
-            return back()->with('error', 'Failed to update settings.');
+            return $this->redirectError('Failed to update settings.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Replace File Setting (Safe)
+    | REPLACE FILE SETTING
     |--------------------------------------------------------------------------
     */
     protected function replaceFileSetting(
@@ -143,14 +149,24 @@ class SettingController extends Controller
     ): void {
         $existing = Setting::where('key', $key)->value('value');
 
-        // ✅ upload new file first
+        /*
+        |--------------------------------------------------------------------------
+        | Upload new file first
+        |--------------------------------------------------------------------------
+        */
         $path = $file->store('settings', 'public');
 
         $uploadedFiles[] = $path;
 
-        // ✅ schedule old file delete AFTER commit
-        if ($existing && Storage::disk('public')->exists($existing)) {
-            $filesToDeleteAfterCommit[] = $existing;
+        /*
+        |--------------------------------------------------------------------------
+        | Schedule old file deletion (only local files)
+        |--------------------------------------------------------------------------
+        */
+        if ($this->isLocalStoragePath($existing)) {
+            if (Storage::disk('public')->exists($existing)) {
+                $filesToDeleteAfterCommit[] = $existing;
+            }
         }
 
         Setting::updateOrCreate(
@@ -161,13 +177,27 @@ class SettingController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Delete Files
+    | FILE HELPERS
     |--------------------------------------------------------------------------
     */
+    protected function isLocalStoragePath(?string $path): bool
+    {
+        if (!$path) {
+            return false;
+        }
+
+        return !str_starts_with($path, 'http://') &&
+            !str_starts_with($path, 'https://');
+    }
+
     protected function deleteUploadedFiles(array $paths): void
     {
         foreach ($paths as $path) {
-            if ($path && Storage::disk('public')->exists($path)) {
+
+            if (
+                $this->isLocalStoragePath($path) &&
+                Storage::disk('public')->exists($path)
+            ) {
                 Storage::disk('public')->delete($path);
             }
         }

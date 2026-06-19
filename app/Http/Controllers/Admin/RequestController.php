@@ -5,25 +5,37 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AnimeRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class RequestController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
-    | Index (List + Filter + AJAX)
+    | INDEX (LIST + FILTER + AJAX)
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
     {
         try {
+            $status = $request->input('status');
+
             $query = AnimeRequest::with([
-                'user:id,name'
-            ])
+                    'user:id,name'
+                ])
+                ->select(
+                    'id',
+                    'user_id',
+                    'title',
+                    'status',
+                    'created_at'
+                )
                 ->latest();
 
-            // ✅ Filter by status
-            if ($status = $request->input('status')) {
+            /*
+            |--------------------------------------------------------------------------
+            | FILTER
+            |--------------------------------------------------------------------------
+            */
+            if (!empty($status)) {
                 $query->where('status', $status);
             }
 
@@ -33,7 +45,7 @@ class RequestController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | AJAX Response
+            | AJAX RESPONSE
             |--------------------------------------------------------------------------
             */
             if ($request->ajax()) {
@@ -45,18 +57,18 @@ class RequestController extends Controller
             }
 
             return view('admin.requests.index', compact('requests'));
-        } catch (\Throwable $e) {
-            Log::error('Anime request index failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load requests.');
+        } catch (\Throwable $e) {
+
+            $this->logError('Anime request index failed', $e);
+
+            return $this->redirectError('Failed to load requests.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Update Request Status
+    | UPDATE STATUS
     |--------------------------------------------------------------------------
     */
     public function update(Request $request, AnimeRequest $animeRequest)
@@ -70,6 +82,11 @@ class RequestController extends Controller
                 'status' => $data['status'],
             ]);
 
+            /*
+            |--------------------------------------------------------------------------
+            | AJAX RESPONSE
+            |--------------------------------------------------------------------------
+            */
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
@@ -77,14 +94,15 @@ class RequestController extends Controller
                 ]);
             }
 
-            return back()->with('success', 'Request updated.');
+            return back()->with('success', 'Request updated successfully.');
+
         } catch (\Throwable $e) {
-            Log::error('Anime request update failed', [
+
+            $this->logError('Anime request update failed', $e, [
                 'request_id' => $animeRequest->id,
-                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to update request.');
+            return $this->redirectError('Failed to update request.');
         }
     }
 }

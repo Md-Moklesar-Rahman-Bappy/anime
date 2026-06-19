@@ -11,15 +11,14 @@ class YouTubeService
 
     public function __construct()
     {
-        $this->apiKey = config('services.youtube.key', '');
+        $this->apiKey = (string) config('services.youtube.key', '');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Main Entry
+    | MAIN ENTRY
     |--------------------------------------------------------------------------
     */
-
     public function getVideoInfo(string $url): ?array
     {
         $videoId = $this->extractVideoId($url);
@@ -30,26 +29,33 @@ class YouTubeService
 
         return Cache::remember("youtube_{$videoId}", 3600, function () use ($videoId) {
 
-            // ✅ Try oEmbed first
+            // ✅ Try oEmbed first (fast)
             $info = $this->viaOEmbed($videoId);
 
-            // ✅ fallback to API if needed
-            if (!$info && $this->apiKey) {
+            if ($info) {
+                return $info;
+            }
+
+            // ✅ Fallback to API (if key exists)
+            if ($this->apiKey) {
                 return $this->viaApi($videoId);
             }
 
-            return $info;
+            return null;
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Extract Video ID
+    | EXTRACT VIDEO ID
     |--------------------------------------------------------------------------
     */
-
     public function extractVideoId(string $url): ?string
     {
+        if (!$url) {
+            return null;
+        }
+
         $patterns = [
             '/v=([a-zA-Z0-9_-]{11})/',
             '/youtu\.be\/([a-zA-Z0-9_-]{11})/',
@@ -68,18 +74,20 @@ class YouTubeService
 
     /*
     |--------------------------------------------------------------------------
-    | oEmbed
+    | OEMBED (FAST METHOD)
     |--------------------------------------------------------------------------
     */
-
     protected function viaOEmbed(string $videoId): ?array
     {
         try {
-            $url = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={$videoId}&format=json";
+            $url = "https://www.youtube.com/oembed";
 
             $response = Http::timeout(5)
                 ->retry(2, 200)
-                ->get($url);
+                ->get($url, [
+                    'url' => "https://www.youtube.com/watch?v={$videoId}",
+                    'format' => 'json',
+                ]);
 
             if (!$response->successful()) {
                 return null;
@@ -87,16 +95,19 @@ class YouTubeService
 
             $data = $response->json();
 
+            if (!is_array($data)) {
+                return null;
+            }
+
             return [
-                'id' => $videoId,
-                'title' => $data['title'] ?? null,
-                'author' => $data['author_name'] ?? null,
+                'id'        => $videoId,
+                'title'     => $data['title'] ?? null,
+                'author'    => $data['author_name'] ?? null,
                 'thumbnail' => $data['thumbnail_url'] ?? null,
-                'duration' => $this->apiKey ? $this->fetchDuration($videoId) : null,
+                'duration'  => null, // oEmbed does not provide duration
                 'embed_url' => "https://www.youtube.com/embed/{$videoId}",
                 'watch_url' => "https://www.youtube.com/watch?v={$videoId}",
             ];
-
         } catch (\Throwable) {
             return null;
         }
@@ -104,43 +115,43 @@ class YouTubeService
 
     /*
     |--------------------------------------------------------------------------
-    | Full API fallback
+    | YOUTUBE DATA API (FULL)
     |--------------------------------------------------------------------------
     */
-
     protected function viaApi(string $videoId): ?array
     {
         try {
-            $url = "https://www.googleapis.com/youtube/v3/videos";
-
             $response = Http::timeout(5)
                 ->retry(2, 200)
-                ->get($url, [
-                    'id' => $videoId,
+                ->get('https://www.googleapis.com/youtube/v3/videos', [
+                    'id'   => $videoId,
                     'part' => 'snippet,contentDetails',
-                    'key' => $this->apiKey,
+                    'key'  => $this->apiKey,
                 ]);
 
             if (!$response->successful()) {
                 return null;
             }
 
-            $item = $response['items'][0] ?? null;
+            $json = $response->json();
 
-            if (!$item) {
+            if (!isset($json['items'][0])) {
                 return null;
             }
 
+            $item = $json['items'][0];
+
             return [
-                'id' => $videoId,
-                'title' => $item['snippet']['title'] ?? null,
-                'author' => $item['snippet']['channelTitle'] ?? null,
-                'thumbnail' => $item['snippet']['thumbnails']['high']['url'] ?? null,
-                'duration' => $this->iso8601ToSeconds($item['contentDetails']['duration'] ?? null),
+                'id'        => $videoId,
+                'title'     => $item['snippet']['title'] ?? null,
+                'author'    => $item['snippet']['channelTitle'] ?? null,
+                'thumbnail' => $item['snippet']['thumbnails']['high']['url']
+                    ?? $item['snippet']['thumbnails']['default']['url']
+                    ?? null,
+                'duration'  => $this->iso8601ToSeconds($item['contentDetails']['duration'] ?? null),
                 'embed_url' => "https://www.youtube.com/embed/{$videoId}",
                 'watch_url' => "https://www.youtube.com/watch?v={$videoId}",
             ];
-
         } catch (\Throwable) {
             return null;
         }
@@ -148,10 +159,9 @@ class YouTubeService
 
     /*
     |--------------------------------------------------------------------------
-    | Duration Parser
+    | ISO 8601 DURATION → SECONDS
     |--------------------------------------------------------------------------
     */
-
     protected function iso8601ToSeconds(?string $iso): ?int
     {
         if (!$iso) {
@@ -164,20 +174,8 @@ class YouTubeService
             return ($interval->h * 3600)
                 + ($interval->i * 60)
                 + $interval->s;
-
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Duration via API
-    |--------------------------------------------------------------------------
-    */
-
-    protected function fetchDuration(string $videoId): ?int
-    {
-        return $this->viaApi($videoId)['duration'] ?? null;
     }
 }

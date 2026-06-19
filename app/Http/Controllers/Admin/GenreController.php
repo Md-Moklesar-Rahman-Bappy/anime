@@ -8,26 +8,27 @@ use App\Models\Genre;
 use App\Services\JikanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class GenreController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
-    | Index
+    | INDEX
     |--------------------------------------------------------------------------
     */
     public function index()
     {
-        $genres = Genre::latest()->paginate(20);
+        $genres = Genre::select('id', 'name', 'slug', 'mal_id', 'created_at')
+            ->latest()
+            ->paginate(20);
 
         return view('admin.genres.index', compact('genres'));
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Store Genre
+    | STORE
     |--------------------------------------------------------------------------
     */
     public function store(Request $request)
@@ -45,9 +46,9 @@ class GenreController extends Controller
                 ->route('admin.genres.index')
                 ->with('success', 'Genre created successfully.');
         } catch (\Throwable $e) {
-            Log::error('Genre create failed', [
+
+            $this->logError('Genre create failed', $e, [
                 'name' => $data['name'],
-                'error' => $e->getMessage(),
             ]);
 
             return back()->withInput()->with('error', 'Failed to create genre.');
@@ -56,7 +57,7 @@ class GenreController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Update Genre
+    | UPDATE
     |--------------------------------------------------------------------------
     */
     public function update(Request $request, Genre $genre)
@@ -74,9 +75,9 @@ class GenreController extends Controller
                 ->route('admin.genres.index')
                 ->with('success', 'Genre updated successfully.');
         } catch (\Throwable $e) {
-            Log::error('Genre update failed', [
+
+            $this->logError('Genre update failed', $e, [
                 'id' => $genre->id,
-                'error' => $e->getMessage(),
             ]);
 
             return back()->withInput()->with('error', 'Update failed.');
@@ -85,7 +86,7 @@ class GenreController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Delete Genre
+    | DELETE
     |--------------------------------------------------------------------------
     */
     public function destroy(Genre $genre)
@@ -97,9 +98,9 @@ class GenreController extends Controller
                 ->route('admin.genres.index')
                 ->with('success', 'Genre deleted successfully.');
         } catch (\Throwable $e) {
-            Log::error('Genre delete failed', [
+
+            $this->logError('Genre delete failed', $e, [
                 'id' => $genre->id,
-                'error' => $e->getMessage(),
             ]);
 
             return back()->with('error', 'Delete failed.');
@@ -108,7 +109,7 @@ class GenreController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Import Genres From MAL
+    | IMPORT FROM MAL (PRODUCTION OPTIMIZED)
     |--------------------------------------------------------------------------
     */
     public function importFromMal(JikanService $jikan)
@@ -116,9 +117,8 @@ class GenreController extends Controller
         try {
             $malGenres = collect($jikan->getGenres());
         } catch (JikanApiException $e) {
-            Log::error('Jikan fetch failed', [
-                'error' => $e->getMessage(),
-            ]);
+
+            $this->logError('Jikan fetch failed', $e);
 
             return back()->with('error', 'Failed to fetch genres from MAL.');
         }
@@ -126,38 +126,76 @@ class GenreController extends Controller
         $created = 0;
         $updated = 0;
 
-        // ✅ Load all existing genres once (performance)
-        $existing = Genre::all()->keyBy(fn($g) => $g->mal_id ?: $g->slug);
+        /*
+        |--------------------------------------------------------------------------
+        | Preload existing genres (FAST lookup)
+        |--------------------------------------------------------------------------
+        */
+        $existingByMal = Genre::whereNotNull('mal_id')->get()->keyBy('mal_id');
+        $existingByName = Genre::all()->keyBy(fn($g) => strtolower($g->name));
 
         try {
-            DB::transaction(function () use ($malGenres, &$created, &$updated, $existing) {
+            DB::transaction(function () use (
+                $malGenres,
+                &$created,
+                &$updated,
+                $existingByMal,
+                $existingByName
+            ) {
 
                 foreach ($malGenres as $genreData) {
 
-                    $name = $genreData['name'] ?? null;
-                    if (!$name) continue;
+                    $name = trim($genreData['name'] ?? '');
 
-                    $slug = Str::slug($name);
-                    $key = $genreData['mal_id'] ?? $slug;
+                    if (!$name) {
+                        continue;
+                    }
 
-                    $genre = $existing[$key] ?? null;
+                    $malId = $genreData['mal_id'] ?? null;
 
-                    if ($genre) {
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 1. Match by MAL ID
+                    |--------------------------------------------------------------------------
+                    */
+                    if ($malId && isset($existingByMal[$malId])) {
 
-                        // ✅ Update if MAL ID missing
-                        if (!$genre->mal_id && !empty($genreData['mal_id'])) {
-                            $genre->update([
-                                'mal_id' => $genreData['mal_id'],
-                                'name' => $name,
-                            ]);
+                        $genre = $existingByMal[$malId];
+
+                        if ($genre->name !== $name) {
+                            $genre->update(['name' => $name]);
                             $updated++;
                         }
 
                         continue;
                     }
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 2. Match by name
+                    |--------------------------------------------------------------------------
+                    */
+                    $nameKey = strtolower($name);
+
+                    if (isset($existingByName[$nameKey])) {
+
+                        $genre = $existingByName[$nameKey];
+
+                        if (!$genre->mal_id && $malId) {
+                            $genre->update(['mal_id' => $malId]);
+                            $updated++;
+                        }
+
+                        continue;
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 3. Create new
+                    |--------------------------------------------------------------------------
+                    */
                     Genre::create([
-                        'mal_id' => $genreData['mal_id'] ?? null,
+                        'mal_id' => $malId,
                         'name' => $name,
                         'slug' => $this->generateUniqueSlug($name),
                     ]);
@@ -166,9 +204,8 @@ class GenreController extends Controller
                 }
             });
         } catch (\Throwable $e) {
-            Log::error('Genre import failed', [
-                'error' => $e->getMessage(),
-            ]);
+
+            $this->logError('Genre import failed', $e);
 
             return back()->with('error', 'Import failed.');
         }
@@ -180,27 +217,23 @@ class GenreController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Helper: Unique Slug Generator
+    | SLUG GENERATOR
     |--------------------------------------------------------------------------
     */
     protected function generateUniqueSlug(string $name, ?int $ignoreId = null): string
     {
-        $base = Str::slug($name);
-
-        if (!$base) {
-            $base = 'genre'; // ✅ prevent empty slug
-        }
+        $base = Str::slug($name) ?: 'genre';
 
         $slug = $base;
-        $i = 1;
+        $counter = 1;
 
         while (
             Genre::where('slug', $slug)
             ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
             ->exists()
         ) {
-            $slug = "{$base}-{$i}";
-            $i++;
+            $slug = "{$base}-{$counter}";
+            $counter++;
         }
 
         return $slug;

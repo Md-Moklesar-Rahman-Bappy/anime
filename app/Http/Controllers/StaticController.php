@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
 
 class StaticController extends Controller
 {
@@ -15,22 +14,35 @@ class StaticController extends Controller
         'terms',
     ];
 
-    public function show(): View
+    public function show(Request $request)
     {
-        $page = request()->route()->getName();
-
         try {
-            // ✅ Validate allowed pages
-            if (!in_array($page, $this->allowedPages)) {
+            /*
+            |--------------------------------------------------------------------------
+            | Get Page from Route Name
+            |--------------------------------------------------------------------------
+            */
+            $page = $request->route()->getName();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Allowed Pages
+            |--------------------------------------------------------------------------
+            */
+            if (!in_array($page, $this->allowedPages, true)) {
                 abort(404);
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Render View
+            |--------------------------------------------------------------------------
+            */
             return view("static.{$page}");
-
         } catch (\Throwable $e) {
-            Log::error('Static page load failed', [
-                'page' => $page,
-                'error' => $e->getMessage(),
+
+            $this->logError('Static page load failed', $e, [
+                'page' => $request->route()?->getName(),
             ]);
 
             abort(404);

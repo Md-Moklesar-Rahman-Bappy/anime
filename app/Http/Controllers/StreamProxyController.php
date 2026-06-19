@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StreamProxyController extends Controller
@@ -11,19 +10,24 @@ class StreamProxyController extends Controller
     protected array $allowedHosts = [
         'youtube.com',
         'googlevideo.com',
-        'cdn.example.com', // ✅ your CDN here
+        'cdn.example.com',
     ];
 
     protected array $mimeMap = [
-        'mp4' => 'video/mp4',
+        'mp4'  => 'video/mp4',
         'webm' => 'video/webm',
         'm3u8' => 'application/x-mpegURL',
-        'ts' => 'video/mp2t',
+        'ts'   => 'video/mp2t',
     ];
 
     public function stream(Request $request)
     {
         try {
+            /*
+            |--------------------------------------------------------------------------
+            | Decode URL
+            |--------------------------------------------------------------------------
+            */
             $encoded = $request->query('url');
 
             if (!$encoded) {
@@ -36,18 +40,32 @@ class StreamProxyController extends Controller
                 abort(400, 'Invalid URL');
             }
 
-            // ✅ SECURITY: restrict domains
+            /*
+            |--------------------------------------------------------------------------
+            | Host Validation (SECURITY)
+            |--------------------------------------------------------------------------
+            */
             $host = parse_url($url, PHP_URL_HOST);
 
             if (!$this->isAllowedHost($host)) {
                 abort(403, 'Unauthorized host');
             }
 
-            set_time_limit(0);
+            /*
+            |--------------------------------------------------------------------------
+            | Determine Content Type
+            |--------------------------------------------------------------------------
+            */
+            $path = parse_url($url, PHP_URL_PATH);
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-            $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
             $contentType = $this->mimeMap[$ext] ?? 'application/octet-stream';
 
+            /*
+            |--------------------------------------------------------------------------
+            | Get Remote Headers
+            |--------------------------------------------------------------------------
+            */
             $headers = $this->getHeaders($url);
 
             if (!$headers) {
@@ -56,6 +74,11 @@ class StreamProxyController extends Controller
 
             $fileSize = (int) ($headers['Content-Length'] ?? 0);
 
+            /*
+            |--------------------------------------------------------------------------
+            | Range Handling
+            |--------------------------------------------------------------------------
+            */
             $start = 0;
             $end = $fileSize > 0 ? $fileSize - 1 : 0;
             $status = 200;
@@ -68,45 +91,56 @@ class StreamProxyController extends Controller
                 }
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Stream Response
+            |--------------------------------------------------------------------------
+            */
             return new StreamedResponse(function () use ($url, $start, $end) {
 
-                $ctx = stream_context_create([
+                $context = stream_context_create([
                     'http' => [
-                        'method' => 'GET',
-                        'header' => "Range: bytes={$start}-{$end}\r\n",
-                        'timeout' => 60,
+                        'method'  => 'GET',
+                        'header'  => "Range: bytes={$start}-{$end}\r\n",
+                        'timeout' => 30,
                     ],
                 ]);
 
-                $stream = @fopen($url, 'rb', false, $ctx);
+                $stream = @fopen($url, 'rb', false, $context);
 
                 if (!$stream) {
                     return;
                 }
 
                 while (!feof($stream)) {
-                    echo fread($stream, 65536);
+                    echo fread($stream, 8192); // ✅ smaller chunks = more stable
                     flush();
                 }
 
                 fclose($stream);
-
             }, $status, [
                 'Content-Type' => $contentType,
                 'Accept-Ranges' => 'bytes',
                 'Access-Control-Allow-Origin' => '*',
-            ]);
 
+                // ✅ Important for video players
+                'Cache-Control' => 'no-cache',
+            ]);
         } catch (\Throwable $e) {
 
-            Log::error('Stream proxy failed', [
+            $this->logError('Stream proxy failed', $e, [
                 'url' => $request->query('url'),
-                'error' => $e->getMessage(),
             ]);
 
             abort(500, 'Streaming failed');
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HEADERS FETCH
+    |--------------------------------------------------------------------------
+    */
 
     protected function getHeaders(string $url): ?array
     {
@@ -117,12 +151,18 @@ class StreamProxyController extends Controller
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | HOST VALIDATION
+    |--------------------------------------------------------------------------
+    */
+
     protected function isAllowedHost(?string $host): bool
     {
         if (!$host) return false;
 
         foreach ($this->allowedHosts as $allowed) {
-            if (str_contains($host, $allowed)) {
+            if (str_ends_with($host, $allowed)) {
                 return true;
             }
         }

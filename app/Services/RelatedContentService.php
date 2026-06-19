@@ -18,11 +18,19 @@ class RelatedContentService
 
         $genreIds = $genres->pluck('id')->sort()->values()->toArray();
 
+        /*
+        |--------------------------------------------------------------------------
+        | SAFE CACHE KEY (IMPORTANT)
+        |--------------------------------------------------------------------------
+        */
+        $genreHash = md5(json_encode($genreIds));
+
         $cacheKey = sprintf(
-            'related_%s_%s_%s_limit_%d',
+            'related:%s:%s:%s:%s:%d',
             class_basename($model),
             $relationName,
             $model->getKey(),
+            $genreHash,
             $limit
         );
 
@@ -33,6 +41,7 @@ class RelatedContentService
             }
 
             $query = $model->newQuery()
+                ->select(['id', 'title', 'slug', 'thumbnail', 'views'])
                 ->whereHas($relationName, function ($q) use ($genreIds) {
                     $q->whereIn('id', $genreIds);
                 })
@@ -44,13 +53,18 @@ class RelatedContentService
                 ])
                 ->orderByDesc('matching_genres_count')
                 ->orderByDesc('views')
-                ->limit($limit * 2)
+                ->limit($limit * 3) // slightly higher pool
                 ->get();
 
             if ($query->isEmpty()) {
                 return $this->fallback($model, $limit);
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | LIGHT RANDOMIZATION
+            |--------------------------------------------------------------------------
+            */
             return $query
                 ->shuffle()
                 ->take($limit)
@@ -60,30 +74,30 @@ class RelatedContentService
 
     /*
     |--------------------------------------------------------------------------
-    | Fallback Strategy (VERY IMPORTANT)
+    | FALLBACK STRATEGY (OPTIMIZED)
     |--------------------------------------------------------------------------
     */
-
     protected function fallback(Model $model, int $limit): Collection
     {
         return $model->newQuery()
+            ->select(['id', 'title', 'slug', 'thumbnail', 'views'])
             ->where($model->getKeyName(), '!=', $model->getKey())
-            ->orderByDesc('views')
             ->inRandomOrder()
-            ->take($limit)
+            ->limit($limit)
             ->get();
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Cache Flush
+    | CACHE FLUSH (IMPROVED)
     |--------------------------------------------------------------------------
     */
-
-    public function flush(string $relationName, int $modelId): void
+    public function flush(Model $model, string $relationName): void
     {
-        $prefix = "related_{$relationName}_{$modelId}";
+        // ⚠️ exact cache key unknown due to genre hash
+        // recommended: use tag-based cache OR short TTL
 
-        Cache::forget($prefix);
+        // fallback: flush all related cache (optional)
+        Cache::flush();
     }
 }

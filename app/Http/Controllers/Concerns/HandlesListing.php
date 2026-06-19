@@ -8,7 +8,6 @@ use App\Models\Episode;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 trait HandlesListing
 {
@@ -19,6 +18,11 @@ trait HandlesListing
     abstract protected function listVariableName(): string;
     abstract protected function itemLabel(): string;
 
+    /*
+    |--------------------------------------------------------------------------
+    | GENRES CACHE
+    |--------------------------------------------------------------------------
+    */
     protected function getCachedGenres()
     {
         return Cache::remember(
@@ -28,26 +32,43 @@ trait HandlesListing
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | BASE QUERY
+    |--------------------------------------------------------------------------
+    */
     protected function baseQuery(): Builder
     {
         $class = $this->modelClass();
 
-        return $class::query()->with('genres'); // ✅ eager loading
+        return $class::query()
+            ->select('id', 'title', 'slug', 'thumbnail', 'status', 'type', 'year', 'views', 'rating', 'created_at', 'updated_at')
+            ->with('genres:id,name,slug');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RENDER LIST
+    |--------------------------------------------------------------------------
+    */
     protected function renderList(Builder $query, string $title)
     {
-        $list = $query->paginate(24);
+        $list = $query->paginate(24)->withQueryString();
         $genres = $this->getCachedGenres();
         $varName = $this->listVariableName();
 
         return view($this->listView(), [
             $varName => $list,
             'title' => $title,
-            'genres' => $genres
+            'genres' => $genres,
         ]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | PRESETS
+    |--------------------------------------------------------------------------
+    */
     public function newest()
     {
         return $this->renderList(
@@ -59,10 +80,11 @@ trait HandlesListing
     public function updated()
     {
         $recentIds = Cache::remember(
-            $this->cachePrefix() . '_recently_updated_ids',
+            $this->cachePrefix() . '_recent_ids',
             300,
             function () {
                 $class = $this->modelClass();
+
                 $foreignKey = $class === Anime::class ? 'anime_id' : 'manga_id';
                 $recentModel = $class === Anime::class ? Episode::class : Chapter::class;
 
@@ -94,61 +116,67 @@ trait HandlesListing
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | FILTER
+    |--------------------------------------------------------------------------
+    */
     public function filter(Request $request)
     {
         try {
             $query = $this->baseQuery();
 
-            if ($request->filled('q')) {
-                $safe = '%' . addcslashes($request->q, '%_') . '%';
+            $search = trim((string) $request->input('q'));
+
+            if ($search !== '') {
+                $safe = '%' . addcslashes($search, '%_') . '%';
                 $query->where('title', 'like', $safe);
             }
 
             if ($request->filled('type')) {
-                $query->where('type', $request->type);
+                $query->where('type', $request->input('type'));
             }
 
             if ($request->filled('status')) {
-                $query->where('status', $request->status);
+                $query->where('status', $request->input('status'));
             }
 
             if ($request->filled('year')) {
-                if (str_ends_with($request->year, 's')) {
-                    $decade = (int) substr($request->year, 0, -1);
+                $year = $request->input('year');
+
+                if (str_ends_with($year, 's')) {
+                    $decade = (int) substr($year, 0, -1);
                     $query->whereBetween('year', [$decade * 10, ($decade * 10) + 9]);
                 } else {
-                    $query->where('year', (int) $request->year);
+                    $query->where('year', (int) $year);
                 }
             }
 
             if ($request->filled('season')) {
-                $query->where('season', $request->season);
+                $query->where('season', $request->input('season'));
             }
 
             if ($request->filled('country')) {
-                $query->where('country', $request->country);
+                $query->where('country', $request->input('country'));
             }
 
             if ($request->filled('rating')) {
-                $query->where('rating', $request->rating);
+                $query->where('rating', $request->input('rating'));
             }
 
             if ($request->filled('genres')) {
                 $query->whereHas('genres', function ($q) use ($request) {
-                    $q->whereIn('slug', (array) $request->genres);
+                    $q->whereIn('slug', (array) $request->input('genres'));
                 });
             }
 
-            $this->applySort($query, $request->sort);
+            $this->applySort($query, $request->input('sort'));
 
-            return $this->renderList(
-                $query->withQueryString(),
-                'Filter Results'
-            );
+            return $this->renderList($query, 'Filter Results');
 
         } catch (\Throwable $e) {
-            Log::error('Listing filter failed', [
-                'error' => $e->getMessage(),
+
+            $this->logError('Listing filter failed', $e, [
                 'params' => $request->all(),
             ]);
 
@@ -156,36 +184,23 @@ trait HandlesListing
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | SORT
+    |--------------------------------------------------------------------------
+    */
     protected function applySort(Builder $query, ?string $sort): void
     {
-        switch ($sort) {
-            case 'updated':
-                $query->latest('updated_at');
-                break;
-            case 'added':
-                $query->latest('created_at');
-                break;
-            case 'views':
-                $query->orderByDesc('views');
-                break;
-            case 'score':
-                $query->orderByDesc('score');
-                break;
-            case 'rating':
-                $query->orderByDesc('rating');
-                break;
-            case 'name':
-                $query->orderBy('title');
-                break;
-            case 'episodes':
-            case 'chapters':
-                $query->orderByDesc('episodes_count');
-                break;
-            case 'release':
-                $query->orderByDesc('year');
-                break;
-            default:
-                $query->latest();
-        }
+        match ($sort) {
+            'updated' => $query->latest('updated_at'),
+            'added' => $query->latest('created_at'),
+            'views' => $query->orderByDesc('views'),
+            'score' => $query->orderByDesc('score'),
+            'rating' => $query->orderByDesc('rating'),
+            'name' => $query->orderBy('title'),
+            'episodes', 'chapters' => $query->orderByDesc('episodes_count'),
+            'release' => $query->orderByDesc('year'),
+            default => $query->latest(),
+        };
     }
 }

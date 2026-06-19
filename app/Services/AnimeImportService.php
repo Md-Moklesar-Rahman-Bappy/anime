@@ -4,95 +4,189 @@ namespace App\Services;
 
 use App\Models\Anime;
 use App\Models\Genre;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class AnimeImportService
 {
+    protected const GENRES_CACHE_KEY = 'genres_all';
+    protected const GENRES_CACHE_TTL = 3600;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sync Genres
+    |--------------------------------------------------------------------------
+    */
+
     public function syncGenres(array $genreData): array
     {
-        $allGenres = Cache::remember('genres_all', 3600, fn () => Genre::all());
+        $allGenres = $this->cachedGenres();
 
-        return collect($genreData)->map(function ($data) use (&$allGenres) {
+        $genreIds = collect($genreData)
+            ->map(function ($data) use (&$allGenres) {
 
-            $slug = Str::slug($data['name'] ?? '');
+                $name = trim((string) ($data['name'] ?? ''));
 
-            if (!$slug) {
-                return null;
-            }
+                if ($name === '') {
+                    return null;
+                }
 
-            $genre = $allGenres->firstWhere('mal_id', $data['mal_id'] ?? null)
-                ?? $allGenres->firstWhere('slug', $slug);
+                $malId = $data['mal_id'] ?? null;
+                $slug = Str::slug($name);
 
-            if (!$genre) {
-                $genre = Genre::create([
-                    'mal_id' => $data['mal_id'] ?? null,
-                    'name' => $data['name'] ?? 'Unknown',
-                    'slug' => $slug,
-                ]);
+                if (!$slug) {
+                    return null;
+                }
 
-                $allGenres->push($genre);
+                /*
+                |--------------------------------------------------------------------------
+                | Find Existing Genre
+                |--------------------------------------------------------------------------
+                */
+                $genre = null;
 
-            } elseif (!$genre->mal_id && !empty($data['mal_id'])) {
-                $genre->update(['mal_id' => $data['mal_id']]);
-            }
+                if ($malId) {
+                    $genre = $allGenres->firstWhere('mal_id', $malId);
+                }
 
-            return $genre->id;
+                if (!$genre) {
+                    $genre = $allGenres->firstWhere('slug', $slug);
+                }
 
-        })->filter()->values()->toArray();
+                /*
+                |--------------------------------------------------------------------------
+                | Create Genre
+                |--------------------------------------------------------------------------
+                */
+                if (!$genre) {
+                    $genre = Genre::create([
+                        'mal_id' => $malId,
+                        'name' => $name,
+                        'slug' => $this->uniqueGenreSlug($slug),
+                    ]);
+
+                    $allGenres->push($genre);
+
+                    Cache::forget(self::GENRES_CACHE_KEY);
+
+                    return $genre->id;
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Update Missing MAL ID / Name
+                |--------------------------------------------------------------------------
+                */
+                $updates = [];
+
+                if (!$genre->mal_id && $malId) {
+                    $updates['mal_id'] = $malId;
+                }
+
+                if ($genre->name !== $name) {
+                    $updates['name'] = $name;
+                }
+
+                if (!empty($updates)) {
+                    $genre->update($updates);
+
+                    Cache::forget(self::GENRES_CACHE_KEY);
+                }
+
+                return $genre->id;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        return $genreIds;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Upsert Anime
+    |--------------------------------------------------------------------------
+    */
 
     public function upsertAnime(array $data, array $genreIds): Anime
     {
         return DB::transaction(function () use ($data, $genreIds) {
 
-            $title = $data['title'] ?? 'Unknown';
-            $slug = Str::slug($title);
+            $malId = $data['mal_id'] ?? null;
+            $title = trim((string) ($data['title'] ?? 'Unknown'));
 
-            $existing = Anime::where('mal_id', $data['mal_id'] ?? null)
-                ->orWhere('slug', $slug)
-                ->first();
+            if ($title === '') {
+                $title = 'Unknown';
+            }
 
-            if ($existing) {
+            $baseSlug = Str::slug($title) ?: 'anime';
 
-                $existing->update([
-                    'mal_id' => $data['mal_id'] ?? $existing->mal_id,
+            /*
+            |--------------------------------------------------------------------------
+            | Find Existing Anime Safely
+            |--------------------------------------------------------------------------
+            */
+            $query = Anime::query();
+
+            if ($malId) {
+                $query->where('mal_id', $malId);
+            } else {
+                $query->where('slug', $baseSlug);
+            }
+
+            if ($malId) {
+                $query->orWhere('slug', $baseSlug);
+            }
+
+            $anime = $query->first();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Existing Anime Update
+            |--------------------------------------------------------------------------
+            */
+            if ($anime) {
+                $anime->update([
+                    'mal_id' => $malId ?: $anime->mal_id,
                     'title' => $title,
-                    'title_japanese' => $data['title_japanese'] ?? null,
-                    'description' => $data['description'] ?? null,
-                    'type' => $data['type'] ?? null,
-                    'status' => $data['status'] ?? null,
-                    'country' => $data['country'] ?? null,
-                    'season' => $data['season'] ?? null,
-                    'year' => $data['year'] ?? null,
-                    'age_rating' => $data['rating'] ?? null,
-                    'score' => $data['score'] ?? null,
-                    'episodes_count' => $data['episodes_count'] ?? null,
-                    'duration' => $data['duration'] ?? null,
-                    'source' => $data['source'] ?? null,
-                    'studio' => $data['studio'] ?? null,
-                    'producers' => $data['producers'] ?? null,
-                    'licensors' => $data['licensors'] ?? null,
-                    'thumbnail' => $data['thumbnail'] ?: $existing->thumbnail,
-                    'banner' => $data['banner'] ?: $existing->banner,
+                    'title_japanese' => $data['title_japanese'] ?? $anime->title_japanese,
+                    'description' => $data['description'] ?? $anime->description,
+                    'type' => $data['type'] ?? $anime->type,
+                    'status' => $data['status'] ?? $anime->status,
+                    'country' => $data['country'] ?? $anime->country,
+                    'season' => $data['season'] ?? $anime->season,
+                    'year' => $data['year'] ?? $anime->year,
+                    'age_rating' => $data['rating'] ?? $anime->age_rating,
+                    'score' => $data['score'] ?? $anime->score,
+                    'episodes_count' => $data['episodes_count'] ?? $anime->episodes_count,
+                    'duration' => $data['duration'] ?? $anime->duration,
+                    'source' => $data['source'] ?? $anime->source,
+                    'studio' => $data['studio'] ?? $anime->studio,
+                    'producers' => $data['producers'] ?? $anime->producers,
+                    'licensors' => $data['licensors'] ?? $anime->licensors,
+                    'thumbnail' => !empty($data['thumbnail']) ? $data['thumbnail'] : $anime->thumbnail,
+                    'banner' => !empty($data['banner']) ? $data['banner'] : $anime->banner,
                     'jikan_synced_at' => now(),
                 ]);
 
-                $existing->genres()->sync($genreIds);
+                $anime->genres()->sync($genreIds);
 
-                return $existing;
+                return $anime;
             }
 
-            // ✅ Optimized slug uniqueness
-            $uniqueSlug = "{$slug}-" . substr(md5(uniqid()), 0, 6);
-
+            /*
+            |--------------------------------------------------------------------------
+            | New Anime Create
+            |--------------------------------------------------------------------------
+            */
             $anime = Anime::create([
-                'mal_id' => $data['mal_id'] ?? null,
+                'mal_id' => $malId,
                 'title' => $title,
                 'title_japanese' => $data['title_japanese'] ?? null,
-                'slug' => $uniqueSlug,
+                'slug' => $this->uniqueAnimeSlug($baseSlug),
                 'description' => $data['description'] ?? null,
                 'type' => $data['type'] ?? null,
                 'status' => $data['status'] ?? null,
@@ -101,7 +195,7 @@ class AnimeImportService
                 'year' => $data['year'] ?? null,
                 'age_rating' => $data['rating'] ?? null,
                 'score' => $data['score'] ?? null,
-                'episodes_count' => $data['episodes_count'] ?? null,
+                'episodes_count' => $data['episodes_count'] ?? 0,
                 'duration' => $data['duration'] ?? null,
                 'source' => $data['source'] ?? null,
                 'studio' => $data['studio'] ?? null,
@@ -109,6 +203,9 @@ class AnimeImportService
                 'licensors' => $data['licensors'] ?? null,
                 'thumbnail' => $data['thumbnail'] ?? null,
                 'banner' => $data['banner'] ?? null,
+                'views' => 0,
+                'featured' => false,
+                'featured_order' => 0,
                 'jikan_synced_at' => now(),
             ]);
 
@@ -116,5 +213,60 @@ class AnimeImportService
 
             return $anime;
         });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cached Genres
+    |--------------------------------------------------------------------------
+    */
+
+    protected function cachedGenres(): Collection
+    {
+        return Cache::remember(
+            self::GENRES_CACHE_KEY,
+            self::GENRES_CACHE_TTL,
+            fn() => Genre::select('id', 'name', 'slug', 'mal_id')->get()
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unique Anime Slug
+    |--------------------------------------------------------------------------
+    */
+
+    protected function uniqueAnimeSlug(string $baseSlug): string
+    {
+        $baseSlug = $baseSlug ?: 'anime';
+        $slug = $baseSlug;
+        $counter = 1;
+
+        while (Anime::where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-{$counter}";
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unique Genre Slug
+    |--------------------------------------------------------------------------
+    */
+
+    protected function uniqueGenreSlug(string $baseSlug): string
+    {
+        $baseSlug = $baseSlug ?: 'genre';
+        $slug = $baseSlug;
+        $counter = 1;
+
+        while (Genre::where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-{$counter}";
+            $counter++;
+        }
+
+        return $slug;
     }
 }

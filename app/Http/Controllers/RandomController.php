@@ -4,31 +4,44 @@ namespace App\Http\Controllers;
 
 use App\Models\Anime;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Log;
 
 class RandomController extends Controller
 {
     public function index(): RedirectResponse
     {
         try {
-            // ✅ Single optimized query
+            /*
+            |--------------------------------------------------------------------------
+            | Random Anime (Safe + Efficient)
+            |--------------------------------------------------------------------------
+            */
             $anime = Anime::query()
                 ->select('id', 'slug')
+                ->whereNotNull('slug') // ✅ safety
                 ->inRandomOrder()
                 ->first();
 
-            if (!$anime || !$anime->slug) {
+            /*
+            |--------------------------------------------------------------------------
+            | Fallback
+            |--------------------------------------------------------------------------
+            */
+            if (!$anime) {
                 return redirect()
                     ->route('home')
                     ->with('error', 'No anime found.');
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Redirect
+            |--------------------------------------------------------------------------
+            */
             return redirect()->route('anime.detail', $anime->slug);
 
         } catch (\Throwable $e) {
-            Log::error('Random anime selection failed', [
-                'error' => $e->getMessage(),
-            ]);
+
+            $this->logError('Random anime selection failed', $e);
 
             return redirect()
                 ->route('home')

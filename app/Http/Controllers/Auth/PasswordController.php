@@ -3,20 +3,22 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class PasswordController extends Controller
 {
-    /**
-     * Update the user's password.
-     */
-    public function update(Request $request): RedirectResponse
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE PASSWORD
+    |--------------------------------------------------------------------------
+    */
+    public function update(Request $request): RedirectResponse|JsonResponse
     {
-        // ✅ Validate with named error bag (good UX)
         $validated = $request->validateWithBag('updatePassword', [
             'current_password' => ['required', 'current_password'],
             'password' => ['required', Password::defaults(), 'confirmed'],
@@ -25,27 +27,49 @@ class PasswordController extends Controller
         try {
             $user = $request->user();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Ensure authenticated
+            |--------------------------------------------------------------------------
+            */
             if (!$user) {
                 return redirect()
-                    ->route('auth.login')
+                    ->route('login')
                     ->with('error', 'Authentication required.');
             }
 
-            // ✅ Prevent same password reuse (optional security)
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent same password reuse
+            |--------------------------------------------------------------------------
+            */
             if (Hash::check($validated['password'], $user->password)) {
-                return back()->withErrors([
+                throw ValidationException::withMessages([
                     'password' => 'New password must be different from your current password.',
                 ]);
             }
 
-            // ✅ Update password
+            /*
+            |--------------------------------------------------------------------------
+            | Update password
+            |--------------------------------------------------------------------------
+            */
             $user->update([
                 'password' => Hash::make($validated['password']),
             ]);
 
-            // ✅ Optional: regenerate session (extra security)
+            /*
+            |--------------------------------------------------------------------------
+            | Regenerate session (security)
+            |--------------------------------------------------------------------------
+            */
             $request->session()->regenerate();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Response
+            |--------------------------------------------------------------------------
+            */
             if ($request->wantsJson()) {
                 return response()->json([
                     'status' => 'password-updated',
@@ -54,13 +78,17 @@ class PasswordController extends Controller
 
             return back()->with('status', 'password-updated');
 
+        } catch (ValidationException $e) {
+            throw $e;
+
         } catch (\Throwable $e) {
-            Log::error('Password update failed', [
+
+            $this->logError('Password update failed', $e, [
                 'user_id' => $request->user()?->id,
-                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
 
-            return back()->withErrors([
+            throw ValidationException::withMessages([
                 'password' => 'Failed to update password. Please try again.',
             ]);
         }

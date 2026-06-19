@@ -5,44 +5,57 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class EmailVerificationPromptController extends Controller
 {
-    /**
-     * Display the email verification prompt.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | SHOW VERIFICATION PROMPT
+    |--------------------------------------------------------------------------
+    */
     public function __invoke(Request $request): RedirectResponse|View
     {
         try {
             $user = $request->user();
 
-            // ✅ Ensure user is authenticated
+            /*
+            |--------------------------------------------------------------------------
+            | Ensure authenticated
+            |--------------------------------------------------------------------------
+            */
             if (!$user) {
                 return redirect()
-                    ->route('auth.login')
+                    ->route('login')
                     ->with('error', 'Authentication required.');
             }
 
-            // ✅ Already verified → redirect
+            /*
+            |--------------------------------------------------------------------------
+            | Already verified
+            |--------------------------------------------------------------------------
+            */
             if ($user->hasVerifiedEmail()) {
                 return redirect()->intended(
                     route('admin.dashboard', absolute: false)
                 );
             }
 
-            // ✅ Show verification prompt
+            /*
+            |--------------------------------------------------------------------------
+            | Show verification page
+            |--------------------------------------------------------------------------
+            */
             return view('auth.verify-email');
-
         } catch (\Throwable $e) {
-            Log::error('Email verification prompt failed', [
+
+            $this->logError('Email verification prompt failed', $e, [
                 'user_id' => $request->user()?->id,
-                'error'   => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
 
             return redirect()
-                ->route('auth.login')
+                ->route('login')
                 ->with('error', 'Something went wrong. Please try again.');
         }
     }

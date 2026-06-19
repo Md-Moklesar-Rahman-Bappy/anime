@@ -8,12 +8,11 @@ use App\Models\Genre;
 use App\Models\Manga;
 use App\Models\MangaGenre;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 class SitemapController extends Controller
 {
-    const TTL = 1800;
-    const LIMIT = 50000;
+    protected const TTL = 1800;
+    protected const LIMIT = 50000;
 
     public function index()
     {
@@ -25,15 +24,19 @@ class SitemapController extends Controller
             return response()
                 ->view('sitemap', compact('urls'))
                 ->header('Content-Type', 'text/xml');
-
         } catch (\Throwable $e) {
-            Log::error('Sitemap generation failed', [
-                'error' => $e->getMessage(),
-            ]);
+
+            $this->logError('Sitemap generation failed', $e);
 
             abort(500, 'Failed to generate sitemap.');
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | GENERATE URLS
+    |--------------------------------------------------------------------------
+    */
 
     private function generateUrls(): array
     {
@@ -43,7 +46,7 @@ class SitemapController extends Controller
         $urls = array_merge($urls, $this->staticPages());
 
         // ✅ Anime
-        foreach (Anime::select('slug', 'updated_at')->cursor() as $anime) {
+        foreach (Anime::select('slug', 'updated_at')->whereNotNull('slug')->cursor() as $anime) {
             $urls[] = $this->entry(
                 route('anime.detail', $anime->slug),
                 '0.9',
@@ -52,14 +55,15 @@ class SitemapController extends Controller
             );
         }
 
-        // ✅ Episodes (limit safe)
-        foreach (
-            Episode::with('anime:slug,id,updated_at')
-                ->latest()
-                ->limit(500)
-                ->get()
-                ->unique('anime_id') as $episode
-        ) {
+        // ✅ Episodes (limit + dedupe anime)
+        $episodes = Episode::with('anime:id,slug,updated_at')
+            ->select('id', 'anime_id')
+            ->latest()
+            ->take(500)
+            ->get()
+            ->unique('anime_id');
+
+        foreach ($episodes as $episode) {
             if ($episode->anime) {
                 $urls[] = $this->entry(
                     route('watch', ['slug' => $episode->anime->slug]),
@@ -80,18 +84,17 @@ class SitemapController extends Controller
             );
         }
 
-        // ✅ A-Z
+        // ✅ A-Z pages
         foreach (range('A', 'Z') as $letter) {
             $urls[] = $this->entry(
                 route('az-list', $letter),
                 '0.4',
-                'weekly',
-                now()
+                'weekly'
             );
         }
 
         // ✅ Manga
-        foreach (Manga::select('slug', 'updated_at')->cursor() as $manga) {
+        foreach (Manga::select('slug', 'updated_at')->whereNotNull('slug')->cursor() as $manga) {
             $urls[] = $this->entry(
                 route('manga.detail', $manga->slug),
                 '0.9',
@@ -110,9 +113,15 @@ class SitemapController extends Controller
             );
         }
 
-        // ✅ Limit protection
+        // ✅ Unique + Limit
         return array_slice($this->unique($urls), 0, self::LIMIT);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | STATIC PAGES
+    |--------------------------------------------------------------------------
+    */
 
     private function staticPages(): array
     {
@@ -124,7 +133,13 @@ class SitemapController extends Controller
         ];
     }
 
-    private function entry($loc, $priority, $freq, $lastmod = null): array
+    /*
+    |--------------------------------------------------------------------------
+    | ENTRY FORMATTER
+    |--------------------------------------------------------------------------
+    */
+
+    private function entry(string $loc, string $priority, string $freq, $lastmod = null): array
     {
         return [
             'loc' => $loc,
@@ -133,6 +148,12 @@ class SitemapController extends Controller
             'lastmod' => $lastmod?->toIso8601String() ?? now()->toIso8601String(),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | UNIQUE URL FILTER
+    |--------------------------------------------------------------------------
+    */
 
     private function unique(array $urls): array
     {

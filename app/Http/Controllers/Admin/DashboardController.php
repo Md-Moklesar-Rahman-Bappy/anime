@@ -13,7 +13,6 @@ use App\Models\Report;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -34,19 +33,19 @@ class DashboardController extends Controller
                 'reportsByType'  => $this->reportsByType(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Dashboard load failed', [
-                'error' => $e->getMessage(),
-            ]);
 
-            return back()->with('error', 'Failed to load dashboard.');
+            $this->logError('Dashboard load failed', $e);
+
+            return $this->redirectError('Failed to load dashboard.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Stats
+    | CORE STATS
     |--------------------------------------------------------------------------
     */
+
     protected function getStats(): array
     {
         return Cache::remember('dashboard.stats', self::TTL, function () {
@@ -60,20 +59,28 @@ class DashboardController extends Controller
                 'totalManga'     => Manga::count(),
                 'totalChapters'  => Chapter::count(),
                 'totalComments'  => Comment::count(),
-                'totalViews'     => Anime::sum('views') + Manga::sum('views'),
+
+                // ✅ safer aggregation (single query each)
+                'totalViews' =>
+                (int) Anime::sum('views') +
+                    (int) Manga::sum('views'),
             ];
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Recent Data
+    | RECENT DATA
     |--------------------------------------------------------------------------
     */
+
     protected function recentAnime()
     {
         return Cache::remember('dashboard.recent_anime', self::TTL, function () {
-            return Anime::latest()->limit(5)->get();
+            return Anime::select('id', 'title', 'slug', 'updated_at')
+                ->latest()
+                ->limit(5)
+                ->get();
         });
     }
 
@@ -81,6 +88,7 @@ class DashboardController extends Controller
     {
         return Cache::remember('dashboard.recent_episodes', self::TTL, function () {
             return Episode::with('anime:id,title,slug')
+                ->select('id', 'anime_id', 'number', 'title', 'created_at')
                 ->latest()
                 ->limit(5)
                 ->get();
@@ -90,15 +98,19 @@ class DashboardController extends Controller
     protected function recentUsers()
     {
         return Cache::remember('dashboard.recent_users', self::TTL, function () {
-            return User::latest()->limit(5)->get();
+            return User::select('id', 'name', 'email', 'created_at')
+                ->latest()
+                ->limit(5)
+                ->get();
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | User Growth (Chart Ready)
+    | USER GROWTH (CHART)
     |--------------------------------------------------------------------------
     */
+
     protected function userGrowth()
     {
         return Cache::remember('dashboard.user_growth', self::TTL, function () {
@@ -113,41 +125,35 @@ class DashboardController extends Controller
                 ->orderBy('year')
                 ->orderBy('month')
                 ->get()
-                ->map(function ($row) {
-                    return [
-                        'label' => date('M Y', mktime(0, 0, 0, $row->month, 1, $row->year)),
-                        'count' => $row->count,
-                    ];
-                });
+                ->map(fn($row) => [
+                    'label' => date('M Y', mktime(0, 0, 0, $row->month, 1, $row->year)),
+                    'count' => $row->count,
+                ]);
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Anime by Type (Chart Ready)
+    | ANIME DISTRIBUTION
     |--------------------------------------------------------------------------
     */
+
     protected function animeByType()
     {
         return Cache::remember('dashboard.anime_type', self::TTL, function () {
-            return Anime::select('type', DB::raw('COUNT(*) as count'))
-                ->whereNotNull('type')
+            return Anime::whereNotNull('type')
+                ->select('type', DB::raw('COUNT(*) as count'))
                 ->groupBy('type')
                 ->pluck('count', 'type')
                 ->toArray();
         });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Anime by Status
-    |--------------------------------------------------------------------------
-    */
     protected function animeByStatus()
     {
         return Cache::remember('dashboard.anime_status', self::TTL, function () {
-            return Anime::select('status', DB::raw('COUNT(*) as count'))
-                ->whereNotNull('status')
+            return Anime::whereNotNull('status')
+                ->select('status', DB::raw('COUNT(*) as count'))
                 ->groupBy('status')
                 ->pluck('count', 'status')
                 ->toArray();
@@ -156,26 +162,31 @@ class DashboardController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Popular Anime
+    | POPULAR CONTENT
     |--------------------------------------------------------------------------
     */
+
     protected function popularAnime()
     {
         return Cache::remember('dashboard.popular_anime', self::TTL, function () {
-            return Anime::orderByDesc('views')->limit(5)->get();
+            return Anime::select('id', 'title', 'slug', 'views')
+                ->orderByDesc('views')
+                ->limit(5)
+                ->get();
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Reports by Type
+    | REPORT ANALYTICS
     |--------------------------------------------------------------------------
     */
+
     protected function reportsByType()
     {
         return Cache::remember('dashboard.reports_type', self::TTL, function () {
-            return Report::select('issue_type', DB::raw('COUNT(*) as count'))
-                ->where('status', 'pending')
+            return Report::where('status', 'pending')
+                ->select('issue_type', DB::raw('COUNT(*) as count'))
                 ->groupBy('issue_type')
                 ->pluck('count', 'issue_type')
                 ->toArray();
