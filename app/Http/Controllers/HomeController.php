@@ -91,9 +91,17 @@ class HomeController extends Controller
                     ->get()
             );
 
+            // ✅ FIXED VARIABLES FOR VIEW
+            $newlyAdded = $data['newAnime'];
+            $justCompleted = $data['completed'];
+            $topAnime = $data['trending'];
+
             return view('home', [
                 ...$data,
                 'latestEpisodes' => $latestEpisodes,
+                'newlyAdded' => $newlyAdded,
+                'justCompleted' => $justCompleted,
+                'topAnime' => $topAnime,
             ]);
         } catch (\Throwable $e) {
 

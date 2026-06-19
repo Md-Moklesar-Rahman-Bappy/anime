@@ -4,6 +4,7 @@ All notable changes to `uri-template` will be documented in this file.
 
 Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) principles.
 
+<<<<<<< HEAD
 ## v1.0.7 - 2026-06-12
 
 ### Fixed
@@ -15,6 +16,11 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ### Fixed
 
+=======
+## v1.0.6 - 2026-05-23
+
+### Fixed
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 - Fixed empty nested arrays adding empty components to exploded query expansions
 - Fixed nested query array keys being double-encoded during exploded query expansion
 - Fixed reserved and fragment expansion preserving existing pct-encoded triplets in variable values

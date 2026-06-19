@@ -3,12 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\Manga;
+<<<<<<< HEAD
+=======
 use Illuminate\Support\Facades\Log;
+>>>>>>> e49809d9d6911bdf67fad69ca28d173fa3ca9407
 
 class MangaController extends Controller
 {
     public function __invoke(string $slug)
     {
+<<<<<<< HEAD
+        $manga = Manga::where('slug', $slug)->firstOrFail();
+
+        return view('manga.show', compact('manga'));
+    }
+}
+=======
         try {
             $manga = Manga::where('slug', $slug)
                 ->with([
@@ -47,3 +57,4 @@ class MangaController extends Controller
         }
     }
 }
+>>>>>>> e49809d9d6911bdf67fad69ca28d173fa3ca9407

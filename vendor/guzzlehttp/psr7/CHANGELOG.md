@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<<<<<<< HEAD
 ## 2.12.1 - 2026-06-18
 
 ### Security
@@ -49,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `Utils::copyToStream()` to retry short destination writes instead of dropping the unwritten remainder
 - Fixed `Header::parse()` splitting of semicolon-separated parameters with escaped quotes
 
+=======
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 ## 2.10.4 - 2026-05-29
 
 ### Fixed

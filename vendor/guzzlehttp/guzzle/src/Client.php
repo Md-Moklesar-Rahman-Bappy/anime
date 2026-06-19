@@ -807,6 +807,7 @@ class Client implements ClientInterface, \Psr\Http\Client\ClientInterface
     {
         $request = $this->applyOptions($request, $options);
 
+<<<<<<< HEAD
         $protocolVersion = $request->getProtocolVersion();
 
         if ('' === $protocolVersion) {
@@ -815,6 +816,10 @@ class Client implements ClientInterface, \Psr\Http\Client\ClientInterface
             $request = Psr7\Utils::modifyRequest($request, ['version' => '1.1']);
         } elseif (!self::isProtocolVersionValid($protocolVersion)) {
             \trigger_deprecation('guzzlehttp/guzzle', '7.11', 'Sending a request with a malformed protocol version is deprecated; guzzlehttp/guzzle 8.0 will reject malformed protocol versions.');
+=======
+        if ('' === $request->getProtocolVersion()) {
+            $request = Psr7\Utils::modifyRequest($request, ['version' => '1.1']);
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
         }
 
         /** @var HandlerStack $handler */
@@ -972,6 +977,7 @@ class Client implements ClientInterface, \Psr\Http\Client\ClientInterface
     }
 
     /**
+<<<<<<< HEAD
      * @param array<array-key, mixed> $headers
      *
      * @return list<string>
@@ -1082,23 +1088,32 @@ class Client implements ClientInterface, \Psr\Http\Client\ClientInterface
 
     /**
      * @param string|int|float $version
+=======
+     * @param string|float $version
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
      */
     private static function normalizeProtocolVersion($version): string
     {
         if ('' === $version) {
+<<<<<<< HEAD
             \trigger_deprecation('guzzlehttp/guzzle', '7.11', 'Passing an empty "version" request option is deprecated; guzzlehttp/guzzle 8.0 will reject empty protocol versions.');
 
+=======
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             return '1.1';
         }
 
         return \is_float($version) ? \number_format($version, 1, '.', '') : (string) $version;
     }
 
+<<<<<<< HEAD
     private static function isProtocolVersionValid(string $version): bool
     {
         return 1 === \preg_match('/^\d+(?:\.\d+)?$/D', $version);
     }
 
+=======
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
     /**
      * Return an InvalidArgumentException with pre-set message.
      */

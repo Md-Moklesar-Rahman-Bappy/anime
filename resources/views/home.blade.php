@@ -4,6 +4,7 @@
 
 @section('content')
 
+<<<<<<< HEAD
 <div class="container-fluid px-3 py-3" style="max-width:1280px">
 
     @if($featured->count())
@@ -13,6 +14,29 @@
         <div class="position-absolute top-0 start-0 end-0 bottom-0"
              style="background-size:cover;background-position:center;background-image:url('{{ $anime->banner_url ?? asset('fallback.jpg') }}')">
         </div>
+=======
+    {{-- ✅ FEATURED --}}
+    @if(!empty($featured) && $featured->count())
+    <section class="mb-8">
+        <h2 class="text-xl font-bold text-white mb-4">Featured Anime</h2>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            @foreach($featured as $anime)
+            <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
+                <img src="{{ $anime->thumbnail_url }}" 
+                     class="rounded-lg w-full h-48 object-cover group-hover:scale-105 transition" 
+                     alt="">
+                <h3 class="text-sm text-gray-300 mt-2 group-hover:text-white">
+                    {{ $anime->title }}
+                </h3>
+            </a>
+            @endforeach
+        </div>
+<<<<<<< HEAD
+    </section>
+=======
+        @endif
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 
         <div class="position-absolute top-0 start-0 end-0 bottom-0" style="background:linear-gradient(to top,#000,rgba(0,0,0,0.6),transparent)"></div>
 
@@ -30,12 +54,34 @@
         </div>
         @endforeach
     </div>
+>>>>>>> e49809d9d6911bdf67fad69ca28d173fa3ca9407
     @endif
 
 
+<<<<<<< HEAD
     <div class="row">
         <div class="col-lg-9 d-flex flex-column gap-4">
 
+=======
+    {{-- ✅ LATEST EPISODES --}}
+    <section class="mb-10">
+        <h2 class="text-lg font-bold text-white mb-4">Latest Episodes</h2>
+
+<<<<<<< HEAD
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            @foreach($latestEpisodes ?? [] as $episode)
+            <a href="{{ route('watch', ['slug' => $episode->anime->slug, 'ep' => $episode->number]) }}">
+                <img src="{{ $episode->thumbnail_url }}" class="rounded-lg w-full h-48 object-cover">
+                <p class="text-sm text-gray-300 mt-2">{{ $episode->anime->title }}</p>
+                <p class="text-xs text-gray-500">Episode {{ $episode->number }}</p>
+            </a>
+            @endforeach
+        </div>
+    </section>
+
+=======
+            {{-- Latest Episode --}}
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
             <section>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2 style="font-size:1.125rem;color:#fff;font-weight:600">Latest Episodes</h2>
@@ -110,6 +156,7 @@
                     @endforeach
                     </div>
                 </div>
+<<<<<<< HEAD
 
                 @endforeach
             </div>
@@ -142,7 +189,84 @@
 
         </div>
 
+=======
+            </section>
+            @endif
+>>>>>>> e49809d9d6911bdf67fad69ca28d173fa3ca9407
+
+    {{-- ✅ 3 COLUMN SECTION --}}
+    <div class="grid md:grid-cols-3 gap-6">
+
+        {{-- ✅ NEW RELEASE --}}
+        <div>
+            <h3 class="text-sm font-bold text-white mb-3">New Release</h3>
+
+            @foreach(($newAnime ?? collect())->take(5) as $anime)
+            <a href="{{ route('anime.detail', $anime->slug) }}" class="flex gap-3 mb-2">
+                <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 rounded">
+                <p class="text-sm text-gray-300">{{ $anime->title }}</p>
+            </a>
+            @endforeach
+        </div>
+
+        {{-- ✅ NEWLY ADDED (FIXED) --}}
+        <div>
+            <h3 class="text-sm font-bold text-white mb-3">Newly Added</h3>
+
+            {{-- ✅ USE newAnime --}}
+            @foreach(($newAnime ?? []) as $anime)
+            <a href="{{ route('anime.detail', $anime->slug) }}" class="flex gap-3 mb-2">
+                <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 rounded">
+                <p class="text-sm text-gray-300">{{ $anime->title }}</p>
+            </a>
+            @endforeach
+        </div>
+
+        {{-- ✅ COMPLETED (FIXED) --}}
+        <div>
+            <h3 class="text-sm font-bold text-white mb-3">Completed</h3>
+
+            {{-- ✅ USE completed --}}
+            @foreach(($completed ?? []) as $anime)
+            <a href="{{ route('anime.detail', $anime->slug) }}" class="flex gap-3 mb-2">
+                <img src="{{ $anime->thumbnail_url }}" class="w-10 h-14 rounded">
+                <p class="text-sm text-gray-300">{{ $anime->title }}</p>
+            </a>
+            @endforeach
+        </div>
+
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
     </div>
+
+
+    {{-- ✅ TOP ANIME (SIDEBAR) --}}
+    <div class="mt-10">
+        <h3 class="text-lg font-bold text-white mb-4">Top Anime</h3>
+
+        {{-- ✅ USE trending --}}
+        @foreach(($trending ?? []) as $i => $anime)
+        <div class="flex items-center mb-3">
+
+            <span class="w-5 text-gray-500">
+                {{ $i + 1 }}
+            </span>
+
+            <img src="{{ $anime->thumbnail_url }}" 
+                 class="w-10 h-14 object-cover rounded mx-2">
+
+            <div>
+                <p class="text-sm text-gray-300">
+                    {{ $anime->title }}
+                </p>
+                <p class="text-xs text-gray-500">
+                    {{ $anime->rating ?? 'N/A' }}
+                </p>
+            </div>
+
+        </div>
+        @endforeach
+    </div>
+
 </div>
 
 @endsection

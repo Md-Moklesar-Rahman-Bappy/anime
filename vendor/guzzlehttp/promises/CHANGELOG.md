@@ -1,6 +1,7 @@
 # CHANGELOG
 
 
+<<<<<<< HEAD
 ## 2.5.0 - 2026-06-02
 
 ### Deprecated
@@ -8,6 +9,8 @@
 - Deprecated passing non-iterable inputs to promise collection helpers and `EachPromise`
 
 
+=======
+>>>>>>> cc1abab59e4a91ec22ccd7b474e0817473907c84
 ## 2.4.1 - 2026-05-20
 
 ### Fixed
