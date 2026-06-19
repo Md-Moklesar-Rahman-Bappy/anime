@@ -16,11 +16,10 @@ return new class extends Migration
             | Core Info
             |--------------------------------------------------------------------------
             */
-            $table->unsignedBigInteger('mal_id')->nullable()->unique(); // ✅ Jikan API
-            $table->string('title');
+            $table->unsignedBigInteger('mal_id')->nullable()->unique();
+            $table->string('title')->index();
             $table->string('title_japanese')->nullable();
             $table->string('slug')->unique();
-
             $table->text('description')->nullable();
 
             /*
@@ -28,11 +27,10 @@ return new class extends Migration
             | Classification
             |--------------------------------------------------------------------------
             */
-            $table->string('type')->nullable(); // TV, Movie, OVA...
-            $table->string('status')->nullable()->index(); // Ongoing, Completed
+            $table->string('type')->nullable()->index();
+            $table->string('status')->nullable()->index();
             $table->string('country')->nullable();
-
-            $table->string('season')->nullable(); // Winter, Spring...
+            $table->string('season')->nullable();
             $table->year('year')->nullable()->index();
 
             /*
@@ -42,9 +40,8 @@ return new class extends Migration
             */
             $table->decimal('rating', 3, 1)->nullable();
             $table->decimal('score', 4, 2)->nullable()->index();
-
-            $table->integer('episodes_count')->default(0);
-            $table->integer('duration')->nullable(); // minutes
+            $table->unsignedInteger('episodes_count')->default(0);
+            $table->unsignedInteger('duration')->nullable();
 
             /*
             |--------------------------------------------------------------------------
@@ -73,15 +70,15 @@ return new class extends Migration
 
             /*
             |--------------------------------------------------------------------------
-            | Features
+            | Featured Slider
             |--------------------------------------------------------------------------
             */
-            $table->boolean('featured')->default(false);
-            $table->integer('featured_order')->default(0)->index();
+            $table->boolean('featured')->default(false)->index();
+            $table->unsignedInteger('featured_order')->default(0)->index();
 
             /*
             |--------------------------------------------------------------------------
-            | Sync Tracking
+            | Jikan Sync
             |--------------------------------------------------------------------------
             */
             $table->timestamp('jikan_synced_at')->nullable();

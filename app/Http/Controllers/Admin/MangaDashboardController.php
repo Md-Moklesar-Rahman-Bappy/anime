@@ -12,59 +12,34 @@ use Illuminate\Support\Facades\Log;
 
 class MangaDashboardController extends Controller
 {
-    const TTL = 300;       // 5 minutes
-    const SHORT_TTL = 120; // 2 minutes
+    protected const TTL = 300;       // 5 minutes
+    protected const SHORT_TTL = 120; // 2 minutes
 
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
     public function index()
     {
         try {
-            // ✅ Main cached data
-            $data = Cache::remember('admin_manga_dashboard', self::TTL, function () {
+            $data = Cache::remember('manga.dashboard.main', self::TTL, function () {
 
-                $stats = [
-                    'totalManga' => Manga::count(),
-                    'totalChapters' => Chapter::count(),
-                    'totalUsers' => User::count(),
-                    'totalMangaViews' => Manga::sum('views'),
+                return [
+                    'stats' => $this->getStats(),
+                    'recentManga' => $this->getRecentManga(),
+                    'popularManga' => $this->getPopularManga(),
+                    'mangaByType' => $this->getMangaByType(),
+                    'mangaByStatus' => $this->getMangaByStatus(),
                 ];
-
-                $recentManga = Manga::with('genres')
-                    ->latest()
-                    ->take(5)
-                    ->get();
-
-                $popularManga = Manga::orderByDesc('views')
-                    ->take(5)
-                    ->get();
-
-                $mangaByType = Manga::select('type', DB::raw('COUNT(*) as count'))
-                    ->whereNotNull('type')
-                    ->groupBy('type')
-                    ->orderByDesc('count')
-                    ->pluck('count', 'type');
-
-                $mangaByStatus = Manga::select('status', DB::raw('COUNT(*) as count'))
-                    ->whereNotNull('status')
-                    ->groupBy('status')
-                    ->orderByDesc('count')
-                    ->pluck('count', 'status');
-
-                return compact(
-                    'stats',
-                    'recentManga',
-                    'popularManga',
-                    'mangaByType',
-                    'mangaByStatus'
-                );
             });
 
-            // ✅ Separate faster-changing data
             $recentChapters = Cache::remember(
-                'admin_manga_recent_chapters',
+                'manga.dashboard.chapters',
                 self::SHORT_TTL,
                 fn() => Chapter::with('manga:id,title,slug,thumbnail')
                     ->latest()
-                    ->take(5)
+                    ->limit(5)
                     ->get()
             );
 
@@ -79,5 +54,73 @@ class MangaDashboardController extends Controller
 
             return back()->with('error', 'Failed to load dashboard.');
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Stats
+    |--------------------------------------------------------------------------
+    */
+    protected function getStats(): array
+    {
+        return [
+            'totalManga' => Manga::count(),
+            'totalChapters' => Chapter::count(),
+            'totalUsers' => User::count(),
+            'totalViews' => Manga::sum('views') ?? 0,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Recent Manga
+    |--------------------------------------------------------------------------
+    */
+    protected function getRecentManga()
+    {
+        return Manga::with('genres:id,name')
+            ->latest()
+            ->limit(5)
+            ->get();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Popular Manga
+    |--------------------------------------------------------------------------
+    */
+    protected function getPopularManga()
+    {
+        return Manga::orderByDesc('views')
+            ->limit(5)
+            ->get();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Manga by Type (Chart Ready)
+    |--------------------------------------------------------------------------
+    */
+    protected function getMangaByType(): array
+    {
+        return Manga::select('type', DB::raw('COUNT(*) as count'))
+            ->whereNotNull('type')
+            ->groupBy('type')
+            ->pluck('count', 'type')
+            ->toArray();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Manga by Status (Chart Ready)
+    |--------------------------------------------------------------------------
+    */
+    protected function getMangaByStatus(): array
+    {
+        return Manga::select('status', DB::raw('COUNT(*) as count'))
+            ->whereNotNull('status')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
     }
 }

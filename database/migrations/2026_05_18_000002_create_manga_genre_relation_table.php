@@ -17,27 +17,18 @@ return new class extends Migration
             */
             $table->foreignId('manga_id')
                 ->constrained('manga')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
             $table->foreignId('manga_genre_id')
                 ->constrained('manga_genres')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
-            | Constraints
+            | Composite Primary Key
             |--------------------------------------------------------------------------
             */
-            $table->primary(['manga_id', 'manga_genre_id']); // ✅ prevent duplicates
-
-            /*
-            |--------------------------------------------------------------------------
-            | Optional (enable if needed)
-            |--------------------------------------------------------------------------
-            */
-            // $table->timestamps();
+            $table->primary(['manga_id', 'manga_genre_id']);
         });
     }
 

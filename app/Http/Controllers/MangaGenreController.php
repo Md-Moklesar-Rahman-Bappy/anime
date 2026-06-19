@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class MangaGenreController extends Controller
 {
-    public function __invoke(string $slug)
+    public function show(string $slug)
     {
         try {
             $cacheKey = "manga_genre_{$slug}";

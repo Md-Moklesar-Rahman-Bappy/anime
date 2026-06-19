@@ -18,21 +18,19 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->foreignId('anime_id')
                 ->constrained('anime')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
             | Constraints
             |--------------------------------------------------------------------------
             */
-            $table->unique(['user_id', 'anime_id']); // ✅ prevent duplicates
+            $table->unique(['user_id', 'anime_id']); // ✅ prevent duplicate favorites
 
             /*
             |--------------------------------------------------------------------------

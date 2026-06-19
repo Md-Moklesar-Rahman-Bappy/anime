@@ -3,20 +3,18 @@
 @section('title', 'DMCA')
 
 @section('content')
-<div class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+<div class="container" style="max-width:56rem;padding:3rem 1rem">
 
-    <!-- Header -->
-    <div class="text-center mb-8">
-        <h1 class="text-3xl font-semibold text-white">
+    <div class="text-center mb-4">
+        <h1 class="fw-semibold" style="color:#fff;font-size:1.75rem">
             DMCA Policy
         </h1>
-        <p class="text-gray-400 text-sm mt-2">
+        <p class="mt-2" style="color:#9ca3af;font-size:0.875rem">
             Copyright compliance and content removal
         </p>
     </div>
 
-    <!-- Content Card -->
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6 md:p-8 space-y-5 text-gray-400 leading-relaxed">
+    <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.5rem;color:#9ca3af;line-height:1.625" class="d-flex flex-column gap-3">
 
         <p>
             AniWaves respects the intellectual property rights of others and complies with applicable copyright laws.
@@ -30,7 +28,7 @@
             To process your claim efficiently, please provide:
         </p>
 
-        <ul class="list-disc list-inside space-y-1">
+        <ul style="list-style:disc;padding-left:1.5rem" class="d-flex flex-column gap-1">
             <li>Your full name and contact information</li>
             <li>A description of the copyrighted work</li>
             <li>The exact URL(s) of the infringing content</li>
@@ -41,15 +39,15 @@
             Send all DMCA notices to:
         </p>
 
-        <div class="flex items-center gap-2 pt-1">
-            <span class="text-indigo-400">✉</span>
+        <div class="d-flex align-items-center gap-1 pt-1">
+            <span style="color:#818cf8">✉</span>
             <a href="mailto:contact@aniwaves.ru"
-               class="text-indigo-400 hover:text-indigo-300 font-medium transition">
+               style="color:#818cf8;font-weight:500">
                 contact@aniwaves.ru
             </a>
         </div>
 
-        <p class="text-sm text-gray-500 pt-2">
+        <p class="pt-1" style="color:#6b7280;font-size:0.875rem">
             We take all reports seriously and will take appropriate action when necessary.
         </p>
 

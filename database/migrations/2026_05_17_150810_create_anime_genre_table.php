@@ -6,13 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('anime_genre', function (Blueprint $table) {
-
             /*
             |--------------------------------------------------------------------------
             | Foreign Keys
@@ -32,27 +28,9 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->primary(['anime_id', 'genre_id']);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Indexes (IMPORTANT FOR PERFORMANCE)
-            |--------------------------------------------------------------------------
-            */
-            $table->index('anime_id');
-            $table->index('genre_id');
-
-            /*
-            |--------------------------------------------------------------------------
-            | Optional (enable if using withTimestamps)
-            |--------------------------------------------------------------------------
-            */
-            // $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('anime_genre');

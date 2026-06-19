@@ -3,39 +3,37 @@
 @section('title', 'My Anime List')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
 
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h1 class="text-2xl font-semibold text-white">My Anime List</h1>
-            <p class="text-sm text-gray-400 mt-1">
+            <h1 class="fw-semibold" style="color:#fff;font-size:1.5rem">My Anime List</h1>
+            <p class="mt-1" style="color:#9ca3af;font-size:0.875rem">
                 Manage your favorites and watch progress
             </p>
         </div>
 
-        <span class="text-sm text-gray-500">
+        <span style="color:#6b7280;font-size:0.875rem">
             {{ $favorites->total() }} items
         </span>
     </div>
 
-    <!-- Categories -->
-    <div class="flex flex-wrap gap-2 mb-6">
+    <div class="d-flex flex-wrap gap-2 mb-3">
 
         <a href="{{ route('favorites.my-list') }}"
-           class="tab {{ !$activeCategory ? 'active' : '' }}">
+           class="btn btn-sm" style="{{ !$activeCategory ? 'background:#4f46e5;color:#fff' : 'background:#1f2937;color:#9ca3af' }}border-radius:0.5rem;font-weight:500">
             All
         </a>
 
         @foreach($categories as $key => $label)
         <a href="{{ route('favorites.my-list', ['category'=>$key]) }}"
-           class="tab {{ $activeCategory === $key ? 'active' : '' }}">
+           class="btn btn-sm" style="{{ $activeCategory === $key ? 'background:#4f46e5;color:#fff' : 'background:#1f2937;color:#9ca3af' }}border-radius:0.5rem;font-weight:500">
             {{ $label }}
         </a>
         @endforeach
 
         <a href="{{ route('favorites.my-list', ['category'=>'favorites']) }}"
-           class="tab {{ $activeCategory === 'favorites' ? 'active' : '' }}">
+           class="btn btn-sm" style="{{ $activeCategory === 'favorites' ? 'background:#4f46e5;color:#fff' : 'background:#1f2937;color:#9ca3af' }}border-radius:0.5rem;font-weight:500">
             Favorites
         </a>
 
@@ -43,71 +41,67 @@
 
     @if($favorites->count())
 
-    <!-- Grid Layout -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3">
 
         @foreach($favorites as $fav)
-        <div class="anime-card">
+        <div class="col">
 
-            <a href="{{ route('anime.detail', $fav->anime->slug) }}" class="group block">
+            <a href="{{ route('anime.detail', $fav->anime->slug) }}" class="text-decoration-none d-block">
 
-                <!-- Image -->
-                <img
-                    src="{{ $fav->anime->thumbnail_url }}"
-                    alt="{{ $fav->anime->title }}"
-                    class="anime-img"
-                    loading="lazy"
-                >
+                <div style="position:relative;border-radius:0.75rem;overflow:hidden">
 
-                <!-- Overlay -->
-                <div class="anime-overlay">
-                    ▶ View
+                    <img
+                        src="{{ $fav->anime->thumbnail_url }}"
+                        alt="{{ $fav->anime->title }}"
+                        style="width:100%;height:240px;object-fit:cover;border-radius:0.75rem;transition:transform 0.3s"
+                        loading="lazy"
+                    >
+
+                    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;opacity:0;color:#fff;font-size:0.875rem;transition:opacity 0.3s">
+                        ▶ View
+                    </div>
+
+                    <span style="position:absolute;top:0.5rem;right:0.5rem;font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:0.25rem;color:#fff;{{ $fav->category === 'watching' ? 'background:#2563eb' : ($fav->category === 'completed' ? 'background:#16a34a' : ($fav->category === 'plan_to_watch' ? 'background:#eab308' : ($fav->category === 'on_hold' ? 'background:#f97316' : ($fav->category === 'dropped' ? 'background:#dc2626' : 'background:#4f46e5')))) }}">
+                        {{ $fav->category ? ($categories[$fav->category] ?? $fav->category) : 'Favorites' }}
+                    </span>
+
                 </div>
 
-                <!-- Category Badge -->
-                <span class="status-badge {{ $fav->category }}">
-                    {{ $fav->category ? ($categories[$fav->category] ?? $fav->category) : 'Favorites' }}
-                </span>
+                <h3 style="color:#d1d5db;font-size:0.875rem;margin-top:0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    {{ $fav->anime->title }}
+                </h3>
+
+                <div style="color:#6b7280;font-size:0.75rem;margin-top:0.25rem">
+                    {{ $fav->anime->type ?? 'N/A' }} · {{ $fav->anime->episodes_count ?? '?' }} eps
+                </div>
 
             </a>
-
-            <!-- Title -->
-            <h3 class="anime-title">
-                {{ $fav->anime->title }}
-            </h3>
-
-            <!-- Meta -->
-            <div class="anime-meta">
-                {{ $fav->anime->type ?? 'N/A' }} · {{ $fav->anime->episodes_count ?? '?' }} eps
-            </div>
 
         </div>
         @endforeach
 
     </div>
 
-    <!-- Pagination -->
-    <div class="mt-8">
+    <div class="mt-4">
         {{ $favorites->links() }}
     </div>
 
     @else
 
-    <!-- Empty State -->
-    <div class="text-center py-20">
+    <div class="text-center py-5">
 
-        <div class="text-5xl mb-4">📺</div>
+        <div style="font-size:3rem;margin-bottom:1rem">📺</div>
 
-        <p class="text-lg text-gray-400">
+        <p style="color:#9ca3af;font-size:1.125rem">
             Your list is empty
         </p>
 
-        <p class="text-sm text-gray-500 mt-2">
+        <p class="mt-2" style="color:#6b7280;font-size:0.875rem">
             Start adding anime to track your progress
         </p>
 
         <a href="{{ route('home') }}"
-           class="inline-block mt-4 bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-lg text-white">
+           class="btn mt-3" style="background:#4f46e5;color:#fff">
             Browse Anime
         </a>
 
@@ -116,45 +110,4 @@
     @endif
 
 </div>
-
-<style>
-.tab {
-    @apply px-4 py-2 rounded-lg text-sm font-medium bg-[#1f2937] text-gray-400 hover:text-white hover:bg-[#2b3545] transition;
-}
-.tab.active {
-    @apply bg-indigo-600 text-white;
-}
-
-/* Card */
-.anime-card {
-    @apply rounded-xl overflow-hidden;
-}
-
-.anime-img {
-    @apply w-full h-[240px] object-cover rounded-xl group-hover:scale-105 transition duration-300;
-}
-
-.anime-overlay {
-    @apply absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white text-sm;
-}
-
-.anime-title {
-    @apply text-sm text-gray-300 mt-2 truncate group-hover:text-white;
-}
-
-.anime-meta {
-    @apply text-xs text-gray-500 mt-1;
-}
-
-/* Status Colors */
-.status-badge {
-    @apply absolute top-2 right-2 text-xs px-2 py-1 rounded;
-}
-.status-badge.watching { @apply bg-blue-600; }
-.status-badge.completed { @apply bg-green-600; }
-.status-badge.plan_to_watch { @apply bg-yellow-500; }
-.status-badge.on_hold { @apply bg-orange-500; }
-.status-badge.dropped { @apply bg-red-600; }
-.status-badge.favorites { @apply bg-indigo-600; }
-</style>
 @endsection

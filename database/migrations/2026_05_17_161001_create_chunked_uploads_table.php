@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -18,14 +17,12 @@ return new class extends Migration
             | Upload Identity
             |--------------------------------------------------------------------------
             */
-            $table->uuid('upload_id')
-                ->unique()
-                ->default(Str::uuid());
+            $table->uuid('upload_id')->unique();
 
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->nullable()
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
@@ -36,22 +33,22 @@ return new class extends Migration
             $table->string('mime_type')->nullable();
 
             $table->unsignedBigInteger('total_size');
-            $table->integer('chunk_size');
-            $table->integer('total_chunks');
+            $table->unsignedInteger('chunk_size');
+            $table->unsignedInteger('total_chunks');
 
             /*
             |--------------------------------------------------------------------------
-            | Upload Progress
+            | Progress
             |--------------------------------------------------------------------------
             */
-            $table->integer('received_chunks')->default(0);
+            $table->unsignedInteger('received_chunks')->default(0);
 
             /*
             |--------------------------------------------------------------------------
             | Storage
             |--------------------------------------------------------------------------
             */
-            $table->text('temp_dir'); // safe for long paths
+            $table->text('temp_dir'); // chunk temp folder
             $table->string('final_path')->nullable();
 
             /*
@@ -61,16 +58,7 @@ return new class extends Migration
             */
             $table->string('status')
                 ->default('uploading')
-                ->index();
-            // uploading / completed / failed
-
-            /*
-            |--------------------------------------------------------------------------
-            | Indexing
-            |--------------------------------------------------------------------------
-            */
-            $table->index(['user_id', 'status']);
-            $table->index('created_at');
+                ->index(); // uploading / assembling / completed / failed
 
             /*
             |--------------------------------------------------------------------------
@@ -78,6 +66,14 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->timestamps();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['user_id', 'status']);
+            $table->index('created_at');
         });
     }
 

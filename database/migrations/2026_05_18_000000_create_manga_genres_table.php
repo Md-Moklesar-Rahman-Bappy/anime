@@ -9,12 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('manga_genres', function (Blueprint $table) {
-
             $table->id();
 
             /*
             |--------------------------------------------------------------------------
-            | External API (optional future use)
+            | External API Reference
             |--------------------------------------------------------------------------
             */
             $table->unsignedBigInteger('mal_id')

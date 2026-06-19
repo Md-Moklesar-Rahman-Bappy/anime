@@ -3,85 +3,85 @@
 @section('title', $title)
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
 
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-            <h1 class="text-2xl font-semibold text-white">
+            <h1 class="fw-semibold" style="color:#fff;font-size:1.5rem">
                 {{ $title }}
             </h1>
-            <p class="text-sm text-gray-400 mt-1">
+            <p class="mt-1" style="color:#9ca3af;font-size:0.875rem">
                 {{ $animeList->total() }} results
             </p>
         </div>
     </div>
 
-    <div x-data="{ filterOpen:false }" class="flex gap-6">
+    <div x-data="{ filterOpen:false }" class="d-flex gap-3">
 
-        <!-- MOBILE FILTER BUTTON -->
         <button @click="filterOpen = true"
-            class="lg:hidden fixed bottom-5 right-5 bg-indigo-600 w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg z-50">
+            class="d-lg-none position-fixed bottom-0 end-0 mb-4 me-3 btn d-flex align-items-center justify-content-center"
+            style="width:3rem;height:3rem;border-radius:50%;background:#4f46e5;color:#fff;z-index:1050;box-shadow:0 4px 6px rgba(0,0,0,0.3)">
             ⚙
         </button>
 
-        <!-- OVERLAY -->
         <div x-show="filterOpen" x-cloak
-             class="fixed inset-0 bg-black/60 z-40 lg:hidden"
+             class="position-fixed top-0 start-0 end-0 bottom-0 d-lg-none"
+             style="background:rgba(0,0,0,0.6);z-index:1040"
              @click="filterOpen=false"></div>
 
-        <!-- FILTER SIDEBAR -->
-        <aside class="w-72 shrink-0 hidden lg:block"
-               :class="{'!block fixed inset-0 z-50 w-full': filterOpen}">
+        <aside style="width:18rem;flex-shrink:0" class="d-none d-lg-block"
+               :class="filterOpen ? 'd-block position-fixed top-0 start-0 bottom-0 w-100' : ''"
+               :style="filterOpen ? 'z-index:1050;overflow-y:auto' : ''">
 
-            <div class="bg-[#111827] border border-gray-800 rounded-2xl p-5 h-full lg:h-auto overflow-y-auto">
+            <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.25rem;height:100%;overflow-y:auto">
 
-                <div class="flex justify-between items-center mb-4">
-                    <span class="text-sm font-semibold text-gray-300">Filters</span>
-                    <button @click="filterOpen=false" class="lg:hidden">✕</button>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="fw-semibold" style="color:#d1d5db;font-size:0.875rem">Filters</span>
+                    <button @click="filterOpen=false" class="d-lg-none btn btn-sm" style="background:none;border:none;color:#fff">✕</button>
                 </div>
 
                 <form action="{{ route('filter') }}" method="GET">
 
-                    <!-- GENRES -->
-                    <div class="filter-section">
-                        <div class="filter-label">Genres</div>
+                    <div style="border-bottom:1px solid #374151;padding-bottom:1rem;margin-bottom:1rem">
+                        <div style="font-size:0.75rem;font-weight:600;color:#6b7280;text-transform:uppercase;margin-bottom:0.75rem">Genres</div>
 
-                        <div class="grid grid-cols-3 gap-2">
+                        <div class="row row-cols-3 g-1">
                             @foreach($genres as $genre)
-                            <label class="filter-tag {{ in_array($genre->slug, (array)request('genres')) ? 'active' : '' }}">
+                            <div class="col">
+                            <label style="display:inline-block;padding:0.25rem 0.75rem;font-size:0.75rem;border-radius:0.5rem;border:1px solid #374151;cursor:pointer;{{ in_array($genre->slug, (array)request('genres')) ? 'background:#4f46e5;border-color:#6366f1;color:#fff' : 'color:#9ca3af' }}"
+                                   class="{{ in_array($genre->slug, (array)request('genres')) ? '' : '' }}">
                                 <input type="checkbox" name="genres[]" value="{{ $genre->slug }}"
                                        {{ in_array($genre->slug, (array)request('genres')) ? 'checked' : '' }}
-                                       class="hidden" onchange="this.form.submit()">
+                                       class="d-none" onchange="this.form.submit()">
                                 {{ $genre->name }}
                             </label>
+                            </div>
                             @endforeach
                         </div>
                     </div>
 
-                    <!-- TYPE -->
-                    <div class="filter-section">
-                        <div class="filter-label">Type</div>
+                    <div style="border-bottom:1px solid #374151;padding-bottom:1rem;margin-bottom:1rem">
+                        <div style="font-size:0.75rem;font-weight:600;color:#6b7280;text-transform:uppercase;margin-bottom:0.75rem">Type</div>
 
-                        <div class="flex flex-wrap gap-2">
+                        <div class="d-flex flex-wrap gap-1">
                             @foreach(['TV','Movie','OVA','ONA'] as $type)
-                            <label class="filter-tag {{ request('type') === $type ? 'active' : '' }}">
+                            <label style="display:inline-block;padding:0.25rem 0.75rem;font-size:0.75rem;border-radius:0.5rem;border:1px solid #374151;cursor:pointer;{{ request('type') === $type ? 'background:#4f46e5;border-color:#6366f1;color:#fff' : 'color:#9ca3af' }}">
                                 <input type="radio" name="type" value="{{ $type }}"
                                        {{ request('type') === $type ? 'checked' : '' }}
-                                       class="hidden" onchange="this.form.submit()">
+                                       class="d-none" onchange="this.form.submit()">
                                 {{ $type }}
                             </label>
                             @endforeach
                         </div>
                     </div>
 
-                    <!-- SORT -->
-                    <div class="filter-section">
-                        <div class="filter-label">Sort</div>
+                    <div style="border-bottom:1px solid #374151;padding-bottom:1rem;margin-bottom:1rem">
+                        <div style="font-size:0.75rem;font-weight:600;color:#6b7280;text-transform:uppercase;margin-bottom:0.75rem">Sort</div>
 
                         <select name="sort"
                             onchange="this.form.submit()"
-                            class="w-full bg-[#1f2937] border border-gray-700 text-white rounded-lg p-2 text-sm">
+                            class="form-select"
+                            style="background:#1f2937;border-color:#374151;color:#fff;font-size:0.875rem">
                             <option value="">Latest</option>
                             <option value="views" @selected(request('sort')==='views')>Popular</option>
                             <option value="score" @selected(request('sort')==='score')>Score</option>
@@ -92,52 +92,55 @@
             </div>
         </aside>
 
-        <!-- CONTENT -->
-        <div class="flex-1 min-w-0">
+        <div style="flex:1;min-width:0">
 
-            <!-- GRID -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3">
 
                 @forelse($animeList as $anime)
 
-                <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
+                <div class="col">
+                <a href="{{ route('anime.detail', $anime->slug) }}" class="text-decoration-none group">
 
-                    <div class="anime-card">
+                    <div style="position:relative;border-radius:0.75rem;overflow:hidden;background:#111827;aspect-ratio:2/3">
 
                         {{ $anime->thumbnail_url }}
 
-                        <!-- Overlay -->
-                        <div class="anime-overlay">
+                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);opacity:0;color:#fff;font-size:0.875rem;transition:opacity 0.3s;z-index:2">
                             ▶ View
                         </div>
 
-                        <!-- Meta -->
-                        <span class="anime-type">{{ $anime->type }}</span>
+                        <span style="position:absolute;top:0.5rem;left:0.5rem;background:rgba(0,0,0,0.7);color:#fff;font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:0.25rem;z-index:1">
+                            {{ $anime->type }}
+                        </span>
 
                         @if($anime->episodes_count)
-                        <span class="anime-ep">{{ $anime->episodes_count }}</span>
+                        <span style="position:absolute;top:0.5rem;right:0.5rem;background:#4f46e5;color:#fff;font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:0.25rem;z-index:1">
+                            {{ $anime->episodes_count }}
+                        </span>
                         @endif
 
                     </div>
 
-                    <h3 class="anime-title">{{ $anime->title }}</h3>
+                    <h3 style="color:#d1d5db;font-size:0.875rem;margin-top:0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                        {{ $anime->title }}
+                    </h3>
 
-                    <div class="anime-score">
+                    <div style="color:#6b7280;font-size:0.75rem;margin-top:0.25rem">
                         ⭐ {{ $anime->score ?? 'N/A' }}
                     </div>
 
                 </a>
+                </div>
 
                 @empty
-                <div class="col-span-full text-center text-gray-500 py-12">
+                <div class="col-12 text-center py-5" style="color:#6b7280">
                     No anime found
                 </div>
                 @endforelse
 
             </div>
 
-            <!-- PAGINATION -->
-            <div class="mt-8">
+            <div class="mt-4">
                 {{ $animeList->links() }}
             </div>
 
@@ -145,36 +148,4 @@
 
     </div>
 </div>
-
-<style>
-.filter-section { @apply border-b border-gray-800 pb-4 mb-4; }
-.filter-label { @apply text-xs font-semibold text-gray-500 uppercase mb-3; }
-
-.filter-tag {
-    @apply px-3 py-1 text-xs rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-indigo-500 cursor-pointer transition;
-}
-.filter-tag.active {
-    @apply bg-indigo-600 border-indigo-500 text-white;
-}
-
-.anime-card {
-    @apply relative rounded-xl overflow-hidden bg-[#111827] aspect-[2/3];
-}
-.anime-overlay {
-    @apply absolute inset-0 flex items-center justify-center bg-black/70 opacity-0 group-hover:opacity-100 text-white text-sm transition;
-}
-.anime-type {
-    @apply absolute top-2 left-2 bg-black/70 text-xs px-2 py-1 rounded;
-}
-.anime-ep {
-    @apply absolute top-2 right-2 bg-indigo-600 text-xs px-2 py-1 rounded;
-}
-.anime-title {
-    @apply text-sm text-gray-300 mt-2 truncate group-hover:text-white;
-}
-.anime-score {
-    @apply text-xs text-gray-500 mt-1;
-}
-</style>
-
 @endsection

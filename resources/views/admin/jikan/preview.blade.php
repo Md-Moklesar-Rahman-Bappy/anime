@@ -1,121 +1,89 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="max-w-5xl mx-auto">
+<div class="container" style="max-width:1100px">
 
-    <!-- Back -->
     <a href="{{ route('admin.jikan.search') }}"
-       class="text-indigo-400 hover:text-indigo-300 text-sm mb-4 inline-block transition">
+       class="small mb-3 d-inline-block" style="color:#818cf8">
         ← Back to search
     </a>
 
-    <!-- Anime Card -->
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden mb-6 shadow">
-
-        <div class="flex flex-col md:flex-row">
-
+    <div class="card mb-4" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
+        <div class="row g-0">
             @if($anime['thumbnail'])
-            <div class="md:w-64 flex-shrink-0">
-                <img src="{{ $anime['thumbnail'] }}"
-                     class="w-full h-full object-cover">
+            <div class="col-md-4 col-lg-3">
+                <img src="{{ $anime['thumbnail'] }}" style="width:100%;height:100%;object-fit:cover">
             </div>
             @endif
+            <div class="col p-4">
+                <h1 class="h4 fw-semibold text-white mb-2">{{ $anime['title'] }}</h1>
 
-            <div class="p-6 flex-1">
-
-                <h1 class="text-2xl font-semibold text-white mb-2">
-                    {{ $anime['title'] }}
-                </h1>
-
-                <!-- Genres -->
-                <div class="flex flex-wrap gap-2 mb-4">
+                <div class="d-flex flex-wrap gap-2 mb-3">
                     @foreach($anime['genres'] as $genre)
-                        <span class="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-1 rounded-lg">
-                            {{ $genre['name'] }}
-                        </span>
+                        <span class="badge rounded-1 fw-normal" style="background:rgba(99,102,241,0.1);color:#818cf8;font-size:0.75rem">{{ $genre['name'] }}</span>
                     @endforeach
                 </div>
 
-                <!-- Info -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
-
-                    <div><span class="text-gray-500 block">Type</span><span class="text-gray-300">{{ $anime['type'] ?: '-' }}</span></div>
-                    <div><span class="text-gray-500 block">Status</span><span class="text-gray-300">{{ $anime['status'] ?: '-' }}</span></div>
-                    <div><span class="text-gray-500 block">Episodes</span><span class="text-gray-300">{{ $anime['episodes_count'] ?: '?' }}</span></div>
-                    <div><span class="text-gray-500 block">Score</span><span class="text-gray-300">{{ $anime['score'] ?: '-' }}</span></div>
-                    <div><span class="text-gray-500 block">Season</span><span class="text-gray-300">{{ $anime['season'] ? "{$anime['season']} {$anime['year']}" : '-' }}</span></div>
-                    <div><span class="text-gray-500 block">Studio</span><span class="text-gray-300">{{ $anime['studio'] ?: '-' }}</span></div>
-                    <div><span class="text-gray-500 block">Duration</span><span class="text-gray-300">{{ $anime['duration'] ? "{$anime['duration']} min" : '-' }}</span></div>
-                    <div><span class="text-gray-500 block">Source</span><span class="text-gray-300">{{ $anime['source'] ?: '-' }}</span></div>
-
+                <div class="row row-cols-2 row-cols-md-4 g-3 small mb-3">
+                    <div><span class="d-block" style="color:#6b7280">Type</span><span style="color:#d1d5db">{{ $anime['type'] ?: '-' }}</span></div>
+                    <div><span class="d-block" style="color:#6b7280">Status</span><span style="color:#d1d5db">{{ $anime['status'] ?: '-' }}</span></div>
+                    <div><span class="d-block" style="color:#6b7280">Episodes</span><span style="color:#d1d5db">{{ $anime['episodes_count'] ?: '?' }}</span></div>
+                    <div><span class="d-block" style="color:#6b7280">Score</span><span style="color:#d1d5db">{{ $anime['score'] ?: '-' }}</span></div>
+                    <div><span class="d-block" style="color:#6b7280">Season</span><span style="color:#d1d5db">{{ $anime['season'] ? "{$anime['season']} {$anime['year']}" : '-' }}</span></div>
+                    <div><span class="d-block" style="color:#6b7280">Studio</span><span style="color:#d1d5db">{{ $anime['studio'] ?: '-' }}</span></div>
+                    <div><span class="d-block" style="color:#6b7280">Duration</span><span style="color:#d1d5db">{{ $anime['duration'] ? "{$anime['duration']} min" : '-' }}</span></div>
+                    <div><span class="d-block" style="color:#6b7280">Source</span><span style="color:#d1d5db">{{ $anime['source'] ?: '-' }}</span></div>
                 </div>
 
                 @if($anime['description'])
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    {{ $anime['description'] }}
-                </p>
+                <p class="small" style="color:#9ca3af;line-height:1.7">{{ $anime['description'] }}</p>
                 @endif
-
             </div>
         </div>
     </div>
 
-    <!-- Episodes -->
     @if(count($episodes) > 0)
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden mb-6">
-
-        <div class="px-6 py-4 border-b border-gray-800">
-            <h2 class="text-lg font-medium text-white">
-                Episodes ({{ count($episodes) }})
-            </h2>
+    <div class="card mb-4" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
+        <div class="p-3" style="border-bottom:1px solid #374151">
+            <h2 class="h5 fw-medium text-white">Episodes ({{ count($episodes) }})</h2>
         </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-
+        <div class="table-responsive">
+            <table class="table table-dark table-borderless mb-0 align-middle">
                 <thead>
-                    <tr class="bg-[#0f172a] text-gray-400 border-b border-gray-800">
-                        <th class="p-3 text-left">#</th>
-                        <th class="p-3 text-left">Title</th>
-                        <th class="p-3 text-left">Aired</th>
-                        <th class="p-3 text-left">Duration</th>
+                    <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
+                        <th class="p-3 text-start">#</th>
+                        <th class="p-3 text-start">Title</th>
+                        <th class="p-3 text-start">Aired</th>
+                        <th class="p-3 text-start">Duration</th>
                     </tr>
                 </thead>
-
                 <tbody>
                     @foreach($episodes as $ep)
-                    <tr class="border-b border-gray-800 hover:bg-[#1f2937] transition">
+                    <tr style="border-bottom:1px solid #374151">
                         <td class="p-3 text-white">{{ $ep['number'] }}</td>
-                        <td class="p-3 text-gray-300">{{ $ep['title'] ?: 'Episode '.$ep['number'] }}</td>
-                        <td class="p-3 text-gray-400">{{ $ep['air_date'] ?: '-' }}</td>
-                        <td class="p-3 text-gray-400">{{ $ep['duration'] ? "{$ep['duration']} min" : '-' }}</td>
+                        <td class="p-3" style="color:#d1d5db">{{ $ep['title'] ?: 'Episode '.$ep['number'] }}</td>
+                        <td class="p-3" style="color:#9ca3af">{{ $ep['air_date'] ?: '-' }}</td>
+                        <td class="p-3" style="color:#9ca3af">{{ $ep['duration'] ? "{$ep['duration']} min" : '-' }}</td>
                     </tr>
                     @endforeach
                 </tbody>
-
             </table>
         </div>
     </div>
     @endif
 
-    <!-- Import -->
-    <div class="flex items-center justify-between gap-4">
-
+    <div class="d-flex align-items-center justify-content-between gap-3">
         <form action="{{ route('admin.jikan.import', $anime['mal_id']) }}" method="POST">
             @csrf
-
             <button type="submit"
-                class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-lg font-medium transition"
+                class="btn btn-lg" style="background:#4f46e5;color:#fff;font-weight:500"
                 onclick="return confirm('{{ $alreadyImported ? 'Re-import (update)' : 'Import' }} {{ $anime['title'] }}?')">
-
                 {{ $alreadyImported ? 'Re-import (Update)' : 'Import Anime' }}
             </button>
         </form>
-
-        <span class="text-sm text-gray-500">
+        <span class="small" style="color:#6b7280">
             MAL ID: {{ $anime['mal_id'] }} • {{ count($episodes) }} episodes
         </span>
-
     </div>
 
 </div>

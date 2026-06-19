@@ -15,8 +15,10 @@ class StaticController extends Controller
         'terms',
     ];
 
-    public function show(string $page): View
+    public function show(): View
     {
+        $page = request()->route()->getName();
+
         try {
             // ✅ Validate allowed pages
             if (!in_array($page, $this->allowedPages)) {

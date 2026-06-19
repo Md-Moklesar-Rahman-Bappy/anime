@@ -11,25 +11,49 @@ use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Index (List + Filters)
+    |--------------------------------------------------------------------------
+    */
     public function index(Request $request)
     {
-        $query = Report::with(['episode.anime', 'user'])
-            ->latest();
+        try {
+            $query = Report::with([
+                'episode.anime:id,title,slug',
+                'user:id,name'
+            ])
+                ->latest();
 
-        // ✅ Optional filtering
-        if ($status = $request->input('status')) {
-            $query->where('status', $status);
+            // ✅ Filter by status
+            if ($status = $request->input('status')) {
+                $query->where('status', $status);
+            }
+
+            // ✅ Filter by issue type
+            if ($type = $request->input('type')) {
+                $query->where('issue_type', $type);
+            }
+
+            $reports = $query
+                ->paginate(20)
+                ->withQueryString();
+
+            return view('admin.reports.index', compact('reports'));
+        } catch (\Throwable $e) {
+            Log::error('Report index failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to load reports.');
         }
-
-        if ($type = $request->input('type')) {
-            $query->where('issue_type', $type);
-        }
-
-        $reports = $query->paginate(20);
-
-        return view('admin.reports.index', compact('reports'));
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Update Report Status
+    |--------------------------------------------------------------------------
+    */
     public function update(UpdateReportRequest $request, Report $report)
     {
         try {
@@ -37,8 +61,11 @@ class ReportController extends Controller
                 'status' => $request->status,
             ]);
 
-            if ($request->wantsJson()) {
-                return response()->json(['success' => true]);
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Report updated successfully.',
+                ]);
             }
 
             return back()->with('success', 'Report updated.');
@@ -52,6 +79,11 @@ class ReportController extends Controller
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Store Report (Frontend)
+    |--------------------------------------------------------------------------
+    */
     public function store(StoreReportRequest $request)
     {
         try {
@@ -70,7 +102,10 @@ class ReportController extends Controller
                 'status' => 'pending',
             ]);
 
-            return response()->json(['status' => 'ok']);
+            return response()->json([
+                'status' => 'ok',
+                'message' => 'Report submitted successfully.',
+            ]);
         } catch (\Throwable $e) {
             Log::error('Report submission failed', [
                 'episode_id' => $request->episode_id,

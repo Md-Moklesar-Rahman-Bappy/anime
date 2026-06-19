@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('settings', function (Blueprint $table) {
@@ -20,8 +17,7 @@ return new class extends Migration
             | Core Key-Value
             |--------------------------------------------------------------------------
             */
-            $table->string('key')->unique()->index();
-
+            $table->string('key')->unique(); // ✅ unique already indexed
             $table->longText('value')->nullable();
 
             /*
@@ -29,11 +25,8 @@ return new class extends Migration
             | Metadata
             |--------------------------------------------------------------------------
             */
-            $table->string('type')->default('string');
-            // string, boolean, json, number
-
-            $table->string('group')->nullable()->index();
-            // general, seo, branding, streaming
+            $table->string('type')->default('string'); // string, boolean, json
+            $table->string('group')->nullable()->index(); // general, seo, etc
 
             /*
             |--------------------------------------------------------------------------
@@ -41,7 +34,6 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->boolean('autoload')->default(true);
-            // load automatically in AppLayout
 
             /*
             |--------------------------------------------------------------------------
@@ -52,9 +44,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('settings');

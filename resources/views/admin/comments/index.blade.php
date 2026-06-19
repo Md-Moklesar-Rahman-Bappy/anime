@@ -1,112 +1,70 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="container-fluid px-4">
 
-    <h1 class="text-2xl font-semibold text-white mb-6">
-        Comments
-    </h1>
+    <h1 class="h4 fw-semibold text-white mb-3">Comments</h1>
 
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl shadow overflow-hidden">
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-
+    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
+        <div class="table-responsive">
+            <table class="table table-dark table-borderless mb-0 align-middle">
                 <thead>
-                    <tr class="bg-[#0f172a] text-gray-400 border-b border-gray-800 text-left">
-                        <th class="p-3">User</th>
-                        <th class="p-3">Type</th>
-                        <th class="p-3">On</th>
-                        <th class="p-3">Comment</th>
-                        <th class="p-3">Date</th>
-                        <th class="p-3">Actions</th>
+                    <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
+                        <th class="p-3 text-start">User</th>
+                        <th class="p-3 text-start">Type</th>
+                        <th class="p-3 text-start">On</th>
+                        <th class="p-3 text-start">Comment</th>
+                        <th class="p-3 text-start">Date</th>
+                        <th class="p-3 text-start">Actions</th>
                     </tr>
                 </thead>
-
                 <tbody>
                     @forelse($comments as $comment)
-                    <tr class="border-b border-gray-800 hover:bg-[#1f2937] transition">
-
-                        <!-- User -->
-                        <td class="p-3 text-white">
-                            {{ $comment->user_name }}
-                        </td>
-
-                        <!-- Type -->
+                    <tr style="border-bottom:1px solid #374151">
+                        <td class="p-3 text-white">{{ $comment->user_name }}</td>
                         <td class="p-3">
                             @if($comment->type === 'anime')
-                                <span class="text-indigo-400 text-xs font-medium">Anime</span>
+                                <span class="small fw-medium" style="color:#818cf8">Anime</span>
                             @else
-                                <span class="text-emerald-400 text-xs font-medium">Manga</span>
+                                <span class="small fw-medium" style="color:#34d399">Manga</span>
                             @endif
                         </td>
-
-                        <!-- Source -->
                         <td class="p-3">
-                            <a href="{{ $comment->source_url }}"
-                               target="_blank"
-                               class="text-indigo-400 hover:text-indigo-300 transition">
-                                {{ $comment->source }}
-                            </a>
-                            <div class="text-gray-500 text-xs">
-                                {{ $comment->episode }}
-                            </div>
+                            <a href="{{ $comment->source_url }}" target="_blank" style="color:#818cf8">{{ $comment->source }}</a>
+                            <div class="small" style="color:#6b7280">{{ $comment->episode }}</div>
                         </td>
-
-                        <!-- Comment -->
-                        <td class="p-3 text-gray-300 max-w-xs truncate">
-                            {{ $comment->body }}
-                        </td>
-
-                        <!-- Date -->
-                        <td class="p-3 text-gray-500 text-xs">
-                            {{ $comment->created_at->diffForHumans() }}
-                        </td>
-
-                        <!-- Actions -->
+                        <td class="p-3" style="color:#d1d5db;max-width:300px" class="text-truncate">{{ $comment->body }}</td>
+                        <td class="p-3 small" style="color:#6b7280">{{ $comment->created_at->diffForHumans() }}</td>
                         <td class="p-3">
                             @if($comment->type === 'anime')
-                                <form action="{{ route('admin.comments.destroy.anime', $comment->id) }}"
-                                      method="POST"
-                                      onsubmit="return confirm('Delete this comment?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="text-red-400 hover:text-red-300 text-xs transition">
-                                        Delete
-                                    </button>
-                                </form>
+                            <form action="{{ route('admin.comments.destroy-anime', $comment->id) }}"
+                                  method="POST" onsubmit="return confirm('Delete this comment?')">
+                                @csrf @method('DELETE')
+                                <button class="btn btn-sm border-0 p-0" style="color:#f87171">Delete</button>
+                            </form>
                             @else
-                                <form action="{{ route('admin.comments.destroy.manga', $comment->id) }}"
-                                      method="POST"
-                                      onsubmit="return confirm('Delete this comment?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="text-red-400 hover:text-red-300 text-xs transition">
-                                        Delete
-                                    </button>
-                                </form>
+                            <form action="{{ route('admin.comments.destroy-manga', $comment->id) }}"
+                                  method="POST" onsubmit="return confirm('Delete this comment?')">
+                                @csrf @method('DELETE')
+                                <button class="btn btn-sm border-0 p-0" style="color:#f87171">Delete</button>
+                            </form>
                             @endif
                         </td>
-
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="p-10 text-center text-gray-500">
-                            <p class="text-lg text-gray-300">No comments found</p>
-                            <p class="text-sm mt-1">User comments will appear here</p>
+                        <td colspan="6" class="p-5 text-center" style="color:#6b7280">
+                            <p class="h5" style="color:#d1d5db">No comments found</p>
+                            <p class="small mt-1">User comments will appear here</p>
                         </td>
                     </tr>
                     @endforelse
                 </tbody>
-
             </table>
         </div>
-
-        <!-- Pagination -->
-        <div class="p-4 border-t border-gray-800">
+        <div class="p-3" style="border-top:1px solid #374151">
             {{ $comments->links() }}
         </div>
-
     </div>
 </div>
 @endsection

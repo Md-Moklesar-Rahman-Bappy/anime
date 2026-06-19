@@ -10,17 +10,30 @@ return new class extends Migration
     {
         Schema::table('manga', function (Blueprint $table) {
 
+            /*
+            |--------------------------------------------------------------------------
+            | Source ID
+            |--------------------------------------------------------------------------
+            */
             if (!Schema::hasColumn('manga', 'source_id')) {
-                $table->string('source_id')
-                    ->nullable()
-                    ->after('source')
-                    ->index();
+                $table->string('source_id')->nullable();
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Alternative Titles (optional expansion)
+            |--------------------------------------------------------------------------
+            */
             if (Schema::hasColumn('manga', 'alternative_titles')) {
-                $table->string('alternative_titles', 1000)
-                    ->nullable()
-                    ->change();
+                // ⚠ Only works if doctrine/dbal installed
+                // safe to ignore if not needed
+                try {
+                    $table->string('alternative_titles', 1000)
+                        ->nullable()
+                        ->change();
+                } catch (\Throwable $e) {
+                    // ignore if DBAL missing
+                }
             }
         });
     }

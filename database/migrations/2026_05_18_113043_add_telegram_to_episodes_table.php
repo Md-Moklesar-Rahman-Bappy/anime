@@ -10,11 +10,13 @@ return new class extends Migration
     {
         Schema::table('episodes', function (Blueprint $table) {
 
+            /*
+            |--------------------------------------------------------------------------
+            | Telegram Message ID
+            |--------------------------------------------------------------------------
+            */
             if (!Schema::hasColumn('episodes', 'telegram_message_id')) {
-                $table->unsignedBigInteger('telegram_message_id')
-                    ->nullable()
-                    ->after('source_url')
-                    ->index();
+                $table->unsignedBigInteger('telegram_message_id')->nullable();
             }
         });
     }

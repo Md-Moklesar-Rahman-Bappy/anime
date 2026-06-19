@@ -72,7 +72,7 @@ class ImportAnimeJob implements ShouldQueue
     protected function storeAnime(array $data, $episodes, AnimeImportService $importer): ?Anime
     {
         try {
-            $genreIds = $importer->getGenreIdsUsingCache($data['genres'] ?? []);
+            $genreIds = $importer->syncGenres($data['genres'] ?? []);
 
             $anime = $importer->upsertAnime($data, $genreIds);
 

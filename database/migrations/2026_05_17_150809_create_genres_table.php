@@ -16,9 +16,7 @@ return new class extends Migration
             | External API Reference
             |--------------------------------------------------------------------------
             */
-            $table->unsignedBigInteger('mal_id')
-                ->nullable()
-                ->unique(); // ✅ avoid duplicates
+            $table->unsignedBigInteger('mal_id')->nullable()->unique();
 
             /*
             |--------------------------------------------------------------------------

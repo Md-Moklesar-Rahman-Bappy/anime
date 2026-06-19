@@ -11,9 +11,11 @@ use Illuminate\Support\Str;
 
 class UploadController extends Controller
 {
-    /**
-     * Start a new chunked upload session.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Initiate Chunked Upload
+    |--------------------------------------------------------------------------
+    */
     public function initiate(Request $request)
     {
         $data = $request->validate([
@@ -25,8 +27,17 @@ class UploadController extends Controller
 
         try {
             $filename = $this->sanitizeFilename($data['filename']);
+
             $totalChunks = (int) ceil($data['file_size'] / $data['chunk_size']);
-            $tempDir = 'chunks/' . uniqid('upload_', true) . '_' . time();
+
+            if ($totalChunks <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid upload size.',
+                ], 422);
+            }
+
+            $tempDir = 'chunks/' . Str::uuid()->toString();
 
             Storage::disk('local')->makeDirectory($tempDir);
 
@@ -44,10 +55,13 @@ class UploadController extends Controller
             ]);
 
             return response()->json([
-                'upload_id'    => $upload->id,
-                'total_chunks' => $totalChunks,
-                'chunk_size'   => $data['chunk_size'],
-                'status'       => $upload->status,
+                'success'       => true,
+                'upload_id'     => $upload->id,
+                'total_chunks'  => $totalChunks,
+                'chunk_size'    => $data['chunk_size'],
+                'status'        => $upload->status,
+                'received'      => $upload->received_chunks,
+                'progress'      => 0,
             ]);
         } catch (\Throwable $e) {
             Log::error('Chunk upload initiate failed', [
@@ -55,14 +69,17 @@ class UploadController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Failed to initiate upload.',
+                'success' => false,
+                'message' => 'Failed to initiate upload.',
             ], 500);
         }
     }
 
-    /**
-     * Receive a single chunk.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Receive Chunk
+    |--------------------------------------------------------------------------
+    */
     public function chunk(Request $request)
     {
         $data = $request->validate([
@@ -74,41 +91,58 @@ class UploadController extends Controller
         /** @var ChunkedUpload $upload */
         $upload = ChunkedUpload::findOrFail($data['upload_id']);
 
-        if ($upload->user_id !== auth()->id()) {
-            abort(403);
-        }
+        $this->authorizeUploadOwner($upload);
 
         if ($upload->status !== 'uploading') {
             return response()->json([
-                'error' => 'Upload is no longer accepting chunks.',
+                'success' => false,
+                'message' => 'Upload is no longer accepting chunks.',
+                'status' => $upload->status,
             ], 400);
         }
 
-        if ($data['chunk_index'] >= $upload->total_chunks) {
+        if ((int) $data['chunk_index'] >= (int) $upload->total_chunks) {
             return response()->json([
-                'error' => 'Invalid chunk index.',
+                'success' => false,
+                'message' => 'Invalid chunk index.',
             ], 422);
         }
 
         try {
             $chunkFile = $request->file('chunk');
 
-            // Extra size protection
             $maxExpectedChunkSize = (int) round($upload->chunk_size * 1.10);
+
             if ($chunkFile->getSize() > $maxExpectedChunkSize) {
                 return response()->json([
-                    'error' => 'Chunk size exceeds expected size.',
+                    'success' => false,
+                    'message' => 'Chunk size exceeds expected size.',
                 ], 400);
             }
 
-            $chunkName = 'chunk_' . str_pad((string) $data['chunk_index'], 6, '0', STR_PAD_LEFT);
+            $chunkName = $this->chunkFilename((int) $data['chunk_index']);
             $chunkPath = $upload->temp_dir . '/' . $chunkName;
 
-            // Prevent duplicate/replayed chunk uploads
+            /*
+            |--------------------------------------------------------------------------
+            | Duplicate Chunk Handling
+            |--------------------------------------------------------------------------
+            | If a chunk is already uploaded, return current progress instead of
+            | failing hard. This helps when frontend retries same chunk.
+            */
             if (Storage::disk('local')->exists($chunkPath)) {
                 return response()->json([
-                    'error' => 'Chunk already uploaded.',
-                ], 409);
+                    'success' => true,
+                    'message' => 'Chunk already uploaded.',
+                    'received_chunks' => $upload->received_chunks,
+                    'total_chunks' => $upload->total_chunks,
+                    'progress' => $this->progress($upload),
+                    'status' => $upload->status,
+                    'final_path' => $upload->status === 'completed' ? $upload->final_path : null,
+                    'final_url' => $upload->status === 'completed' && $upload->final_path
+                        ? asset('storage/' . $upload->final_path)
+                        : null,
+                ]);
             }
 
             $chunkFile->storeAs($upload->temp_dir, $chunkName, 'local');
@@ -116,81 +150,169 @@ class UploadController extends Controller
             $upload->increment('received_chunks');
             $upload->refresh();
 
-            if ($upload->received_chunks >= $upload->total_chunks) {
-                $upload->update(['status' => 'assembling']);
+            if ((int) $upload->received_chunks >= (int) $upload->total_chunks) {
+                $upload->update([
+                    'status' => 'assembling',
+                ]);
+
                 $this->assembleFile($upload);
+
                 $upload->refresh();
             }
 
-            $progress = $upload->total_chunks > 0
-                ? round(($upload->received_chunks / $upload->total_chunks) * 100, 1)
-                : 0;
-
             return response()->json([
+                'success' => true,
                 'received_chunks' => $upload->received_chunks,
-                'total_chunks'    => $upload->total_chunks,
-                'progress'        => $progress,
-                'status'          => $upload->status,
-                'final_path'      => $upload->status === 'completed' ? $upload->final_path : null,
+                'total_chunks' => $upload->total_chunks,
+                'progress' => $this->progress($upload),
+                'status' => $upload->status,
+                'final_path' => $upload->status === 'completed' ? $upload->final_path : null,
+                'final_url' => $upload->status === 'completed' && $upload->final_path
+                    ? asset('storage/' . $upload->final_path)
+                    : null,
             ]);
         } catch (\Throwable $e) {
             Log::error('Chunk upload failed', [
-                'upload_id'   => $upload->id,
+                'upload_id' => $upload->id,
                 'chunk_index' => $data['chunk_index'],
-                'error'       => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
-            $upload->update(['status' => 'failed']);
+            $upload->update([
+                'status' => 'failed',
+            ]);
 
             return response()->json([
-                'error' => 'Failed to upload chunk.',
+                'success' => false,
+                'message' => 'Failed to upload chunk.',
             ], 500);
         }
     }
 
-    /**
-     * Get upload status.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Upload Status
+    |--------------------------------------------------------------------------
+    */
     public function status(Request $request, ChunkedUpload $upload)
     {
-        if ($upload->user_id !== auth()->id()) {
-            abort(403);
-        }
-
-        $progress = $upload->total_chunks > 0
-            ? round(($upload->received_chunks / $upload->total_chunks) * 100, 1)
-            : 0;
+        $this->authorizeUploadOwner($upload);
 
         return response()->json([
-            'status'          => $upload->status,
+            'success' => true,
+            'status' => $upload->status,
             'received_chunks' => $upload->received_chunks,
-            'total_chunks'    => $upload->total_chunks,
-            'progress'        => $progress,
-            'final_path'      => $upload->status === 'completed' ? $upload->final_path : null,
+            'total_chunks' => $upload->total_chunks,
+            'progress' => $this->progress($upload),
+            'final_path' => $upload->status === 'completed' ? $upload->final_path : null,
+            'final_url' => $upload->status === 'completed' && $upload->final_path
+                ? asset('storage/' . $upload->final_path)
+                : null,
         ]);
     }
 
-    /**
-     * Assemble all chunks into one final file.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Direct Upload
+    |--------------------------------------------------------------------------
+    */
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'file'       => 'required|file|mimes:mp4,webm,mkv,avi,mov|max:102400', // 100MB
+            'anime_slug' => 'required|string|max:255',
+        ]);
+
+        try {
+            $safeSlug = Str::slug($data['anime_slug']) ?: 'anime';
+
+            $path = $request->file('file')->store(
+                "anime/{$safeSlug}/videos",
+                'public'
+            );
+
+            return response()->json([
+                'success' => true,
+                'path' => $path,
+                'url' => asset('storage/' . $path),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Direct upload failed', [
+                'anime_slug' => $data['anime_slug'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Upload failed.',
+            ], 500);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cancel Upload
+    |--------------------------------------------------------------------------
+    */
+    public function cancel(ChunkedUpload $upload)
+    {
+        $this->authorizeUploadOwner($upload);
+
+        try {
+            $this->cleanupUpload($upload);
+
+            $upload->update([
+                'status' => 'cancelled',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'status' => 'cancelled',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Upload cancel failed', [
+                'upload_id' => $upload->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel upload.',
+            ], 500);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Assemble Chunks Into Final File
+    |--------------------------------------------------------------------------
+    */
     protected function assembleFile(ChunkedUpload $upload): void
     {
-        $disk = Storage::disk('local');
+        $localDisk = Storage::disk('local');
+        $publicDisk = Storage::disk('public');
 
         try {
             $tempDir = $upload->temp_dir;
 
-            if (!$disk->exists($tempDir)) {
+            if (!$tempDir || !$localDisk->exists($tempDir)) {
                 throw new \RuntimeException('Temporary chunk directory does not exist.');
             }
 
             $finalDir = 'uploads/videos/' . date('Y/m/d');
-            $filename = $this->buildUniqueFilename($upload->filename, $finalDir, $disk);
+
+            $publicDisk->makeDirectory($finalDir);
+
+            $filename = $this->buildUniqueFilename(
+                $upload->filename,
+                $finalDir,
+                $publicDisk
+            );
+
             $finalPath = $finalDir . '/' . $filename;
 
-            $disk->makeDirectory($finalDir);
+            $assembledTempPath = storage_path('app/' . $tempDir . '/_assembled.tmp');
 
-            $assembledTempPath = storage_path('app/' . $tempDir . '/_assembled');
             $outputHandle = fopen($assembledTempPath, 'wb');
 
             if (!$outputHandle) {
@@ -198,16 +320,16 @@ class UploadController extends Controller
             }
 
             for ($i = 0; $i < $upload->total_chunks; $i++) {
-                $chunkPath = storage_path(
-                    'app/' . $tempDir . '/chunk_' . str_pad((string) $i, 6, '0', STR_PAD_LEFT)
+                $chunkAbsolutePath = storage_path(
+                    'app/' . $tempDir . '/' . $this->chunkFilename($i)
                 );
 
-                if (!file_exists($chunkPath)) {
+                if (!file_exists($chunkAbsolutePath)) {
                     fclose($outputHandle);
                     throw new \RuntimeException("Missing chunk: {$i}");
                 }
 
-                $chunkHandle = fopen($chunkPath, 'rb');
+                $chunkHandle = fopen($chunkAbsolutePath, 'rb');
 
                 if (!$chunkHandle) {
                     fclose($outputHandle);
@@ -217,33 +339,34 @@ class UploadController extends Controller
                 stream_copy_to_stream($chunkHandle, $outputHandle);
 
                 fclose($chunkHandle);
-                @unlink($chunkPath);
+                @unlink($chunkAbsolutePath);
             }
 
             fclose($outputHandle);
 
             $stream = fopen($assembledTempPath, 'rb');
+
             if (!$stream) {
                 throw new \RuntimeException('Unable to reopen assembled file.');
             }
 
-            $disk->writeStream($finalPath, $stream);
+            $publicDisk->writeStream($finalPath, $stream);
+
             fclose($stream);
 
             @unlink($assembledTempPath);
 
-            // Cleanup temp directory
-            $disk->deleteDirectory($tempDir);
+            $localDisk->deleteDirectory($tempDir);
 
             $upload->update([
-                'status'     => 'completed',
+                'status' => 'completed',
                 'final_path' => $finalPath,
             ]);
         } catch (\Throwable $e) {
             Log::error('Chunk assembly failed', [
                 'upload_id' => $upload->id,
-                'temp_dir'  => $upload->temp_dir,
-                'error'     => $e->getMessage(),
+                'temp_dir' => $upload->temp_dir,
+                'error' => $e->getMessage(),
             ]);
 
             $this->cleanupUpload($upload);
@@ -254,70 +377,33 @@ class UploadController extends Controller
         }
     }
 
-    /**
-     * Simple direct upload (non-chunked).
-     */
-    public function store(Request $request)
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+    protected function authorizeUploadOwner(ChunkedUpload $upload): void
     {
-        $data = $request->validate([
-            'file'       => 'required|file|mimes:mp4,webm,mkv,avi,mov|max:102400', // 100MB
-            'anime_slug' => 'required|string|max:255',
-        ]);
-
-        try {
-            $safeSlug = Str::slug($data['anime_slug']);
-            $path = $request->file('file')->store("anime/{$safeSlug}/videos", 'public');
-
-            return response()->json([
-                'path' => $path,
-                'url'  => url('storage/' . $path),
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Direct upload failed', [
-                'anime_slug' => $data['anime_slug'],
-                'error'      => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'error' => 'Upload failed.',
-            ], 500);
-        }
+        abort_if((int) $upload->user_id !== (int) auth()->id(), 403);
     }
 
-    /**
-     * Cancel an active upload.
-     */
-    public function cancel(ChunkedUpload $upload)
+    protected function progress(ChunkedUpload $upload): float
     {
-        if ($upload->user_id !== auth()->id()) {
-            abort(403);
+        if ((int) $upload->total_chunks <= 0) {
+            return 0;
         }
 
-        try {
-            $this->cleanupUpload($upload);
-
-            $upload->update([
-                'status' => 'cancelled',
-            ]);
-
-            return response()->json([
-                'status' => 'cancelled',
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Upload cancel failed', [
-                'upload_id' => $upload->id,
-                'error'     => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'error' => 'Failed to cancel upload.',
-            ], 500);
-        }
+        return round(
+            ((int) $upload->received_chunks / (int) $upload->total_chunks) * 100,
+            1
+        );
     }
 
-    /**
-     * Delete upload temp directory.
-     */
+    protected function chunkFilename(int $index): string
+    {
+        return 'chunk_' . str_pad((string) $index, 6, '0', STR_PAD_LEFT);
+    }
+
     protected function cleanupUpload(ChunkedUpload $upload): void
     {
         $disk = Storage::disk('local');
@@ -327,26 +413,33 @@ class UploadController extends Controller
         }
     }
 
-    /**
-     * Sanitize a user-provided filename.
-     */
     protected function sanitizeFilename(string $filename): string
     {
-        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $name = pathinfo($filename, PATHINFO_FILENAME);
 
         $safeName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $name);
-        $safeName = trim($safeName, '._-');
-        $safeName = $safeName !== '' ? $safeName : 'video';
+        $safeName = trim((string) $safeName, '._-');
 
-        return $extension
-            ? $safeName . '.' . strtolower($extension)
-            : $safeName;
+        if ($safeName === '') {
+            $safeName = 'video';
+        }
+
+        $allowedExtensions = [
+            'mp4',
+            'webm',
+            'mkv',
+            'avi',
+            'mov',
+        ];
+
+        if (!in_array($extension, $allowedExtensions, true)) {
+            $extension = 'mp4';
+        }
+
+        return "{$safeName}.{$extension}";
     }
 
-    /**
-     * Ensure final filename is unique inside target directory.
-     */
     protected function buildUniqueFilename(string $filename, string $directory, $disk): string
     {
         $filename = $this->sanitizeFilename($filename);
@@ -358,9 +451,7 @@ class UploadController extends Controller
         $counter = 1;
 
         while ($disk->exists($directory . '/' . $candidate)) {
-            $candidate = $extension
-                ? "{$name}_{$counter}.{$extension}"
-                : "{$name}_{$counter}";
+            $candidate = "{$name}_{$counter}.{$extension}";
             $counter++;
         }
 

@@ -7,14 +7,13 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Title -->
-    <title>
-        {{ config('app.name', 'AniWaves') }}
-        @hasSection('title') - @yield('title') @endif
-    </title>
+    <title>@yield('title', config('app.name', 'AniWaves'))</title>
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Plyr CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet">
 
     <!-- Icons -->
     <link rel="stylesheet"
@@ -34,21 +33,21 @@
 
     <link rel="icon" href="{{ $faviconUrl }}">
 
-    <!-- Assets -->
+    <!-- Vite Assets -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('styles')
 </head>
 
-<body class="bg-[#0a0a0f] text-white font-sans antialiased">
+<body style="background:#0a0a0f;color:#fff;font-family:Inter,sans-serif;">
 
-<div class="min-h-screen flex flex-col">
+<div class="d-flex flex-column min-vh-100">
 
     <!-- ✅ HEADER -->
     @include('layouts.partials.header')
 
     <!-- ✅ MAIN CONTENT -->
-    <main class="flex-1">
+    <main class="flex-grow-1">
         @yield('content')
     </main>
 
@@ -62,6 +61,9 @@
 
 <!-- ✅ SCRIPTS -->
 @stack('scripts')
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

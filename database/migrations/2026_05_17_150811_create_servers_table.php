@@ -18,29 +18,29 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->foreignId('episode_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('episodes')
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
             | Server Info
             |--------------------------------------------------------------------------
             */
-            $table->string('label'); // Server 1, Vidcloud, etc
+            $table->string('label'); // Server 1, Vidcloud
+
             $table->string('url');
 
             $table->string('type')->default('mp4');
             // mp4, m3u8, embed, youtube, telegram
 
-            $table->string('language')->default('sub'); // ✅ sub / dub
+            $table->string('language')->default('sub'); // sub / dub
 
             /*
             |--------------------------------------------------------------------------
-            | Priority (IMPORTANT)
+            | Priority
             |--------------------------------------------------------------------------
             */
-            $table->integer('priority')->default(0)->index();
+            $table->unsignedInteger('priority')->default(0)->index();
 
             /*
             |--------------------------------------------------------------------------

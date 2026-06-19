@@ -1,38 +1,38 @@
-<footer class="bg-[#0a0a0f] border-t border-gray-800/60 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+<footer style="background:#0a0a0f;border-top:1px solid rgba(55,65,81,0.6);margin-top:3rem;">
+    <div class="container-xl" style="padding:2.5rem 1rem;">
 
         <!-- A-Z List -->
-        <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 mb-8 text-sm">
-            <span class="text-gray-400 font-medium">A-Z:</span>
+        <div class="d-flex flex-wrap align-items-center justify-content-center gap-1 mb-4" style="font-size:0.875rem;">
+            <span style="color:#9ca3af;font-weight:500;">A-Z:</span>
 
-             }}" class="footer-link">All</a>
+            <a href="{{ route('az-list', 'all') }}" class="footer-link">All</a>
             <span class="divider">|</span>
 
             @foreach(range('A', 'Z') as $letter)
-                 }}" class="footer-link">{{ $letter }}</a>
+                <a href="{{ route('az-list', $letter) }}" class="footer-link">{{ $letter }}</a>
             @endforeach
 
             <span class="divider">|</span>
-             }}" class="footer-link">#</a>
+            <a href="{{ route('az-list', '0-9') }}" class="footer-link">#</a>
         </div>
 
         <!-- Logo + Social -->
-        <div class="flex flex-col items-center mb-6">
+        <div class="d-flex flex-column align-items-center mb-4">
 
-             }}" class="text-2xl font-bold text-indigo-500 mb-2">
+            <a href="{{ route('home') }}" style="font-size:1.5rem;font-weight:700;color:#6366f1;text-decoration:none;margin-bottom:0.5rem;">
                 AniWaves
             </a>
 
-            <p class="text-gray-500 text-sm mb-3">
+            <p style="color:#6b7280;font-size:0.875rem;margin-bottom:0.75rem;">
                 Join our community
             </p>
 
-            <div class="flex items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
 
                 <!-- Reddit -->
                 <a href="https://reddit.com/r/animekoto" target="_blank" rel="noopener"
                    class="footer-icon">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:1.25rem;height:1.25rem;">
                         <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12..." />
                     </svg>
                 </a>
@@ -40,7 +40,7 @@
                 <!-- Discord -->
                 <a href="https://discord.gg/sKgANZEAD" target="_blank" rel="noopener"
                    class="footer-icon">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:1.25rem;height:1.25rem;">
                         <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885..." />
                     </svg>
                 </a>
@@ -49,21 +49,21 @@
         </div>
 
         <!-- Links -->
-        <div class="flex flex-wrap justify-center gap-6 mb-6 text-sm">
-             }}" class="footer-link">Home</a>
-             }}" class="footer-link">Contact</a>
-             }}" class="footer-link">FAQ</a>
-             }}" class="footer-link">About</a>
-             }}" class="footer-link">DMCA</a>
-             }}" class="footer-link">Terms</a>
+        <div class="d-flex flex-wrap justify-content-center gap-4 mb-4" style="font-size:0.875rem;">
+            <a href="{{ route('home') }}" class="footer-link">Home</a>
+            <a href="{{ route('contact') }}" class="footer-link">Contact</a>
+            <a href="{{ route('faq') }}" class="footer-link">FAQ</a>
+            <a href="{{ route('about') }}" class="footer-link">About</a>
+            <a href="{{ route('dmca') }}" class="footer-link">DMCA</a>
+            <a href="{{ route('terms') }}" class="footer-link">Terms</a>
         </div>
 
         <!-- Copyright -->
-        <p class="text-center text-gray-600 text-xs">
+        <p style="text-align:center;color:#4b5563;font-size:0.75rem;">
             © {{ date('Y') }} AniWaves. All rights reserved.
         </p>
 
-        <p class="text-center text-gray-700 text-xs mt-1 max-w-xl mx-auto">
+        <p style="text-align:center;color:#374151;font-size:0.75rem;margin-top:0.25rem;max-width:36rem;margin-left:auto;margin-right:auto;">
             This site does not store any files on its server. All contents are provided by third-party sources.
         </p>
 
@@ -73,14 +73,22 @@
 <!-- Styles -->
 <style>
 .footer-link {
-    @apply text-gray-400 hover:text-indigo-400 transition px-1.5;
+    color: #9ca3af;
+    text-decoration: none;
+    transition: color 0.15s;
+    padding: 0 0.375rem;
 }
-
+.footer-link:hover {
+    color: #818cf8;
+}
 .footer-icon {
-    @apply text-gray-400 hover:text-indigo-400 transition;
+    color: #9ca3af;
+    transition: color 0.15s;
 }
-
+.footer-icon:hover {
+    color: #818cf8;
+}
 .divider {
-    @apply text-gray-700;
+    color: #374151;
 }
 </style>

@@ -3,70 +3,65 @@
 @section('title', $genre->name . ' Anime')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
 
-    <!-- Header -->
-    <div class="mb-6 flex items-center justify-between">
+    <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-            <h1 class="text-2xl font-semibold text-white">
+            <h1 class="fw-semibold" style="color:#fff;font-size:1.5rem">
                 {{ $genre->name }} Anime
             </h1>
-            <p class="text-sm text-gray-400 mt-1">
+            <p class="mt-1" style="color:#9ca3af;font-size:0.875rem">
                 Explore anime in this genre
             </p>
         </div>
 
-        <span class="text-sm text-gray-500">
+        <span style="color:#6b7280;font-size:0.875rem">
             {{ $animeList->total() }} results
         </span>
     </div>
 
-    <!-- Grid -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3">
 
         @forelse($animeList as $anime)
 
-        <a href="{{ route('anime.detail', $anime->slug) }}" class="group">
+        <div class="col">
+        <a href="{{ route('anime.detail', $anime->slug) }}" class="text-decoration-none">
 
-            <div class="anime-card">
+            <div style="position:relative;border-radius:0.75rem;overflow:hidden;background:#111827;aspect-ratio:2/3">
 
-                <!-- Image -->
                 <img src="{{ $anime->thumbnail_url }}"
                      alt="{{ $anime->title }}"
-                     class="anime-img"
+                     style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s"
                      loading="lazy">
 
-                <!-- Overlay -->
-                <div class="anime-overlay">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);opacity:0;color:#fff;font-size:0.875rem;transition:opacity 0.3s">
                     ▶ View
                 </div>
 
-                <!-- Type -->
                 @if($anime->type)
-                <span class="anime-type">
+                <span style="position:absolute;top:0.5rem;left:0.5rem;background:rgba(0,0,0,0.7);color:#fff;font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:0.25rem">
                     {{ $anime->type }}
                 </span>
                 @endif
 
-                <!-- Episodes -->
                 @if($anime->episodes_count)
-                <span class="anime-ep">
+                <span style="position:absolute;top:0.5rem;right:0.5rem;background:#4f46e5;color:#fff;font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:0.25rem">
                     {{ $anime->episodes_count }}
                 </span>
                 @endif
 
             </div>
 
-            <!-- Title -->
-            <h3 class="anime-title">
+            <h3 style="color:#d1d5db;font-size:0.875rem;margin-top:0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 {{ $anime->title }}
             </h3>
 
         </a>
+        </div>
 
         @empty
 
-        <div class="col-span-full text-center text-gray-500 py-12">
+        <div class="col-12 text-center py-5" style="color:#6b7280">
             ❌ No anime found in this genre
         </div>
 
@@ -74,36 +69,9 @@
 
     </div>
 
-    <!-- Pagination -->
-    <div class="mt-8">
+    <div class="mt-4">
         {{ $animeList->links() }}
     </div>
 
 </div>
-
-<style>
-.anime-card {
-    @apply relative rounded-xl overflow-hidden bg-[#111827] aspect-[2/3];
-}
-
-.anime-img {
-    @apply w-full h-full object-cover group-hover:scale-105 transition duration-300;
-}
-
-.anime-overlay {
-    @apply absolute inset-0 flex items-center justify-center bg-black/70 opacity-0 group-hover:opacity-100 text-white text-sm transition;
-}
-
-.anime-type {
-    @apply absolute top-2 left-2 bg-black/70 text-xs px-2 py-1 rounded;
-}
-
-.anime-ep {
-    @apply absolute top-2 right-2 bg-indigo-600 text-xs px-2 py-1 rounded;
-}
-
-.anime-title {
-    @apply text-sm text-gray-300 mt-2 truncate group-hover:text-white;
-}
-</style>
 @endsection

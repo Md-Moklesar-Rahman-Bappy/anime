@@ -10,23 +10,42 @@ use Illuminate\Support\Str;
 
 class MangaGenreController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Index (List + AJAX Support)
+    |--------------------------------------------------------------------------
+    */
     public function index(Request $request)
     {
-        $genres = MangaGenre::select('id', 'name', 'slug', 'created_at')
-            ->latest()
-            ->paginate(20);
+        try {
+            $genres = MangaGenre::select('id', 'name', 'slug', 'created_at')
+                ->latest()
+                ->paginate(20)
+                ->withQueryString();
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'html' => view('admin.manga.genres._table', compact('genres'))->render(),
-                'pagination' => view('admin.manga.genres._pagination', compact('genres'))->render(),
-                'total' => $genres->total(),
+            if ($request->ajax()) {
+                return response()->json([
+                    'html' => view('admin.manga.genres._table', compact('genres'))->render(),
+                    'pagination' => view('admin.manga.genres._pagination', compact('genres'))->render(),
+                    'total' => $genres->total(),
+                ]);
+            }
+
+            return view('admin.manga.genres.index', compact('genres'));
+        } catch (\Throwable $e) {
+            Log::error('MangaGenre index failed', [
+                'error' => $e->getMessage(),
             ]);
-        }
 
-        return view('admin.manga.genres.index', compact('genres'));
+            return back()->with('error', 'Failed to load genres.');
+        }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Store Genre
+    |--------------------------------------------------------------------------
+    */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -41,16 +60,24 @@ class MangaGenreController extends Controller
 
             return redirect()
                 ->route('admin.manga.genres.index')
-                ->with('success', 'Genre created.');
+                ->with('success', 'Genre created successfully.');
         } catch (\Throwable $e) {
             Log::error('Manga genre create failed', [
+                'name' => $data['name'],
                 'error' => $e->getMessage(),
             ]);
 
-            return back()->withInput()->with('error', 'Failed to create genre.');
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create genre.');
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Update Genre
+    |--------------------------------------------------------------------------
+    */
     public function update(Request $request, MangaGenre $mangaGenre)
     {
         $data = $request->validate([
@@ -65,29 +92,39 @@ class MangaGenreController extends Controller
 
             return redirect()
                 ->route('admin.manga.genres.index')
-                ->with('success', 'Genre updated.');
+                ->with('success', 'Genre updated successfully.');
         } catch (\Throwable $e) {
             Log::error('Manga genre update failed', [
                 'genre_id' => $mangaGenre->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return back()->withInput()->with('error', 'Update failed.');
+            return back()
+                ->withInput()
+                ->with('error', 'Update failed.');
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Genre
+    |--------------------------------------------------------------------------
+    */
     public function destroy(Request $request, MangaGenre $mangaGenre)
     {
         try {
             $mangaGenre->delete();
 
-            if ($request->wantsJson()) {
-                return response()->json(['success' => true]);
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Genre deleted successfully.',
+                ]);
             }
 
             return redirect()
                 ->route('admin.manga.genres.index')
-                ->with('success', 'Genre deleted.');
+                ->with('success', 'Genre deleted successfully.');
         } catch (\Throwable $e) {
             Log::error('Manga genre delete failed', [
                 'genre_id' => $mangaGenre->id,
@@ -106,17 +143,23 @@ class MangaGenreController extends Controller
 
     protected function generateUniqueSlug(string $name, ?int $ignoreId = null): string
     {
-        $slug = Str::slug($name);
-        $original = $slug;
-        $i = 1;
+        $base = Str::slug($name);
+
+        // ✅ Prevent empty slug issue
+        if (!$base) {
+            $base = 'genre';
+        }
+
+        $slug = $base;
+        $counter = 1;
 
         while (
             MangaGenre::where('slug', $slug)
-                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-                ->exists()
+            ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
+            ->exists()
         ) {
-            $slug = "{$original}-{$i}";
-            $i++;
+            $slug = "{$base}-{$counter}";
+            $counter++;
         }
 
         return $slug;

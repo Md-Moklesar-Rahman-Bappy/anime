@@ -1,61 +1,59 @@
 <x-guest-layout>
-    <div class="min-h-screen flex items-center justify-center bg-[#0b0e16] px-4">
+    <div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: #0b0e16;">
 
-        <div class="w-full max-w-md bg-[#111827] rounded-2xl shadow-2xl p-8 border border-gray-800">
+        <div class="card" style="background: #111827; border-color: #1f2937; max-width: 28rem; width: 100%;">
+            <div class="card-body p-4">
 
-            <!-- Logo / Title -->
-            <div class="text-center mb-6">
-                <h1 class="text-3xl font-bold text-white">
-                    Ani<span class="text-indigo-500">Stream</span>
-                </h1>
-                <p class="text-gray-400 text-sm mt-2">
-                    Confirm your password
-                </p>
-            </div>
-
-            <!-- Info -->
-            <div class="mb-4 text-sm text-gray-400 text-center">
-                This is a secure area. Please confirm your password to continue.
-            </div>
-
-            <!-- Form -->
-            <form method="POST" action="{{ route('auth.password.confirm') }}">
-                @csrf
-
-                <!-- Password -->
-                <div>
-                    <x-input-label for="password" value="Password" class="text-gray-300" />
-
-                    <x-text-input
-                        id="password"
-                        name="password"
-                        type="password"
-                        required
-                        autofocus
-                        autocomplete="current-password"
-                        class="mt-1 w-full bg-[#1f2937] border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-
-                    <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-400" />
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold" style="color: #fff;">
+                        Ani<span style="color: #6366f1;">Stream</span>
+                    </h3>
+                    <p class="small mt-2" style="color: #9ca3af;">
+                        Confirm your password
+                    </p>
                 </div>
 
-                <!-- Submit -->
-                <button
-                    type="submit"
-                    class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg transition">
-                    Confirm Password
-                </button>
-
-                <!-- Back -->
-                <div class="text-center mt-6 text-gray-400 text-sm">
-                    Back to
-                    <a href="{{ route('auth.login') }}"
-                       class="text-indigo-400 hover:text-indigo-300 ml-1 transition">
-                        Login
-                    </a>
+                <div class="mb-3 text-center" style="color: #9ca3af; font-size: 0.875rem;">
+                    This is a secure area. Please confirm your password to continue.
                 </div>
-            </form>
 
+                <form method="POST" action="{{ route('auth.password.confirm') }}">
+                    @csrf
+
+                    <div class="mb-3">
+                        <x-input-label for="password" value="Password" class="form-label" style="color: #d1d5db;" />
+
+                        <x-text-input
+                            id="password"
+                            name="password"
+                            type="password"
+                            required
+                            autofocus
+                            autocomplete="current-password"
+                            class="form-control"
+                            style="background: #1f2937; border-color: #374151; color: #fff;"
+                        />
+
+                        <x-input-error :messages="$errors->get('password')" style="color: #f87171;" />
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn w-100 fw-semibold"
+                        style="background: #4f46e5; border-color: #4f46e5; color: #fff;">
+                        Confirm Password
+                    </button>
+
+                    <div class="text-center mt-4" style="color: #9ca3af; font-size: 0.875rem;">
+                        Back to
+                        <a href="{{ route('auth.login') }}"
+                           style="color: #818cf8; text-decoration: none;">
+                            Login
+                        </a>
+                    </div>
+                </form>
+
+            </div>
         </div>
     </div>
 </x-guest-layout>

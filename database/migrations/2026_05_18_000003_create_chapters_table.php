@@ -19,37 +19,29 @@ return new class extends Migration
             */
             $table->foreignId('manga_id')
                 ->constrained('manga')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
             | Chapter Info
             |--------------------------------------------------------------------------
             */
-            $table->decimal('number', 8, 2); // ✅ supports decimals like 1.5
+            $table->decimal('number', 8, 2); // supports 1, 1.5, 10.25
             $table->string('title')->nullable();
 
             /*
             |--------------------------------------------------------------------------
-            | Content Data
+            | Content
             |--------------------------------------------------------------------------
             */
-            $table->integer('pages_count')->default(0);
+            $table->unsignedInteger('pages_count')->default(0);
 
             /*
             |--------------------------------------------------------------------------
-            | Constraints
+            | Constraints (IMPORTANT)
             |--------------------------------------------------------------------------
             */
-            $table->unique(['manga_id', 'number']); // ✅ prevent duplicate chapters
-
-            /*
-            |--------------------------------------------------------------------------
-            | Indexing
-            |--------------------------------------------------------------------------
-            */
-            $table->index(['manga_id', 'created_at']); // ✅ faster listing
+            $table->unique(['manga_id', 'number']); // prevent duplicates
 
             /*
             |--------------------------------------------------------------------------
@@ -57,6 +49,13 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->timestamps();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['manga_id', 'created_at']);
         });
     }
 

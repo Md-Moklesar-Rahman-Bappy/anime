@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('anime_requests', function (Blueprint $table) {
@@ -21,16 +18,15 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
             | Request Data
             |--------------------------------------------------------------------------
             */
-            $table->string('anime_title')->index(); // ✅ searchable
+            $table->string('anime_title')->index();
             $table->text('description')->nullable();
 
             /*
@@ -38,7 +34,9 @@ return new class extends Migration
             | Moderation
             |--------------------------------------------------------------------------
             */
-            $table->string('status')->default('pending')->index();
+            $table->string('status')
+                ->default('pending')
+                ->index();
             // pending / fulfilled / rejected
 
             /*
@@ -55,7 +53,7 @@ return new class extends Migration
 
             /*
             |--------------------------------------------------------------------------
-            | Linked Anime (if fulfilled)
+            | Linked Anime
             |--------------------------------------------------------------------------
             */
             $table->foreignId('anime_id')
@@ -68,7 +66,7 @@ return new class extends Migration
             | Constraints
             |--------------------------------------------------------------------------
             */
-            $table->unique(['user_id', 'anime_title']); // ✅ prevent spam duplicates
+            $table->unique(['user_id', 'anime_title']); // ✅ prevent duplicates
 
             /*
             |--------------------------------------------------------------------------
@@ -79,9 +77,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('anime_requests');

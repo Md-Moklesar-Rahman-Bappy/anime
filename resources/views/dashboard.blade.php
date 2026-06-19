@@ -3,26 +3,24 @@
 @section('title', 'Dashboard')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
 
-    <!-- Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-white">
+    <div class="mb-3">
+        <h1 class="fw-semibold" style="color:#fff;font-size:1.5rem">
             Dashboard
         </h1>
-        <p class="text-sm text-gray-400 mt-1">
+        <p class="mt-1" style="color:#9ca3af;font-size:0.875rem">
             Welcome back, {{ auth()->user()->name }}
         </p>
     </div>
 
-    <!-- Content -->
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6">
+    <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.5rem">
 
-        <p class="text-gray-300">
+        <p style="color:#d1d5db">
             ✅ You are logged in successfully.
         </p>
 
-        <div class="mt-4 text-sm text-gray-400">
+        <div class="mt-3" style="color:#9ca3af;font-size:0.875rem">
             Explore anime, manage your profile, or continue watching your favorite series.
         </div>
 

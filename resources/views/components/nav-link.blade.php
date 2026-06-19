@@ -2,10 +2,10 @@
 
 @php
 $classes = ($active ?? false)
-    ? 'inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold transition'
-    : 'inline-flex items-center px-3 py-2 text-gray-400 hover:text-white hover:bg-[#1f2937] rounded-lg text-sm transition';
+    ? 'nav-link d-inline-flex align-items-center px-3 py-2'
+    : 'nav-link d-inline-flex align-items-center px-3 py-2';
 @endphp
 
-<a {{ $attributes->merge(['class' => $classes]) }}>
+<a {{ $attributes->merge(['class' => $classes]) }} @if($active ?? false) style="background:#4f46e5;color:#fff;border-radius:0.5rem" @else style="color:#9ca3af;border-radius:0.5rem" @endif>
     {{ $slot }}
 </a>

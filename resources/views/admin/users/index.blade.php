@@ -1,119 +1,98 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="max-w-3xl mx-auto">
+<div class="container-fluid px-4">
 
-    <h1 class="text-2xl font-semibold text-white mb-6">
-        Settings
-    </h1>
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 text-white mb-0">Users</h1>
+        <span class="badge bg-secondary fs-6">{{ $users->total() }} total</span>
+    </div>
 
-    <form action="{{ route('admin.settings.update') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
-        @csrf
-
-        <!-- Site Info -->
-        <div>
-            <label class="text-gray-400 text-sm">Site Name</label>
-            <input type="text" name="site_name"
-                value="{{ $settings['site_name'] ?? config('app.name') }}"
-                class="form-input">
-        </div>
-
-        <div>
-            <label class="text-gray-400 text-sm">Site Description</label>
-            <textarea name="site_description" rows="3" class="form-input">
-{{ $settings['site_description'] ?? '' }}
-            </textarea>
-        </div>
-
-        <div>
-            <label class="text-gray-400 text-sm">Footer Text</label>
-            <input type="text" name="footer_text"
-                value="{{ $settings['footer_text'] ?? '' }}"
-                class="form-input">
-        </div>
-
-        <hr class="border-gray-800">
-
-        <!-- Logo -->
-        <div>
-            <label class="text-gray-400 text-sm mb-2 block">Logo</label>
-
-            <input type="file" name="logo"
-                class="file-input">
-
-            @php
-                $logoPreview = !empty($settings['logo'])
-                    ? (\Illuminate\Support\Str::startsWith($settings['logo'], 'http')
-                        ? $settings['logo']
-                        : \Illuminate\Support\Facades\Storage::url($settings['logo']))
-                    : null;
-            @endphp
-
-            @if($logoPreview)
-                <div class="mt-3">
-                    <p class="text-xs text-gray-500">Current:</p>
-                    <img src="{{ $logoPreview }}" class="max-h-16 rounded border border-gray-700 mt-1">
-                </div>
+    <!-- Search -->
+    <form method="GET" action="{{ route('admin.users.index') }}" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control bg-dark text-white border-secondary"
+                   placeholder="Search by name, email or role..."
+                   value="{{ request('search') }}">
+            <button class="btn btn-outline-secondary" type="submit">Search</button>
+            @if(request('search'))
+                <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary">Clear</a>
             @endif
         </div>
-
-        <!-- Favicon -->
-        <div>
-            <label class="text-gray-400 text-sm mb-2 block">Favicon</label>
-
-            <input type="file" name="favicon"
-                class="file-input">
-
-            @php
-                $faviconPreview = !empty($settings['favicon'])
-                    ? (\Illuminate\Support\Str::startsWith($settings['favicon'], 'http')
-                        ? $settings['favicon']
-                        : \Illuminate\Support\Facades\Storage::url($settings['favicon']))
-                    : null;
-            @endphp
-
-            @if($faviconPreview)
-                <div class="mt-3">
-                    <p class="text-xs text-gray-500">Current:</p>
-                    <img src="{{ $faviconPreview }}" class="max-h-10 rounded border border-gray-700 mt-1">
-                </div>
-            @endif
-        </div>
-
-        <!-- Submit -->
-        <button type="submit"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg transition">
-            Save Settings
-        </button>
-
     </form>
 
-    <!-- Sitemap -->
-    <div class="mt-8 p-4 bg-[#111827] border border-gray-800 rounded-2xl">
+    <!-- Users Table -->
+    <div class="card bg-dark border-secondary">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($users as $user)
+                        <tr>
+                            <td class="text-secondary">{{ $user->id }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&size=32"
+                                         class="rounded-circle" width="24" height="24">
+                                    <span>{{ $user->name }}</span>
+                                </div>
+                            </td>
+                            <td class="text-secondary">{{ $user->email }}</td>
+                            <td>
+                                <form method="POST" action="{{ route('admin.users.role', $user) }}"
+                                      class="d-inline">
+                                    @csrf
+                                    @method('PUT')
+                                    <select name="role" onchange="this.form.submit()"
+                                            class="form-select form-select-sm bg-dark text-white border-secondary"
+                                            {{ auth()->user()->role !== 'super_admin' ? 'disabled' : '' }}>
+                                        <option value="user" {{ $user->role === 'user' ? 'selected' : '' }}>User</option>
+                                        <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Admin</option>
+                                        <option value="super_admin" {{ $user->role === 'super_admin' ? 'selected' : '' }}>Super Admin</option>
+                                    </select>
+                                </form>
+                            </td>
+                            <td class="text-secondary">{{ $user->created_at->format('Y-m-d') }}</td>
+                            <td>
+                                @if($user->id !== auth()->id())
+                                    <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Delete user {{ $user->name }}?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                @else
+                                    <span class="text-secondary">You</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center text-secondary py-4">No users found</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-        <p class="text-gray-300 text-sm mb-2">Sitemap</p>
-
-        <p class="text-gray-500 text-xs mb-3">
-            XML sitemap is automatically generated for all public pages.
-        </p>
-
-        <a href="{{ url('/sitemap.xml') }}" target="_blank"
-           class="inline-block bg-[#1f2937] hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition">
-            View Sitemap
-        </a>
-
+    <!-- Pagination -->
+    <div class="mt-4 d-flex justify-content-center">
+        {{ $users->links() }}
     </div>
 
 </div>
-
-<style>
-.form-input {
-    @apply w-full mt-1 px-3 py-2 bg-[#1f2937] border border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500;
-}
-
-.file-input {
-    @apply w-full text-sm text-gray-400 file:mr-3 file:px-4 file:py-2 file:bg-indigo-600 file:text-white file:border-0 file:rounded-lg hover:file:bg-indigo-500;
-}
-</style>
-
 @endsection

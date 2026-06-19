@@ -10,16 +10,30 @@ return new class extends Migration
     {
         Schema::table('episodes', function (Blueprint $table) {
 
-            if (Schema::hasColumn('episodes', 'video_path')) {
-                $table->text('video_path')
-                    ->nullable()
-                    ->change();
+            /*
+            |--------------------------------------------------------------------------
+            | Modify video_path (string → text)
+            |--------------------------------------------------------------------------
+            */
+            try {
+                if (Schema::hasColumn('episodes', 'video_path')) {
+                    $table->text('video_path')->nullable()->change();
+                }
+            } catch (\Throwable $e) {
+                // Ignore if doctrine/dbal not installed
             }
 
-            if (Schema::hasColumn('episodes', 'source_url')) {
-                $table->text('source_url')
-                    ->nullable()
-                    ->change();
+            /*
+            |--------------------------------------------------------------------------
+            | Modify source_url (string → text)
+            |--------------------------------------------------------------------------
+            */
+            try {
+                if (Schema::hasColumn('episodes', 'source_url')) {
+                    $table->text('source_url')->nullable()->change();
+                }
+            } catch (\Throwable $e) {
+                // Ignore if doctrine/dbal not installed
             }
         });
     }
@@ -28,16 +42,28 @@ return new class extends Migration
     {
         Schema::table('episodes', function (Blueprint $table) {
 
-            if (Schema::hasColumn('episodes', 'video_path')) {
-                $table->string('video_path')
-                    ->nullable()
-                    ->change();
+            /*
+            |--------------------------------------------------------------------------
+            | Revert video_path to string
+            |--------------------------------------------------------------------------
+            */
+            try {
+                if (Schema::hasColumn('episodes', 'video_path')) {
+                    $table->string('video_path')->nullable()->change();
+                }
+            } catch (\Throwable $e) {
             }
 
-            if (Schema::hasColumn('episodes', 'source_url')) {
-                $table->string('source_url')
-                    ->nullable()
-                    ->change();
+            /*
+            |--------------------------------------------------------------------------
+            | Revert source_url to string
+            |--------------------------------------------------------------------------
+            */
+            try {
+                if (Schema::hasColumn('episodes', 'source_url')) {
+                    $table->string('source_url')->nullable()->change();
+                }
+            } catch (\Throwable $e) {
             }
         });
     }

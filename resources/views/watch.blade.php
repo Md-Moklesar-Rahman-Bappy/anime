@@ -5,116 +5,66 @@
 @push('styles')
 <style>
     .player-shell {
-        @apply bg-black rounded-2xl overflow-hidden border border-gray-800 shadow-2xl;
+        background:#000;border-radius:0.75rem;overflow:hidden;border:1px solid #374151;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);
     }
-
     .player-surface {
-        @apply relative w-full aspect-video bg-black;
+        position:relative;width:100%;aspect-ratio:16/9;background:#000;
     }
-
     .player-control-bar {
-        @apply flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#111827] border-t border-gray-800;
+        display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.75rem 1rem;background:#111827;border-top:1px solid #374151;
     }
-
     .ctrl-group {
-        @apply flex items-center gap-2 flex-wrap;
+        display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;
     }
-
     .ctrl-btn {
-        @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1f2937] text-gray-300 hover:text-white hover:bg-indigo-600 transition text-sm border border-gray-700;
+        display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;border-radius:0.5rem;background:#1f2937;color:#d1d5db;border:1px solid #374151;font-size:0.875rem;transition:all 0.2s;
     }
-
     .ctrl-btn.active {
-        @apply bg-indigo-600 text-white border-indigo-500;
+        background:#4f46e5;color:#fff;border-color:#6366f1;
     }
-
     .ctrl-btn .label {
-        @apply hidden sm:inline;
+        display:none;
     }
-
+    @media (min-width:576px) {
+        .ctrl-btn .label { display:inline; }
+    }
     .server-select {
-        @apply bg-[#1f2937] text-white text-sm rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500;
+        background:#1f2937;color:#fff;font-size:0.875rem;border-radius:0.5rem;padding:0.5rem 0.75rem;border:1px solid #374151;
     }
-
+    .server-select:focus {
+        outline:none;box-shadow:0 0 0 2px #4f46e5;
+    }
     .player-dropdown {
-        @apply absolute right-0 mt-2 w-64 bg-[#111827] border border-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden;
+        position:absolute;right:0;top:100%;margin-top:0.5rem;width:16rem;background:#111827;border:1px solid #374151;border-radius:0.75rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);z-index:1050;overflow:hidden;
     }
-
-    .dropdown-item {
-        @apply w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-[#1f2937] hover:text-white transition text-left;
-    }
-
-    .dropdown-item.active {
-        @apply bg-indigo-600/20 text-white;
-    }
-
-    .dropdown-item .check {
-        @apply w-4 text-center text-indigo-400;
-    }
-
     .skip-overlay {
-        @apply absolute bottom-4 right-4 z-20 flex gap-2;
+        position:absolute;bottom:1rem;right:1rem;z-index:20;display:flex;gap:0.5rem;
     }
-
     .skip-btn {
-        @apply px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg transition;
+        padding:0.5rem 1rem;border-radius:0.5rem;background:#4f46e5;color:#fff;font-weight:500;box-shadow:0 4px 6px rgba(0,0,0,0.3);border:none;cursor:pointer;transition:background 0.2s;
     }
-
+    .skip-btn:hover { background:#6366f1; }
     .section-card {
-        @apply bg-[#111827] border border-gray-800 rounded-2xl p-4;
+        background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1rem;
     }
-
-    .episode-link {
-        @apply flex items-center gap-3 p-2 rounded-xl hover:bg-[#1f2937] transition;
-    }
-
-    .episode-link.active {
-        @apply bg-indigo-600/20 border border-indigo-600;
-    }
-
     .comment-box {
-        @apply w-full bg-[#1f2937] text-white rounded-lg px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500;
+        width:100%;background:#1f2937;color:#fff;border-radius:0.5rem;padding:0.75rem 1rem;border:1px solid #374151;
     }
-
-    .meta-badge {
-        @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#1f2937] text-gray-300;
+    .comment-box:focus {
+        outline:none;box-shadow:0 0 0 2px #4f46e5;
     }
-
-    .meta-badge-blue {
-        @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-600 text-white;
-    }
-
-    .meta-badge-green {
-        @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-green-600 text-white;
-    }
-
-    .related-card {
-        @apply flex items-center gap-3 p-2 rounded-xl hover:bg-[#1f2937] transition;
-    }
-
     .thumb-cover {
-        @apply object-cover rounded-lg bg-[#1f2937];
-    }
-
-    .player-empty {
-        @apply absolute inset-0 flex items-center justify-center bg-[#0a0a0f] text-gray-500;
-    }
-
-    .player-panel-title {
-        @apply text-lg font-semibold text-white mb-3;
+        object-fit:cover;border-radius:0.5rem;background:#1f2937;
     }
 </style>
 @endpush
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="row">
+        <div class="col-lg-8 d-flex flex-column gap-3">
 
-        {{-- LEFT / PLAYER --}}
-        <div class="lg:col-span-2 space-y-4">
-
-            {{-- PLAYER --}}
             <div class="player-shell"
                  x-data="player()"
                  x-init="init()"
@@ -134,21 +84,18 @@
                             $_isEmbedInit = $initialServer['type'] === 'embed';
                         @endphp
 
-                        {{-- Embed Player --}}
                         <iframe
                             x-show="isEmbed"
                             :src="embedUrl"
-                            class="w-full h-full"
-                            frameborder="0"
+                            style="width:100%;height:100%;border:0"
                             allowfullscreen
                             allow="autoplay; encrypted-media; picture-in-picture"
                         ></iframe>
 
-                        {{-- Native / HTML5 Player --}}
-                        <div x-show="!isEmbed" class="w-full h-full">
+                        <div x-show="!isEmbed" style="width:100%;height:100%">
                             <video
                                 id="videoPlayer"
-                                class="w-full h-full"
+                                style="width:100%;height:100%"
                                 playsinline
                                 controls
                                 preload="metadata"
@@ -166,28 +113,25 @@
                             </video>
                         </div>
                     @else
-                        <div class="player-empty">
+                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0a0f;color:#6b7280">
                             <div class="text-center">
-                                <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg style="width:4rem;height:4rem;margin:0 auto 0.75rem;display:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                           d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                 </svg>
-                                <p class="text-sm">No video source available for this episode.</p>
+                                <p style="font-size:0.875rem">No video source available for this episode.</p>
                             </div>
                         </div>
                     @endif
 
-                    {{-- Skip Buttons --}}
                     <div class="skip-overlay" x-show="showSkipIntro || showSkipOutro" x-cloak>
                         <button class="skip-btn" x-show="showSkipIntro" @click="skipIntro()">Skip Intro</button>
                         <button class="skip-btn" x-show="showSkipOutro" @click="skipOutro()">Skip Outro</button>
                     </div>
                 </div>
 
-                {{-- CONTROL BAR --}}
                 <div class="player-control-bar">
 
-                    {{-- LEFT CONTROLS --}}
                     <div class="ctrl-group">
                         <button class="ctrl-btn" @click="togglePlay()" title="Play / Pause (Space)">
                             <i class="fa-solid" :class="playing ? 'fa-pause' : 'fa-play'"></i>
@@ -210,7 +154,6 @@
                         </button>
                     </div>
 
-                    {{-- AUTO CONTROLS --}}
                     <div class="ctrl-group">
                         <button class="ctrl-btn" :class="{ active: config.autoPlay }" @click="toggleAutoPlay()">
                             <i class="fa-solid" :class="config.autoPlay ? 'fa-check-square' : 'fa-square'"></i>
@@ -228,7 +171,6 @@
                         </button>
                     </div>
 
-                    {{-- EPISODE NAV --}}
                     <div class="ctrl-group">
                         @if($prevEpisode)
                             <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) }}" class="ctrl-btn" title="Previous Episode (B)">
@@ -245,7 +187,6 @@
                         @endif
                     </div>
 
-                    {{-- RIGHT ACTIONS --}}
                     <div class="ctrl-group">
 
                         @if(count($allServers) > 1)
@@ -258,8 +199,7 @@
                             </select>
                         @endif
 
-                        {{-- List Dropdown --}}
-                        <div class="relative" @click.outside="listOpen = false">
+                        <div class="position-relative" @click.outside="listOpen = false">
                             <button class="ctrl-btn" @click="toggleList()">
                                 <i class="fa-solid fa-bookmark"></i>
                                 <span class="label">List</span>
@@ -267,22 +207,22 @@
 
                             <div class="player-dropdown" x-show="listOpen" x-cloak>
                                 <template x-for="cat in categories" :key="cat.value">
-                                    <button class="dropdown-item"
+                                    <button class="w-100 d-flex align-items-center gap-2 px-3 py-2 text-start" style="background:none;border:none;color:#d1d5db;font-size:0.875rem;transition:background 0.2s"
                                             :class="{ active: favoriteCategory === cat.value }"
                                             @click="updateList(favoriteCategory === cat.value ? null : cat.value)">
-                                        <span class="check">
+                                        <span style="width:1rem;text-align:center;color:#818cf8">
                                             <i class="fa-solid fa-check" x-show="favoriteCategory === cat.value"></i>
                                         </span>
                                         <span x-text="cat.label"></span>
                                     </button>
                                 </template>
 
-                                <hr class="border-gray-700 my-1">
+                                <hr style="border-color:#374151;margin:0.25rem 0">
 
-                                <button class="dropdown-item"
+                                <button class="w-100 d-flex align-items-center gap-2 px-3 py-2 text-start" style="background:none;border:none;color:#d1d5db;font-size:0.875rem;transition:background 0.2s"
                                         :class="{ active: !favoriteCategory }"
                                         @click="updateList(null)">
-                                    <span class="check">
+                                    <span style="width:1rem;text-align:center;color:#818cf8">
                                         <i class="fa-solid fa-check" x-show="!favoriteCategory"></i>
                                     </span>
                                     <span>Not in list</span>
@@ -290,19 +230,18 @@
                             </div>
                         </div>
 
-                        {{-- Report Dropdown --}}
-                        <div class="relative" @click.outside="reportOpen = false">
+                        <div class="position-relative" @click.outside="reportOpen = false">
                             <button class="ctrl-btn" @click="toggleReport()">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                                 <span class="label">Report</span>
                             </button>
 
                             <div class="player-dropdown" x-show="reportOpen" x-cloak>
-                                <div class="p-3 space-y-3">
+                                <div style="padding:0.75rem" class="d-flex flex-column gap-2">
 
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Issue type</label>
-                                        <select x-model="reportType" class="server-select w-full">
+                                        <label class="d-block" style="font-size:0.75rem;color:#6b7280;margin-bottom:0.25rem">Issue type</label>
+                                        <select x-model="reportType" class="server-select w-100">
                                             <template x-for="it in issueTypes" :key="it.value">
                                                 <option :value="it.value" x-text="it.label"></option>
                                             </template>
@@ -310,16 +249,18 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Description</label>
+                                        <label class="d-block" style="font-size:0.75rem;color:#6b7280;margin-bottom:0.25rem">Description</label>
                                         <textarea x-model="reportDesc"
                                                   rows="3"
-                                                  class="comment-box text-sm"
+                                                  class="comment-box"
+                                                  style="font-size:0.875rem"
                                                   placeholder="Describe the issue..."></textarea>
                                     </div>
 
                                     <button @click="submitReport()"
                                             :disabled="submitting"
-                                            class="w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                                            class="btn d-block w-100"
+                                            style="background:#4f46e5;color:#fff;font-size:0.875rem"
                                             x-text="submitting ? 'Submitting...' : 'Submit Report'">
                                     </button>
                                 </div>
@@ -331,9 +272,8 @@
                 </div>
             </div>
 
-            {{-- TOP NAV --}}
-            <div class="flex items-center justify-between gap-4 flex-wrap">
-                <div class="flex items-center gap-3">
+            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-2">
                     @if($prevEpisode)
                         <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) }}"
                            class="ctrl-btn">
@@ -361,36 +301,34 @@
                 </select>
             </div>
 
-            {{-- EPISODE DETAILS --}}
             <div class="section-card">
-                <div class="flex items-start justify-between gap-4">
+                <div class="d-flex align-items-start justify-content-between gap-3">
                     <div>
-                        <h1 class="text-2xl font-semibold text-white">
+                        <h1 style="font-size:1.5rem;font-weight:600;color:#fff">
                             {{ $anime->title }} — Episode {{ $episode->number }}
                         </h1>
 
                         @if($episode->title)
-                            <p class="text-gray-400 text-sm mt-1">{{ $episode->title }}</p>
+                            <p style="color:#9ca3af;font-size:0.875rem;margin-top:0.25rem">{{ $episode->title }}</p>
                         @endif
                     </div>
 
-                    <div class="flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap gap-1">
                         @if($episode->has_sub)
-                            <span class="meta-badge-blue">SUB</span>
+                            <span style="display:inline-flex;align-items:center;padding:0.25rem 0.625rem;border-radius:0.5rem;font-size:0.75rem;font-weight:500;background:#2563eb;color:#fff">SUB</span>
                         @endif
                         @if($episode->has_dub)
-                            <span class="meta-badge-green">DUB</span>
+                            <span style="display:inline-flex;align-items:center;padding:0.25rem 0.625rem;border-radius:0.5rem;font-size:0.75rem;font-weight:500;background:#16a34a;color:#fff">DUB</span>
                         @endif
                     </div>
                 </div>
             </div>
 
-            {{-- COMMENTS --}}
             <div class="section-card">
-                <h3 class="player-panel-title">Comments</h3>
+                <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">Comments</h3>
 
                 @auth
-                    <form action="{{ route('comments.store') }}" method="POST" class="mb-5">
+                    <form action="{{ route('comments.store') }}" method="POST" style="margin-bottom:1.25rem">
                         @csrf
                         <input type="hidden" name="episode_id" value="{{ $episode->id }}">
 
@@ -401,40 +339,41 @@
                                   required></textarea>
 
                         <button type="submit"
-                                class="mt-3 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                                class="btn mt-2"
+                                style="background:#4f46e5;color:#fff;font-size:0.875rem">
                             Post Comment
                         </button>
                     </form>
                 @else
-                    <p class="text-sm text-gray-400 mb-4">
-                        <a href="{{ route('auth.login') }}" class="text-indigo-400 hover:text-indigo-300">Login</a>
+                    <p style="color:#9ca3af;font-size:0.875rem;margin-bottom:1rem">
+                        <a href="{{ route('auth.login') }}" style="color:#818cf8">Login</a>
                         to comment.
                     </p>
                 @endauth
 
-                <div class="space-y-4">
+                <div class="d-flex flex-column gap-3">
                     @foreach($comments as $comment)
-                        <div class="flex gap-3">
+                        <div class="d-flex gap-2">
                             <img
                                 src="https://ui-avatars.com/api/?name={{ urlencode($comment->user->name) }}&background=4f46e5&color=fff"
-                                class="w-8 h-8 rounded-full"
+                                style="width:2rem;height:2rem;border-radius:50%"
                                 alt="{{ $comment->user->name }}"
                             >
 
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm font-semibold text-white">{{ $comment->user->name }}</span>
-                                    <span class="text-xs text-gray-500">{{ $comment->created_at->diffForHumans() }}</span>
+                            <div style="flex:1">
+                                <div class="d-flex align-items-center gap-1">
+                                    <span style="font-size:0.875rem;font-weight:600;color:#fff">{{ $comment->user->name }}</span>
+                                    <span style="font-size:0.75rem;color:#6b7280">{{ $comment->created_at->diffForHumans() }}</span>
 
                                     @auth
                                         @if(auth()->user()->isSuperAdmin())
                                             <form action="{{ route('comments.destroy', $comment) }}"
                                                   method="POST"
-                                                  class="ml-auto"
+                                                  class="ms-auto"
                                                   onsubmit="return confirm('Delete this comment?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-xs text-red-500 hover:text-red-400">
+                                                <button type="submit" style="font-size:0.75rem;color:#ef4444;background:none;border:none;cursor:pointer">
                                                     Delete
                                                 </button>
                                             </form>
@@ -442,14 +381,14 @@
                                     @endauth
                                 </div>
 
-                                <p class="text-sm text-gray-300 mt-1">{{ $comment->body }}</p>
+                                <p style="color:#d1d5db;font-size:0.875rem;margin-top:0.25rem">{{ $comment->body }}</p>
                             </div>
                         </div>
                     @endforeach
                 </div>
 
                 @if($comments->hasPages())
-                    <div class="mt-4">
+                    <div class="mt-3">
                         {{ $comments->links() }}
                     </div>
                 @endif
@@ -457,35 +396,33 @@
 
         </div>
 
-        {{-- RIGHT SIDEBAR --}}
-        <div class="space-y-4">
+        <div class="col-lg-4 d-flex flex-column gap-3">
 
-            {{-- EPISODES --}}
             <div class="section-card">
-                <h3 class="player-panel-title">Episodes</h3>
+                <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">Episodes</h3>
 
-                <div class="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                <div style="max-height:500px;overflow-y:auto;padding-right:0.25rem" class="d-flex flex-column gap-1">
                     @foreach($anime->episodes as $ep)
                         <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $ep->number]) }}"
-                           class="episode-link {{ $ep->id === $episode->id ? 'active' : '' }}">
+                           class="d-flex align-items-center gap-2 text-decoration-none" style="padding:0.5rem;border-radius:0.75rem;transition:background 0.2s;{{ $ep->id === $episode->id ? 'background:rgba(79,70,229,0.2);border:1px solid #4f46e5' : '' }}">
                             <img src="{{ $ep->thumbnail_url }}"
-                                 class="w-20 h-12 thumb-cover"
+                                 style="width:5rem;height:3rem;object-fit:cover;border-radius:0.5rem;background:#1f2937"
                                  alt="Episode {{ $ep->number }}"
                                  loading="lazy">
 
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm text-white truncate">Episode {{ $ep->number }}</p>
+                            <div style="flex:1;min-width:0">
+                                <p style="color:#fff;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Episode {{ $ep->number }}</p>
                                 @if($ep->title)
-                                    <p class="text-xs text-gray-500 truncate">{{ $ep->title }}</p>
+                                    <p style="color:#6b7280;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $ep->title }}</p>
                                 @endif
                             </div>
 
-                            <div class="flex flex-col gap-1">
+                            <div class="d-flex flex-column gap-0">
                                 @if($ep->has_sub)
-                                    <span class="text-[10px] text-blue-400 font-medium">SUB</span>
+                                    <span style="font-size:0.625rem;color:#60a5fa;font-weight:500">SUB</span>
                                 @endif
                                 @if($ep->has_dub)
-                                    <span class="text-[10px] text-green-400 font-medium">DUB</span>
+                                    <span style="font-size:0.625rem;color:#4ade80;font-weight:500">DUB</span>
                                 @endif
                             </div>
                         </a>
@@ -493,34 +430,32 @@
                 </div>
             </div>
 
-            {{-- ANIME INFO --}}
             <div class="section-card">
-                <h3 class="player-panel-title">{{ $anime->title }}</h3>
-                <p class="text-sm text-gray-400">
+                <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">{{ $anime->title }}</h3>
+                <p style="color:#9ca3af;font-size:0.875rem">
                     {{ \Illuminate\Support\Str::limit($anime->description, 150) }}
                 </p>
                 <a href="{{ route('anime.detail', $anime->slug) }}"
-                   class="inline-block mt-3 text-sm text-indigo-400 hover:text-indigo-300">
+                   class="d-inline-block mt-2" style="color:#818cf8;font-size:0.875rem">
                     View Details
                 </a>
             </div>
 
-            {{-- RELATED --}}
             @if($related->count())
                 <div class="section-card">
-                    <h3 class="player-panel-title">Related</h3>
+                    <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">Related</h3>
 
-                    <div class="space-y-2">
+                    <div class="d-flex flex-column gap-1">
                         @foreach($related as $rel)
-                            <a href="{{ route('anime.detail', $rel->slug) }}" class="related-card">
+                            <a href="{{ route('anime.detail', $rel->slug) }}" class="d-flex align-items-center gap-2 text-decoration-none" style="padding:0.5rem;border-radius:0.75rem;transition:background 0.2s">
                                 <img src="{{ $rel->thumbnail_url }}"
-                                     class="w-10 h-14 thumb-cover"
+                                     style="width:2.5rem;height:3.5rem;object-fit:cover;border-radius:0.5rem;background:#1f2937"
                                      alt="{{ $rel->title }}"
                                      loading="lazy">
 
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm text-white truncate">{{ $rel->title }}</p>
-                                    <p class="text-xs text-gray-500">
+                                <div style="flex:1;min-width:0">
+                                    <p style="color:#fff;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $rel->title }}</p>
+                                    <p style="color:#6b7280;font-size:0.75rem">
                                         {{ $rel->type }} @if($rel->year) | {{ $rel->year }} @endif
                                     </p>
                                 </div>

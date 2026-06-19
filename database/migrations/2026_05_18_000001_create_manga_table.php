@@ -19,15 +19,16 @@ return new class extends Migration
             */
             $table->unsignedBigInteger('mal_id')
                 ->nullable()
-                ->unique(); // ✅ for Jikan integration
+                ->unique()
+                ->index();
 
             /*
             |--------------------------------------------------------------------------
             | Core Info
             |--------------------------------------------------------------------------
             */
-            $table->string('title');
-            $table->string('slug')->unique();
+            $table->string('title')->index();
+            $table->string('slug')->unique()->index();
 
             $table->text('description')->nullable();
             $table->string('alternative_titles')->nullable();
@@ -37,7 +38,7 @@ return new class extends Migration
             | Classification
             |--------------------------------------------------------------------------
             */
-            $table->string('type')->nullable(); // manga, manhwa, manhua
+            $table->string('type')->nullable()->index(); // manga, manhwa, manhua
             $table->string('status')->nullable()->index(); // ongoing, completed
             $table->year('year')->nullable()->index();
 
@@ -54,7 +55,7 @@ return new class extends Migration
             | Content Stats
             |--------------------------------------------------------------------------
             */
-            $table->integer('chapters_count')->nullable();
+            $table->unsignedInteger('chapters_count')->default(0);
             $table->unsignedBigInteger('views')->default(0)->index();
 
             /*
@@ -80,8 +81,8 @@ return new class extends Migration
             | Features
             |--------------------------------------------------------------------------
             */
-            $table->boolean('featured')->default(false);
-            $table->integer('featured_order')->default(0)->index();
+            $table->boolean('featured')->default(false)->index();
+            $table->unsignedInteger('featured_order')->default(0)->index();
 
             /*
             |--------------------------------------------------------------------------

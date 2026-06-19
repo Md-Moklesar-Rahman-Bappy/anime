@@ -12,22 +12,46 @@ return new class extends Migration
 
             $table->id();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Relationships
+            |--------------------------------------------------------------------------
+            */
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->foreignId('chapter_id')
                 ->constrained('chapters')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
-            $table->integer('page_number')
-                ->default(1);
+            /*
+            |--------------------------------------------------------------------------
+            | Bookmark Data
+            |--------------------------------------------------------------------------
+            */
+            $table->unsignedInteger('page_number')->default(1);
 
-            $table->unique(['user_id', 'chapter_id']);
+            /*
+            |--------------------------------------------------------------------------
+            | Constraints
+            |--------------------------------------------------------------------------
+            */
+            $table->unique(['user_id', 'chapter_id']); // one bookmark per chapter
 
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
             $table->timestamps();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['user_id', 'chapter_id']);
         });
     }
 

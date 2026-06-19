@@ -3,68 +3,62 @@
 @section('title', 'Welcome')
 
 @section('content')
-<div class="min-h-screen bg-[#0a0a0f] text-white flex flex-col items-center justify-center px-4">
+<div style="min-height:100vh;background:#0a0a0f;color:#fff" class="d-flex flex-column align-items-center justify-content-center px-3">
 
-    <!-- Logo / Name -->
-    <h1 class="text-4xl md:text-6xl font-bold mb-4 text-center">
+    <h1 style="font-size:2.5rem;font-weight:700;margin-bottom:1rem;text-align:center">
         🎬 AniKoto
     </h1>
 
-    <p class="text-gray-400 text-center max-w-xl mb-6">
+    <p style="color:#9ca3af;text-align:center;max-width:36rem;margin-bottom:1.5rem">
         Watch anime and read manga in one place.
         Fast, clean, and completely free.
     </p>
 
-    <!-- Actions -->
-    <div class="flex gap-3 flex-wrap justify-center">
+    <div class="d-flex gap-2 flex-wrap justify-content-center">
 
         <a href="{{ route('home') }}"
-           class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-semibold transition">
+           class="btn" style="background:#4f46e5;color:#fff;border-radius:0.75rem;font-weight:600">
             Watch Anime
         </a>
 
-        <a href="{{ route('manga.home') }}"
-           class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold transition">
+        <a href="{{ route('manga.index') }}"
+           class="btn" style="background:#059669;color:#fff;border-radius:0.75rem;font-weight:600">
             Read Manga
         </a>
 
         @guest
         <a href="{{ route('auth.login') }}"
-           class="px-6 py-3 bg-[#1f2937] hover:bg-gray-700 rounded-xl transition">
+           class="btn" style="background:#1f2937;color:#fff;border-radius:0.75rem">
             Login
         </a>
         @endguest
 
     </div>
 
-    <!-- Features -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 max-w-5xl w-full">
+    <div class="row row-cols-1 row-cols-md-3 g-4 mt-4" style="max-width:64rem;width:100%">
 
-        <div class="feature-card">
-            🎥 High Quality Streaming
-            <p>Watch anime with multiple servers and HD playback.</p>
+        <div class="col">
+            <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.25rem;text-align:center;color:#d1d5db">
+                🎥 High Quality Streaming
+                <p style="color:#6b7280;font-size:0.875rem;margin-top:0.5rem">Watch anime with multiple servers and HD playback.</p>
+            </div>
         </div>
 
-        <div class="feature-card">
-            📖 Manga Reader
-            <p>Smooth and fast reader with bookmarking support.</p>
+        <div class="col">
+            <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.25rem;text-align:center;color:#d1d5db">
+                📖 Manga Reader
+                <p style="color:#6b7280;font-size:0.875rem;margin-top:0.5rem">Smooth and fast reader with bookmarking support.</p>
+            </div>
         </div>
 
-        <div class="feature-card">
-            💾 Personal Lists
-            <p>Track your watching progress and favorites.</p>
+        <div class="col">
+            <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.25rem;text-align:center;color:#d1d5db">
+                💾 Personal Lists
+                <p style="color:#6b7280;font-size:0.875rem;margin-top:0.5rem">Track your watching progress and favorites.</p>
+            </div>
         </div>
 
     </div>
 
 </div>
-
-<style>
-.feature-card {
-    @apply bg-[#111827] border border-gray-800 rounded-xl p-5 text-center text-gray-300;
-}
-.feature-card p {
-    @apply text-sm text-gray-500 mt-2;
-}
-</style>
 @endsection

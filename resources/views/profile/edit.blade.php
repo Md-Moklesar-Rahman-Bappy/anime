@@ -3,38 +3,33 @@
 @section('title', 'Profile')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
 
-    <!-- Page Title -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-white">
+    <div class="mb-3">
+        <h1 class="fw-semibold" style="color:#fff;font-size:1.5rem">
             Profile Settings
         </h1>
-        <p class="text-sm text-gray-400 mt-1">
+        <p class="mt-1" style="color:#9ca3af;font-size:0.875rem">
             Manage your account information and security
         </p>
     </div>
 
-    <!-- Sections -->
-    <div class="space-y-6">
+    <div class="d-flex flex-column gap-3">
 
-        <!-- Profile Info -->
-        <div class="card">
-            <div class="max-w-xl">
+        <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+            <div style="max-width:36rem">
                 @include('profile.partials.update-profile-information-form')
             </div>
         </div>
 
-        <!-- Password -->
-        <div class="card">
-            <div class="max-w-xl">
+        <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+            <div style="max-width:36rem">
                 @include('profile.partials.update-password-form')
             </div>
         </div>
 
-        <!-- Delete -->
-        <div class="card border-red-500/10">
-            <div class="max-w-xl">
+        <div style="background:#111827;border:1px solid rgba(239,68,68,0.1);border-radius:0.75rem;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+            <div style="max-width:36rem">
                 @include('profile.partials.delete-user-form')
             </div>
         </div>
@@ -42,11 +37,4 @@
     </div>
 
 </div>
-
-<style>
-.card {
-    @apply bg-[#111827] border border-gray-800 rounded-2xl p-6 shadow;
-}
-</style>
-
 @endsection

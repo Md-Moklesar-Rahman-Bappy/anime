@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class RandomController extends Controller
 {
-    public function __invoke(): RedirectResponse
+    public function index(): RedirectResponse
     {
         try {
             // ✅ Single optimized query

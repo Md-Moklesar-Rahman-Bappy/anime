@@ -8,15 +8,24 @@ use Illuminate\Support\Facades\Log;
 
 class JikanApiException extends Exception
 {
+    /**
+     * HTTP status code returned by Jikan API
+     */
     public ?int $statusCode;
 
+    /**
+     * Raw API response body (optional)
+     */
     public ?string $responseBody;
 
+    /**
+     * Constructor
+     */
     public function __construct(
         string $message = 'Jikan API error',
         ?int $statusCode = null,
         ?string $responseBody = null,
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $statusCode ?? 0, $previous);
 
@@ -26,26 +35,27 @@ class JikanApiException extends Exception
 
     /*
     |--------------------------------------------------------------------------
-    | Factory Methods
+    | Factory Methods (Clean + reusable)
     |--------------------------------------------------------------------------
     */
 
     public static function connectionFailed(string $detail): self
     {
         return new self(
-            "Failed to connect to Jikan API: {$detail}"
+            "Failed to connect to Jikan API: {$detail}",
+            null
         );
     }
 
-    public static function rateLimited(int $retryAfter): self
+    public static function rateLimited(int $retryAfter = 0): self
     {
         return new self(
-            "Rate limited by Jikan API. Retry after {$retryAfter}s.",
+            "Jikan API rate limit reached" . ($retryAfter ? " (retry after {$retryAfter}s)" : ''),
             429
         );
     }
 
-    public static function badResponse(int $status, string $body): self
+    public static function badResponse(int $status, string $body = ''): self
     {
         return new self(
             "Jikan API returned HTTP {$status}",
@@ -57,8 +67,15 @@ class JikanApiException extends Exception
     public static function notFound(): self
     {
         return new self(
-            'Resource not found on MyAnimeList.',
+            "Resource not found on MyAnimeList",
             404
+        );
+    }
+
+    public static function invalidData(string $detail = ''): self
+    {
+        return new self(
+            "Invalid or unexpected data from Jikan API" . ($detail ? " ({$detail})" : '')
         );
     }
 
@@ -78,9 +95,14 @@ class JikanApiException extends Exception
         return $this->statusCode === 404;
     }
 
+    public function isServerError(): bool
+    {
+        return $this->statusCode >= 500;
+    }
+
     /*
     |--------------------------------------------------------------------------
-    | Report (Laravel logging)
+    | Logging (Laravel integration)
     |--------------------------------------------------------------------------
     */
 
@@ -88,8 +110,9 @@ class JikanApiException extends Exception
     {
         Log::error('Jikan API Exception', [
             'message' => $this->getMessage(),
-            'status' => $this->statusCode,
+            'status_code' => $this->statusCode,
             'response' => $this->responseBody,
+            'trace' => $this->getTraceAsString(),
         ]);
     }
 }

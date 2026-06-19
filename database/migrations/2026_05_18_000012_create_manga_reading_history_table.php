@@ -12,27 +12,47 @@ return new class extends Migration
 
             $table->id();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Relationships
+            |--------------------------------------------------------------------------
+            */
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->foreignId('chapter_id')
                 ->constrained('chapters')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
-            $table->integer('page_number')
-                ->default(1);
+            /*
+            |--------------------------------------------------------------------------
+            | Reading Progress
+            |--------------------------------------------------------------------------
+            */
+            $table->unsignedInteger('page_number')->default(1);
+            $table->boolean('completed')->default(false);
 
-            $table->boolean('completed')
-                ->default(false);
+            /*
+            |--------------------------------------------------------------------------
+            | Constraints
+            |--------------------------------------------------------------------------
+            */
+            $table->unique(['user_id', 'chapter_id']); // one record per chapter
 
-            $table->unique(['user_id', 'chapter_id']);
-
-            $table->index(['user_id', 'updated_at']);
-
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
             $table->timestamps();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['user_id', 'updated_at']); // for "continue reading"
         });
     }
 

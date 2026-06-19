@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('reports', function (Blueprint $table) {
@@ -20,42 +17,40 @@ return new class extends Migration
             | Relationships
             |--------------------------------------------------------------------------
             */
-
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
-            // Report target (comment / episode / anime)
+            /*
+            |--------------------------------------------------------------------------
+            | Polymorphic Target
+            |--------------------------------------------------------------------------
+            */
             $table->morphs('reportable');
-            // reportable_id + reportable_type
+            // reportable_id + reportable_type (index already included)
 
             /*
             |--------------------------------------------------------------------------
             | Report Data
             |--------------------------------------------------------------------------
             */
-
             $table->string('issue_type')->index();
-            // e.g. spam, abusive, broken_video, etc.
-
             $table->text('description')->nullable();
 
             /*
             |--------------------------------------------------------------------------
-            | Moderation Status
+            | Status
             |--------------------------------------------------------------------------
             */
-
-            $table->string('status')->default('pending')->index();
-            // pending / resolved / rejected
+            $table->string('status')
+                ->default('pending')
+                ->index();
 
             /*
             |--------------------------------------------------------------------------
             | Admin Handling
             |--------------------------------------------------------------------------
             */
-
             $table->foreignId('handled_by')
                 ->nullable()
                 ->constrained('users')
@@ -65,25 +60,13 @@ return new class extends Migration
 
             /*
             |--------------------------------------------------------------------------
-            | Constraints
-            |--------------------------------------------------------------------------
-            */
-
-            $table->index(['reportable_id', 'reportable_type']);
-
-            /*
-            |--------------------------------------------------------------------------
             | System
             |--------------------------------------------------------------------------
             */
-
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('reports');

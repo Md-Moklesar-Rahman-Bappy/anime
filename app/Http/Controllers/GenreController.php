@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class GenreController extends Controller
 {
-    public function __invoke(string $slug)
+    public function show(string $slug)
     {
         try {
             // ✅ Cache genre + anime list

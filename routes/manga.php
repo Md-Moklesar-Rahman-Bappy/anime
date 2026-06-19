@@ -33,16 +33,12 @@ Route::get('/manga/completed', [MangaListController::class, 'completed'])->name(
 
 Route::get('/manga/random', [MangaRandomController::class, 'index'])->name('manga.random');
 
-<<<<<<< HEAD
 // ✅ FIXED ROUTE (IMPORTANT)
 Route::get('/manga/{slug}', MangaController::class)
     ->name('manga.detail')
     ->where('slug', '[a-zA-Z0-9\-\_]+');
 
 // Reader
-Route::get('/read/{slug}', [MangaReaderController::class, 'index'])
+Route::get('/read/{slug}', MangaReaderController::class)
     ->name('manga.read')
     ->where('slug', '[a-zA-Z0-9\-\_]+');
-=======
-Route::get('/read/{slug}', MangaReaderController::class)->name('manga.read');
->>>>>>> 69efe2ee0ae0a15e36d5429779cd8c2f83671234

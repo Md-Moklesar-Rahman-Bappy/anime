@@ -1,15 +1,11 @@
 {
   "private": true,
   "type": "module",
-
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-
-    // ✅ Release automation
     "release": "semantic-release"
   },
-
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.2",
     "@tailwindcss/postcss": "^4.3.1",
@@ -20,14 +16,11 @@
     "postcss": "^8.4.31",
     "tailwindcss": "^4.3.1",
     "vite": "^8.0.16",
-
-    // ✅ Semantic release (added)
     "semantic-release": "^24.0.0",
     "@semantic-release/commit-analyzer": "^13.0.0",
     "@semantic-release/release-notes-generator": "^14.0.0",
     "@semantic-release/github": "^11.0.0"
   },
-
   "dependencies": {
     "chart.js": "^4.5.1",
     "plyr": "^3.8.4"

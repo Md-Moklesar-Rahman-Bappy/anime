@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('comments', function (Blueprint $table) {
-
             $table->id();
 
             /*
@@ -20,23 +19,19 @@ return new class extends Migration
             | Relationships
             |--------------------------------------------------------------------------
             */
-
             $table->foreignId('episode_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('episodes')
+                ->cascadeOnDelete();
 
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
-            | Nested Comments (Replies)
+            | Nested Comments / Replies
             |--------------------------------------------------------------------------
             */
-
             $table->foreignId('parent_id')
                 ->nullable()
                 ->constrained('comments')
@@ -44,10 +39,9 @@ return new class extends Migration
 
             /*
             |--------------------------------------------------------------------------
-            | Core Content
+            | Content
             |--------------------------------------------------------------------------
             */
-
             $table->text('body');
 
             /*
@@ -55,34 +49,33 @@ return new class extends Migration
             | Engagement
             |--------------------------------------------------------------------------
             */
-
             $table->unsignedInteger('likes_count')->default(0);
 
             /*
             |--------------------------------------------------------------------------
             | Moderation
             |--------------------------------------------------------------------------
+            | visible / hidden / deleted
+            |--------------------------------------------------------------------------
             */
-
             $table->string('status')->default('visible')->index();
-            // visible / hidden / deleted
-
-            /*
-            |--------------------------------------------------------------------------
-            | Indexing
-            |--------------------------------------------------------------------------
-            */
-
-            $table->index(['episode_id', 'created_at']);
 
             /*
             |--------------------------------------------------------------------------
             | System
             |--------------------------------------------------------------------------
             */
-
             $table->timestamps();
-            $table->softDeletes(); // ✅ safer deletion
+            $table->softDeletes();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['episode_id', 'created_at']);
+            $table->index(['user_id', 'created_at']);
+            $table->index(['parent_id', 'created_at']);
         });
     }
 

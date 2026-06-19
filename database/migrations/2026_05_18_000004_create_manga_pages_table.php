@@ -19,31 +19,22 @@ return new class extends Migration
             */
             $table->foreignId('chapter_id')
                 ->constrained('chapters')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
             | Page Info
             |--------------------------------------------------------------------------
             */
-            $table->integer('page_number');
-
-            $table->string('image_path'); // path to stored image
+            $table->unsignedInteger('page_number'); // safer than integer
+            $table->string('image_path'); // image storage path
 
             /*
             |--------------------------------------------------------------------------
             | Constraints
             |--------------------------------------------------------------------------
             */
-            $table->unique(['chapter_id', 'page_number']); // ✅ prevent duplicates
-
-            /*
-            |--------------------------------------------------------------------------
-            | Indexing
-            |--------------------------------------------------------------------------
-            */
-            $table->index(['chapter_id', 'page_number']); // ✅ fast page loading
+            $table->unique(['chapter_id', 'page_number']); // prevent duplicates
 
             /*
             |--------------------------------------------------------------------------
@@ -51,6 +42,13 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->timestamps();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['chapter_id', 'page_number']); // fast loading
         });
     }
 

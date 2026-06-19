@@ -8,29 +8,23 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('favorites', function (Blueprint $table) {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Category (Optional grouping)
-            |--------------------------------------------------------------------------
-            */
-            if (!Schema::hasColumn('favorites', 'category')) {
-                $table->string('category', 50) // allow slightly larger values
+        // Add category column only if it doesn't already exist
+        if (!Schema::hasColumn('favorites', 'category')) {
+            Schema::table('favorites', function (Blueprint $table) {
+                $table->string('category', 50)
                     ->nullable()
-                    ->after('anime_id')
-                    ->index(); // ✅ useful for filtering
-            }
-        });
+                    ->index(); // for filtering
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('favorites', function (Blueprint $table) {
-
-            if (Schema::hasColumn('favorites', 'category')) {
+        // Drop column safely
+        if (Schema::hasColumn('favorites', 'category')) {
+            Schema::table('favorites', function (Blueprint $table) {
                 $table->dropColumn('category');
-            }
-        });
+            });
+        }
     }
 };

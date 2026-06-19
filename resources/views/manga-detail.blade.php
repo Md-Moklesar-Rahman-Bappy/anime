@@ -3,23 +3,20 @@
 @section('title', $manga->title)
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
 
-    <!-- Banner -->
-    <div class="relative rounded-2xl overflow-hidden h-[260px] md:h-[380px] mb-8">
-        <img src="{{ $manga->banner_url ?? asset('fallback.jpg') }}" class="w-full h-full object-cover">
-        <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-black/60 to-transparent"></div>
+    <div style="position:relative;border-radius:0.75rem;overflow:hidden;height:260px;margin-bottom:2rem">
+        <img src="{{ $manga->banner_url ?? asset('fallback.jpg') }}" style="width:100%;height:100%;object-fit:cover">
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,#0a0a0f,rgba(0,0,0,0.6),transparent)"></div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+    <div class="row">
+        <div class="col-lg-3 d-flex flex-column gap-3">
 
-        <!-- LEFT -->
-        <div class="space-y-4">
-
-            <img src="{{ $manga->thumbnail_url }}" class="w-full rounded-xl shadow-lg" loading="lazy">
+            <img src="{{ $manga->thumbnail_url }}" style="width:100%;border-radius:0.75rem;box-shadow:0 4px 6px rgba(0,0,0,0.3)" loading="lazy">
 
             <a href="{{ route('manga.read', $manga->slug) }}"
-               class="block w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-lg font-semibold text-center transition">
+               class="btn d-block w-100 text-center" style="background:#4f46e5;color:#fff;font-weight:600">
                 📖 Read Now
             </a>
 
@@ -35,26 +32,24 @@
                             },
                             body: JSON.stringify({ manga_id: {{ $manga->id }} })
                         })"
-                class="bg-[#1f2937] hover:bg-gray-700 text-white py-3 rounded-lg transition w-full"
+                class="btn d-block w-100"
+                style="background:#1f2937;color:#fff"
                 x-text="favorited ? '✔ In Favorites' : '+ Add to Favorites'">
             </button>
             @endauth
 
         </div>
 
-        <!-- RIGHT -->
-        <div class="lg:col-span-3">
+        <div class="col-lg-9">
 
-            <!-- Title -->
-            <h1 class="text-3xl font-semibold text-white mb-2">
+            <h1 class="fw-semibold" style="color:#fff;font-size:1.75rem;margin-bottom:0.5rem">
                 {{ $manga->title }}
             </h1>
 
-            <!-- Meta -->
-            <div class="flex flex-wrap gap-3 text-sm text-gray-400 mb-4">
+            <div class="d-flex flex-wrap gap-2" style="color:#9ca3af;font-size:0.875rem;margin-bottom:1rem">
 
                 @if($manga->rating)
-                <span class="text-yellow-400">⭐ {{ $manga->rating }}</span>
+                <span style="color:#facc15">⭐ {{ $manga->rating }}</span>
                 @endif
 
                 @if($manga->score)
@@ -62,11 +57,11 @@
                 @endif
 
                 @if($manga->type)
-                <span class="badge">{{ $manga->type }}</span>
+                <span style="background:#1f2937;padding:0.25rem 0.5rem;border-radius:0.25rem;color:#d1d5db">{{ $manga->type }}</span>
                 @endif
 
                 @if($manga->status)
-                <span class="badge">{{ $manga->status }}</span>
+                <span style="background:#1f2937;padding:0.25rem 0.5rem;border-radius:0.25rem;color:#d1d5db">{{ $manga->status }}</span>
                 @endif
 
                 @if($manga->year)
@@ -79,22 +74,19 @@
 
             </div>
 
-            <!-- Genres -->
-            <div class="flex flex-wrap gap-2 mb-4">
+            <div class="d-flex flex-wrap gap-1 mb-3">
                 @foreach($manga->genres as $genre)
-                    <a href="{{ route('manga.genre', $genre->slug)" class="genre-tag">
+                    <a href="{{ route('manga.genre', $genre->slug) }}" style="display:inline-block;background:rgba(99,102,241,0.1);color:#818cf8;padding:0.25rem 0.75rem;border-radius:999px;font-size:0.875rem;text-decoration:none">
                         {{ $genre->name }}
                     </a>
                 @endforeach
             </div>
 
-            <!-- Description -->
-            <p class="text-gray-300 leading-relaxed mb-6">
+            <p style="color:#d1d5db;line-height:1.625;margin-bottom:1.5rem">
                 {{ $manga->description ?? 'No description available.' }}
             </p>
 
-            <!-- Info -->
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mb-8">
+            <div class="row row-cols-2 row-cols-md-3 g-3" style="font-size:0.875rem;margin-bottom:2rem">
                 @foreach([
                     'Author'=>$manga->author,
                     'Artist'=>$manga->artist,
@@ -103,34 +95,33 @@
                     'Views'=>$manga->views ? number_format($manga->views):null
                 ] as $label=>$value)
                     @if($value)
-                        <div><span class="text-gray-500">{{ $label }}:</span> {{ $value }}</div>
+                        <div class="col"><span style="color:#6b7280">{{ $label }}:</span> {{ $value }}</div>
                     @endif
                 @endforeach
             </div>
 
-            <!-- Chapters -->
             @if($manga->chapters->count())
-            <h2 class="section-title">Chapters</h2>
+            <h2 style="font-size:1.25rem;font-weight:600;color:#fff;margin-bottom:1rem">Chapters</h2>
 
-            <div class="space-y-2">
+            <div class="d-flex flex-column gap-2">
                 @foreach($manga->chapters as $ch)
 
                 <a href="{{ route('manga.read', ['slug'=>$manga->slug,'chapter'=>$ch->number]) }}"
-                   class="chapter-card">
+                   style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:#111827;border:1px solid #374151;border-radius:0.5rem;text-decoration:none;transition:background 0.3s">
 
                     <div>
-                        <span class="text-indigo-400 font-semibold">
+                        <span style="color:#818cf8;font-weight:600">
                             Ch. {{ rtrim(rtrim($ch->number,'0'),'.') }}
                         </span>
 
                         @if($ch->title)
-                        <span class="text-gray-400 ml-2">
+                        <span style="color:#9ca3af;margin-left:0.5rem">
                             {{ $ch->title }}
                         </span>
                         @endif
                     </div>
 
-                    <span class="text-xs text-gray-500">
+                    <span style="font-size:0.75rem;color:#6b7280">
                         {{ $ch->pages_count }} pages
                     </span>
 
@@ -140,22 +131,23 @@
             </div>
             @endif
 
-            <!-- Related -->
             @if($related->count())
-            <h2 class="section-title mt-10">Related Manga</h2>
+            <h2 style="font-size:1.25rem;font-weight:600;color:#fff;margin-top:2.5rem;margin-bottom:1rem">Related Manga</h2>
 
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
 
                 @foreach($related as $rel)
-                <a href="{{ route('manga.detail',$rel->slug) }}" class="group">
+                <div class="col">
+                <a href="{{ route('manga.detail',$rel->slug) }}" class="text-decoration-none">
 
-                    <div class="anime-card">
-                        <img src="{{ $rel->thumbnail_url }}" class="anime-img">
+                    <div style="position:relative;border-radius:0.75rem;overflow:hidden;background:#111827;aspect-ratio:2/3">
+                        <img src="{{ $rel->thumbnail_url }}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s">
                     </div>
 
-                    <p class="anime-title">{{ $rel->title }}</p>
+                    <p style="color:#d1d5db;font-size:0.875rem;margin-top:0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $rel->title }}</p>
 
                 </a>
+                </div>
                 @endforeach
 
             </div>
@@ -164,15 +156,4 @@
         </div>
     </div>
 </div>
-
-<style>
-.badge { @apply bg-[#1f2937] px-2 py-1 rounded text-gray-300; }
-.genre-tag { @apply bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full text-sm hover:bg-indigo-600 hover:text-white transition; }
-.section-title { @apply text-xl font-semibold text-white mb-4; }
-.chapter-card { @apply flex justify-between items-center p-3 bg-[#111827] border border-gray-800 rounded-lg hover:bg-[#1f2937] transition; }
-
-.anime-card { @apply relative rounded-xl overflow-hidden bg-[#111827] aspect-[2/3]; }
-.anime-img { @apply w-full h-full object-cover group-hover:scale-105 transition duration-300; }
-.anime-title { @apply text-sm text-gray-300 mt-2 truncate group-hover:text-white; }
-</style>
 @endsection

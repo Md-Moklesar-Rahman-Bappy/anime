@@ -1,119 +1,71 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="container" style="max-width:900px">
 
-    <h1 class="text-2xl font-semibold text-white mb-6">
+    <h1 class="h4 fw-semibold text-white mb-3">
         {{ isset($chapter) ? 'Edit' : 'Create' }} Chapter - {{ $manga->title }}
     </h1>
 
-    {{ isset($chapter) ? route('admin.manga.chapters.update', [$manga, $chapter]) : route('admin.manga.chapters.store', $manga) }}
-
+    <form action="{{ isset($chapter) ? route('admin.manga.chapters.update', [$manga, $chapter]) : route('admin.manga.chapters.store', $manga) }}" method="POST" enctype="multipart/form-data">
         @csrf
         @if(isset($chapter)) @method('PUT') @endif
 
-        <!-- Chapter Info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <div>
-                <label class="text-gray-400 text-sm">Chapter Number</label>
-                <input type="number" step="0.1" name="number"
-                    value="{{ old('number', $chapter->number ?? '') }}"
-                    class="form-input" required>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Chapter Number</label>
+                <input type="number" step="0.1" name="number" value="{{ old('number', $chapter->number ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff" required>
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Title (optional)</label>
-                <input type="text" name="title"
-                    value="{{ old('title', $chapter->title ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Title (optional)</label>
+                <input type="text" name="title" value="{{ old('title', $chapter->title ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
         </div>
 
-        <!-- Upload -->
-        <div>
-            <label class="text-gray-400 text-sm">Upload Page Images</label>
+        <div class="mt-3">
+            <label class="small" style="color:#9ca3af">Upload Page Images</label>
             <input type="file" name="pages[]" multiple accept="image/*"
-                class="file-input">
-
-            <p class="text-xs text-gray-500 mt-1">
-                Images sorted alphabetically (jpg, png, webp)
-            </p>
+                class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#9ca3af">
+            <p class="small mt-1" style="color:#6b7280">Images sorted alphabetically (jpg, png, webp)</p>
         </div>
 
-        <!-- URL Import -->
-        <div>
-            <label class="text-gray-400 text-sm">Or Image URLs</label>
-
-            <textarea name="page_urls" rows="4"
-                class="form-input"
-                placeholder="https://example.com/page-01.jpg">
-{{ old('page_urls', isset($chapter) ? $chapter->pages->pluck('image_path')->implode("\n") : '') }}
-            </textarea>
+        <div class="mt-3">
+            <label class="small" style="color:#9ca3af">Or Image URLs</label>
+            <textarea name="page_urls" rows="4" class="form-control"
+                style="background:#1f2937;border:1px solid #4b5563;color:#fff"
+                placeholder="https://example.com/page-01.jpg">{{ old('page_urls', isset($chapter) ? $chapter->pages->pluck('image_path')->implode("\n") : '') }}</textarea>
         </div>
 
-        <!-- Existing Pages -->
         @if(isset($chapter) && $chapter->pages->count())
-        <div>
-
-            <label class="text-gray-400 text-sm mb-2 block">
-                Existing Pages
-            </label>
-
-            <div class="grid grid-cols-2 md:grid-cols-6 gap-2">
-
+        <div class="mt-3">
+            <label class="small mb-2 d-block" style="color:#9ca3af">Existing Pages</label>
+            <div class="row row-cols-2 row-cols-md-6 g-2">
                 @foreach($chapter->pages as $page)
-                <div class="relative group">
-
-                     }}" 
-                         class="w-full aspect-[3/4] object-cover rounded-lg">
-
-                    <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-lg">
-                        <label class="flex items-center gap-1 text-xs text-white cursor-pointer">
+                <div class="col position-relative">
+                    <img src="{{ $page->image_url ?? $page->image_path }}" class="w-100" style="aspect-ratio:3/4;object-fit:cover;border-radius:0.5rem">
+                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background:rgba(0,0,0,0.6);opacity:0;border-radius:0.5rem">
+                        <label class="d-flex align-items-center gap-1 small text-white cursor-pointer">
                             <input type="checkbox" name="delete_pages[]" value="{{ $page->id }}">
                             Delete
                         </label>
                     </div>
-
-                    <span class="text-xs text-gray-500 text-center block mt-1">
-                        P. {{ $page->page_number }}
-                    </span>
+                    <span class="small text-center d-block mt-1" style="color:#6b7280">P. {{ $page->page_number }}</span>
                 </div>
                 @endforeach
-
             </div>
-
         </div>
         @endif
 
-        <!-- Actions -->
-        <div class="flex gap-3">
-
-            <button type="submit"
-                class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg transition">
+        <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn" style="background:#059669;color:#fff">
                 {{ isset($chapter) ? 'Update' : 'Create' }}
             </button>
-
-             }}"
-               class="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition">
-                Cancel
-            </a>
-
+            <a href="{{ route('admin.manga.chapters.index', $manga) }}" class="btn" style="background:#1f2937;color:#fff">Cancel</a>
         </div>
 
     </form>
-
 </div>
-
-<style>
-.form-input {
-    @apply w-full mt-1 px-3 py-2 bg-[#1f2937] border border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500;
-}
-
-.file-input {
-    @apply w-full text-sm text-gray-400 file:mr-3 file:px-4 file:py-2 file:bg-[#1f2937] file:text-white file:border-0 file:rounded-lg;
-}
-</style>
 
 @endsection

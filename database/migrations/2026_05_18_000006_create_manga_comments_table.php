@@ -12,34 +12,63 @@ return new class extends Migration
 
             $table->id();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Relationships
+            |--------------------------------------------------------------------------
+            */
             $table->foreignId('chapter_id')
                 ->constrained('chapters')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->foreignId('parent_id')
                 ->nullable()
                 ->constrained('manga_comments')
                 ->cascadeOnDelete();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Content
+            |--------------------------------------------------------------------------
+            */
             $table->text('body');
 
-            $table->unsignedInteger('likes_count')
-                ->default(0);
+            /*
+            |--------------------------------------------------------------------------
+            | Engagement
+            |--------------------------------------------------------------------------
+            */
+            $table->unsignedInteger('likes_count')->default(0);
 
+            /*
+            |--------------------------------------------------------------------------
+            | Moderation
+            |--------------------------------------------------------------------------
+            */
             $table->string('status')
                 ->default('visible')
-                ->index();
+                ->index(); // visible / hidden / deleted
 
-            $table->index(['chapter_id', 'created_at']);
-
+            /*
+            |--------------------------------------------------------------------------
+            | System
+            |--------------------------------------------------------------------------
+            */
             $table->timestamps();
             $table->softDeletes();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['chapter_id', 'created_at']);
+            $table->index(['user_id', 'created_at']);
+            $table->index(['parent_id', 'created_at']);
         });
     }
 

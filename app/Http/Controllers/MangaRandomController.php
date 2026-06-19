@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class MangaRandomController extends Controller
 {
-    public function __invoke(): RedirectResponse
+    public function index(): RedirectResponse
     {
         try {
             // ✅ Single efficient query

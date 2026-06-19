@@ -58,7 +58,7 @@ class User extends Authenticatable
             }
         });
 
-        static::saved(fn () => Cache::forget('user_'.$this->id ?? ''));
+        static::saved(fn ($user) => Cache::forget('user_' . ($user->id ?? '')));
     }
 
     /*

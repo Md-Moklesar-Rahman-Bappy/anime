@@ -2,8 +2,9 @@
     viewBox="0 0 316 316"
     xmlns="http://www.w3.org/2000/svg"
     {{ $attributes->merge([
-        'class' => 'h-10 w-10 text-indigo-500'
+        'class' => 'text-indigo-500'
     ]) }}
+    style="width:2.5rem;height:2.5rem"
 >
     <path 
         fill="currentColor"

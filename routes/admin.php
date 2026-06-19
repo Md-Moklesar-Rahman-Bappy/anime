@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\{
+    CommentController,
     DashboardController,
     AnimeController as AdminAnimeController,
     EpisodeController,
@@ -11,6 +12,7 @@ use App\Http\Controllers\Admin\{
     JikanController,
     MangaController as AdminMangaController,
     MangaChapterController,
+    MangaDashboardController,
     MangaGenreController as AdminMangaGenreController,
     ReportController,
     RequestController as AdminRequestController,
@@ -32,6 +34,7 @@ Route::prefix('admin')
         */
         Route::get('/', fn() => redirect()->route('admin.dashboard'));
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/manga-dashboard', [MangaDashboardController::class, 'index'])->name('manga.dashboard');
 
         /*
         |--------------------------------------------------------------------------
@@ -56,6 +59,7 @@ Route::prefix('admin')
         Route::post('/genres', [AdminGenreController::class, 'store'])->name('genres.store');
         Route::put('/genres/{genre}', [AdminGenreController::class, 'update'])->name('genres.update');
         Route::delete('/genres/{genre}', [AdminGenreController::class, 'destroy'])->name('genres.destroy');
+        Route::post('/genres/import-from-mal', [AdminGenreController::class, 'importFromMal'])->name('genres.import-from-mal');
 
         /*
         |--------------------------------------------------------------------------
@@ -104,6 +108,15 @@ Route::prefix('admin')
 
         /*
         |--------------------------------------------------------------------------
+        | Comments
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/comments', [CommentController::class, 'index'])->name('comments.index');
+        Route::delete('/comments/anime/{comment}', [CommentController::class, 'destroyAnime'])->name('comments.destroy-anime');
+        Route::delete('/comments/manga/{mangaComment}', [CommentController::class, 'destroyManga'])->name('comments.destroy-manga');
+
+        /*
+        |--------------------------------------------------------------------------
         | Settings
         |--------------------------------------------------------------------------
         */
@@ -122,6 +135,7 @@ Route::prefix('admin')
             Route::post('/import/{malId}', [JikanController::class, 'import'])->name('import');
             Route::post('/batch-import', [JikanController::class, 'batchImport'])->name('batch-import');
             Route::post('/refresh-episodes/{malId}', [JikanController::class, 'refreshEpisodes'])->name('refresh-episodes');
+            Route::post('/refresh-anime/{malId}', [JikanController::class, 'refreshAnime'])->name('refresh-anime');
             Route::post('/reset-progress', [JikanController::class, 'resetProgress'])->name('reset-progress');
         });
 
@@ -141,7 +155,6 @@ Route::prefix('admin')
         |--------------------------------------------------------------------------
         */
         Route::prefix('telegram')->name('telegram.')->group(function () {
-            Route::post('/preview', [ScraperController::class, 'telegramPreview'])->name('preview');
             Route::post('/import', [ScraperController::class, 'telegramImport'])->name('import');
         });
 
@@ -157,8 +170,4 @@ Route::prefix('admin')
             Route::get('/status/{upload}', [UploadController::class, 'status'])->name('status');
             Route::delete('/cancel/{upload}', [UploadController::class, 'cancel'])->name('cancel');
         });
-<<<<<<< HEAD
-=======
-
->>>>>>> 69efe2ee0ae0a15e36d5429779cd8c2f83671234
     });

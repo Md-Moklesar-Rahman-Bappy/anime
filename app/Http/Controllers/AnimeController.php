@@ -14,7 +14,7 @@ class AnimeController extends Controller
         protected RelatedContentService $relatedContent,
     ) {}
 
-    public function __invoke(string $slug)
+    public function show(string $slug)
     {
         try {
             $anime = Anime::where('slug', $slug)

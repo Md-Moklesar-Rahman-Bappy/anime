@@ -19,22 +19,24 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
 
-            // Basic info
+            // Basic
             $table->string('name');
-            $table->string('username')->unique()->nullable(); // ✅ required for your system
+            $table->string('username')->nullable()->unique();
             $table->string('email')->unique();
 
             // Auth
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
 
-            // Roles (VERY IMPORTANT)
-            $table->string('role')->default('user')->index(); // user / admin / super_admin
+            // Role system
+            $table->string('role')
+                ->default('user')
+                ->index(); // user, admin, super_admin
 
-            // Optional profile
+            // Profile
             $table->string('avatar')->nullable();
 
-            // Tokens
+            // Remember token
             $table->rememberToken();
 
             $table->timestamps();
@@ -49,11 +51,13 @@ return new class extends Migration
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
+
+            $table->index('created_at');
         });
 
         /*
         |--------------------------------------------------------------------------
-        | Sessions Table
+        | Sessions
         |--------------------------------------------------------------------------
         */
         Schema::create('sessions', function (Blueprint $table) {
@@ -63,7 +67,7 @@ return new class extends Migration
                 ->nullable()
                 ->index()
                 ->constrained('users')
-                ->nullOnDelete(); // ✅ clean relationship
+                ->nullOnDelete();
 
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();

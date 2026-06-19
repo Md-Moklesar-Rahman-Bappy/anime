@@ -17,7 +17,7 @@ class WatchController extends Controller
         protected ServerResolverService $serverResolver,
     ) {}
 
-    public function __invoke(string $slug)
+    public function index(string $slug)
     {
         try {
             $user = auth()->user();

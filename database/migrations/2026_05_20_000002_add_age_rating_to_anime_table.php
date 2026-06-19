@@ -10,11 +10,13 @@ return new class extends Migration
     {
         Schema::table('anime', function (Blueprint $table) {
 
+            /*
+            |--------------------------------------------------------------------------
+            | Age Rating (PG-13, R, R+, etc.)
+            |--------------------------------------------------------------------------
+            */
             if (!Schema::hasColumn('anime', 'age_rating')) {
-                $table->string('age_rating', 20)
-                    ->nullable()
-                    ->after('rating')
-                    ->index();
+                $table->string('age_rating', 20)->nullable();
             }
         });
     }

@@ -5,13 +5,13 @@
 ])
 
 @php
-$maxWidth = [
-    'sm' => 'sm:max-w-sm',
-    'md' => 'sm:max-w-md',
-    'lg' => 'sm:max-w-lg',
-    'xl' => 'sm:max-w-xl',
-    '2xl' => 'sm:max-w-2xl',
-][$maxWidth];
+$maxWidth = match($maxWidth) {
+    'sm' => '540px',
+    'md' => '720px',
+    'lg' => '960px',
+    'xl' => '1140px',
+    default => '720px',
+};
 @endphp
 
 <div
@@ -20,13 +20,14 @@ $maxWidth = [
     x-on:open-modal.window="$event.detail == '{{ $name }}' ? show = true : null"
     x-on:close-modal.window="$event.detail == '{{ $name }}' ? show = false : null"
     x-on:keydown.escape.window="show = false"
-    class="fixed inset-0 z-50 flex items-center justify-center px-4"
-    style="display: none;"
+    class="position-fixed top-0 start-0 end-0 bottom-0 d-flex align-items-center justify-content-center px-3"
+    style="z-index:1055;display:none"
 >
 
     <!-- Overlay -->
     <div
-        class="fixed inset-0 bg-black/70 backdrop-blur-sm"
+        class="position-fixed top-0 start-0 end-0 bottom-0"
+        style="background:rgba(0,0,0,0.7)"
         @click="show = false"
     ></div>
 
@@ -34,7 +35,8 @@ $maxWidth = [
     <div
         x-show="show"
         x-transition
-        class="relative w-full {{ $maxWidth }} bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-6"
+        class="position-relative w-100 p-3"
+        style="max-width:{{ $maxWidth }};background:#111827;border:1px solid #374151;border-radius:0.75rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)"
     >
         {{ $slot }}
     </div>

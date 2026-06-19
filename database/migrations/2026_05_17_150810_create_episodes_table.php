@@ -10,38 +10,46 @@ return new class extends Migration
     {
         Schema::create('episodes', function (Blueprint $table) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Core Fields
-            |--------------------------------------------------------------------------
-            */
             $table->id();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Relationship
+            |--------------------------------------------------------------------------
+            */
             $table->foreignId('anime_id')
                 ->constrained('anime')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
-            $table->integer('number');
+            /*
+            |--------------------------------------------------------------------------
+            | Core Info
+            |--------------------------------------------------------------------------
+            */
+            $table->unsignedInteger('number'); // ✅ safer than integer
 
             $table->string('title')->nullable();
             $table->text('description')->nullable();
 
             /*
             |--------------------------------------------------------------------------
-            | Streaming
+            | Video / Streaming
             |--------------------------------------------------------------------------
             */
             $table->string('video_path')->nullable();
-            $table->string('storage_disk')->default('public'); // ✅ better default
+            $table->string('storage_disk')->default('local'); // ✅ FIXED (important)
 
-            $table->integer('duration')->nullable(); // in minutes
+            $table->string('source_type')->nullable()->index(); // ✅ youtube/telegram/upload
+            $table->string('source_id')->nullable();
+            $table->string('source_url')->nullable();
+
+            $table->unsignedInteger('duration')->nullable(); // minutes
 
             $table->string('thumbnail')->nullable();
 
             /*
             |--------------------------------------------------------------------------
-            | Features
+            | Flags
             |--------------------------------------------------------------------------
             */
             $table->boolean('has_sub')->default(true);
@@ -58,10 +66,10 @@ return new class extends Migration
 
             /*
             |--------------------------------------------------------------------------
-            | Metadata
+            | SEO / Routing
             |--------------------------------------------------------------------------
             */
-            $table->string('slug')->nullable()->index(); // ✅ SEO
+            $table->string('slug')->nullable()->index();
 
             /*
             |--------------------------------------------------------------------------
@@ -75,7 +83,7 @@ return new class extends Migration
 
             /*
             |--------------------------------------------------------------------------
-            | Sync tracking
+            | Sync Tracking
             |--------------------------------------------------------------------------
             */
             $table->timestamp('jikan_synced_at')->nullable();
@@ -85,7 +93,7 @@ return new class extends Migration
             | Constraints
             |--------------------------------------------------------------------------
             */
-            $table->unique(['anime_id', 'number']); // ✅ prevents duplicates
+            $table->unique(['anime_id', 'number']); // ✅ no duplicate episode
 
             $table->timestamps();
         });

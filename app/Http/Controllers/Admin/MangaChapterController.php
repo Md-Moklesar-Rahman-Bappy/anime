@@ -14,38 +14,47 @@ use Illuminate\Validation\Rule;
 
 class MangaChapterController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Chapter List
+    |--------------------------------------------------------------------------
+    */
     public function index(Manga $manga)
     {
         $chapters = $manga->chapters()
-            ->orderBy('number', 'desc')
-            ->paginate(20);
+            ->orderByDesc('number')
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.manga.chapters.index', compact('manga', 'chapters'));
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Create Form
+    |--------------------------------------------------------------------------
+    */
     public function create(Manga $manga)
     {
-        $chapter = null;
-
-        return view('admin.manga.chapters.form', compact('manga', 'chapter'));
+        return view('admin.manga.chapters.form', [
+            'manga' => $manga,
+            'chapter' => null,
+        ]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Store Chapter
+    |--------------------------------------------------------------------------
+    */
     public function store(Request $request, Manga $manga)
     {
-        $data = $request->validate([
-            'number' => [
-                'required',
-                'numeric',
-                Rule::unique('chapters', 'number')->where(fn($q) => $q->where('manga_id', $manga->id)),
-            ],
-            'title' => 'nullable|string|max:255',
-            'pages' => 'nullable|array',
-            'pages.*' => 'image|max:5120',
-            'page_urls' => 'nullable|string',
-        ]);
+        $data = $this->validateChapter($request, $manga);
+
+        $uploadedFiles = [];
 
         try {
-            DB::transaction(function () use ($request, $manga, $data, &$chapter) {
+            DB::transaction(function () use ($request, $manga, $data, &$uploadedFiles) {
                 $chapter = Chapter::create([
                     'manga_id' => $manga->id,
                     'number' => $data['number'],
@@ -54,12 +63,19 @@ class MangaChapterController extends Controller
 
                 $pageNumber = 1;
 
+                /*
+                |--------------------------------------------------------------------------
+                | Uploaded Pages
+                |--------------------------------------------------------------------------
+                */
                 if ($request->hasFile('pages')) {
                     foreach ($request->file('pages') as $page) {
                         $path = $page->store(
                             "manga/{$manga->slug}/chapters/{$chapter->number}",
                             'public'
                         );
+
+                        $uploadedFiles[] = $path;
 
                         MangaPage::create([
                             'chapter_id' => $chapter->id,
@@ -69,6 +85,11 @@ class MangaChapterController extends Controller
                     }
                 }
 
+                /*
+                |--------------------------------------------------------------------------
+                | Remote Page URLs
+                |--------------------------------------------------------------------------
+                */
                 foreach ($this->parsePageUrls($request->input('page_urls')) as $url) {
                     MangaPage::create([
                         'chapter_id' => $chapter->id,
@@ -77,14 +98,17 @@ class MangaChapterController extends Controller
                     ]);
                 }
 
+                $this->normalizePageNumbers($chapter);
                 $this->syncChapterPageCount($chapter);
                 $this->syncMangaChapterCount($manga);
             });
 
             return redirect()
                 ->route('admin.manga.chapters.index', $manga)
-                ->with('success', 'Chapter created.');
+                ->with('success', 'Chapter created successfully.');
         } catch (\Throwable $e) {
+            $this->deleteUploadedFiles($uploadedFiles);
+
             Log::error('Manga chapter create failed', [
                 'manga_id' => $manga->id,
                 'error' => $e->getMessage(),
@@ -96,40 +120,50 @@ class MangaChapterController extends Controller
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Edit Form
+    |--------------------------------------------------------------------------
+    */
     public function edit(Manga $manga, Chapter $chapter)
     {
         $this->ensureChapterBelongsToManga($manga, $chapter);
 
-        $chapter->load(['pages' => fn($q) => $q->orderBy('page_number')]);
+        $chapter->load([
+            'pages' => fn($q) => $q->orderBy('page_number')->orderBy('id'),
+        ]);
 
         return view('admin.manga.chapters.form', compact('manga', 'chapter'));
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Update Chapter
+    |--------------------------------------------------------------------------
+    */
     public function update(Request $request, Manga $manga, Chapter $chapter)
     {
         $this->ensureChapterBelongsToManga($manga, $chapter);
 
-        $data = $request->validate([
-            'number' => [
-                'required',
-                'numeric',
-                Rule::unique('chapters', 'number')
-                    ->ignore($chapter->id)
-                    ->where(fn($q) => $q->where('manga_id', $manga->id)),
-            ],
-            'title' => 'nullable|string|max:255',
-            'pages' => 'nullable|array',
-            'pages.*' => 'image|max:5120',
-            'page_urls' => 'nullable|string',
-            'delete_pages' => 'nullable|array',
-            'delete_pages.*' => 'integer',
-        ]);
+        $data = $this->validateChapter($request, $manga, $chapter);
 
-        $oldNumber = $chapter->number;
+        $uploadedFiles = [];
+        $filesToDeleteAfterCommit = [];
 
         try {
-            DB::transaction(function () use ($request, $manga, $chapter, $data, $oldNumber) {
-                // Delete selected pages (ONLY from this chapter)
+            DB::transaction(function () use (
+                $request,
+                $manga,
+                $chapter,
+                $data,
+                &$uploadedFiles,
+                &$filesToDeleteAfterCommit
+            ) {
+                /*
+                |--------------------------------------------------------------------------
+                | Delete Selected Pages
+                |--------------------------------------------------------------------------
+                */
                 if (!empty($data['delete_pages'])) {
                     $pagesToDelete = $chapter->pages()
                         ->whereIn('id', $data['delete_pages'])
@@ -137,50 +171,43 @@ class MangaChapterController extends Controller
 
                     foreach ($pagesToDelete as $page) {
                         if ($this->isLocalStoragePath($page->image_path)) {
-                            Storage::disk('public')->delete($page->image_path);
+                            $filesToDeleteAfterCommit[] = $page->image_path;
                         }
+
                         $page->delete();
                     }
                 }
 
-                // Update chapter base data
+                /*
+                |--------------------------------------------------------------------------
+                | Update Chapter Info
+                |--------------------------------------------------------------------------
+                */
                 $chapter->update([
                     'number' => $data['number'],
                     'title' => $data['title'] ?? null,
                 ]);
 
-                // Move existing local files if chapter number changed
-                if ((string) $data['number'] !== (string) $oldNumber) {
-                    $pages = $chapter->pages()->orderBy('page_number')->get();
+                /*
+                |--------------------------------------------------------------------------
+                | Next Page Number
+                |--------------------------------------------------------------------------
+                */
+                $pageNumber = ((int) $chapter->pages()->max('page_number')) + 1;
 
-                    foreach ($pages as $page) {
-                        $oldPath = $page->image_path;
-
-                        if ($this->isLocalStoragePath($oldPath)) {
-                            $newPath = str_replace(
-                                "/chapters/{$oldNumber}/",
-                                "/chapters/{$data['number']}/",
-                                $oldPath
-                            );
-
-                            if ($oldPath !== $newPath && Storage::disk('public')->exists($oldPath)) {
-                                Storage::disk('public')->move($oldPath, $newPath);
-                                $page->update(['image_path' => $newPath]);
-                            }
-                        }
-                    }
-                }
-
-                // Next page number
-                $pageNumber = (($chapter->pages()->max('page_number') ?? 0) + 1);
-
-                // Upload new page files
+                /*
+                |--------------------------------------------------------------------------
+                | Add Uploaded Pages
+                |--------------------------------------------------------------------------
+                */
                 if ($request->hasFile('pages')) {
                     foreach ($request->file('pages') as $page) {
                         $path = $page->store(
                             "manga/{$manga->slug}/chapters/{$chapter->number}",
                             'public'
                         );
+
+                        $uploadedFiles[] = $path;
 
                         MangaPage::create([
                             'chapter_id' => $chapter->id,
@@ -190,7 +217,11 @@ class MangaChapterController extends Controller
                     }
                 }
 
-                // Add page URLs
+                /*
+                |--------------------------------------------------------------------------
+                | Add Remote Page URLs
+                |--------------------------------------------------------------------------
+                */
                 foreach ($this->parsePageUrls($request->input('page_urls')) as $url) {
                     MangaPage::create([
                         'chapter_id' => $chapter->id,
@@ -199,18 +230,24 @@ class MangaChapterController extends Controller
                     ]);
                 }
 
-                // Normalize numbering after deletes/additions
                 $this->normalizePageNumbers($chapter);
-
-                // Refresh counts
                 $this->syncChapterPageCount($chapter);
                 $this->syncMangaChapterCount($manga);
             });
 
+            /*
+            |--------------------------------------------------------------------------
+            | Delete Files Only After DB Commit
+            |--------------------------------------------------------------------------
+            */
+            $this->deleteUploadedFiles($filesToDeleteAfterCommit);
+
             return redirect()
                 ->route('admin.manga.chapters.index', $manga)
-                ->with('success', 'Chapter updated.');
+                ->with('success', 'Chapter updated successfully.');
         } catch (\Throwable $e) {
+            $this->deleteUploadedFiles($uploadedFiles);
+
             Log::error('Manga chapter update failed', [
                 'manga_id' => $manga->id,
                 'chapter_id' => $chapter->id,
@@ -223,29 +260,44 @@ class MangaChapterController extends Controller
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Chapter
+    |--------------------------------------------------------------------------
+    */
     public function destroy(Manga $manga, Chapter $chapter)
     {
         $this->ensureChapterBelongsToManga($manga, $chapter);
 
+        $filesToDeleteAfterCommit = [];
+
         try {
-            DB::transaction(function () use ($manga, $chapter) {
+            DB::transaction(function () use ($manga, $chapter, &$filesToDeleteAfterCommit) {
                 $pages = $chapter->pages()->get();
 
                 foreach ($pages as $page) {
                     if ($this->isLocalStoragePath($page->image_path)) {
-                        Storage::disk('public')->delete($page->image_path);
+                        $filesToDeleteAfterCommit[] = $page->image_path;
                     }
                 }
 
                 MangaPage::where('chapter_id', $chapter->id)->delete();
+
                 $chapter->delete();
 
                 $this->syncMangaChapterCount($manga);
             });
 
+            /*
+            |--------------------------------------------------------------------------
+            | Delete Files Only After DB Commit
+            |--------------------------------------------------------------------------
+            */
+            $this->deleteUploadedFiles($filesToDeleteAfterCommit);
+
             return redirect()
                 ->route('admin.manga.chapters.index', $manga)
-                ->with('success', 'Chapter deleted.');
+                ->with('success', 'Chapter deleted successfully.');
         } catch (\Throwable $e) {
             Log::error('Manga chapter delete failed', [
                 'manga_id' => $manga->id,
@@ -259,13 +311,55 @@ class MangaChapterController extends Controller
 
     /*
     |--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------
+    */
+    protected function validateChapter(Request $request, Manga $manga, ?Chapter $chapter = null): array
+    {
+        return $request->validate([
+            'number' => [
+                'required',
+                'numeric',
+                Rule::unique('chapters', 'number')
+                    ->where(fn($q) => $q->where('manga_id', $manga->id))
+                    ->ignore($chapter?->id),
+            ],
+            'title' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'pages' => [
+                'nullable',
+                'array',
+            ],
+            'pages.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp,gif',
+                'max:5120',
+            ],
+            'page_urls' => [
+                'nullable',
+                'string',
+            ],
+            'delete_pages' => [
+                'nullable',
+                'array',
+            ],
+            'delete_pages.*' => [
+                'integer',
+            ],
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Helpers
     |--------------------------------------------------------------------------
     */
-
     protected function ensureChapterBelongsToManga(Manga $manga, Chapter $chapter): void
     {
-        abort_if($chapter->manga_id !== $manga->id, 404);
+        abort_if((int) $chapter->manga_id !== (int) $manga->id, 404);
     }
 
     protected function parsePageUrls(?string $raw): array
@@ -274,9 +368,13 @@ class MangaChapterController extends Controller
             return [];
         }
 
-        return array_values(array_filter(
-            array_map('trim', preg_split('/\r\n|\r|\n/', $raw))
-        ));
+        return collect(preg_split('/\r\n|\r|\n/', $raw))
+            ->map(fn($url) => trim($url))
+            ->filter()
+            ->filter(fn($url) => str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
+            ->unique()
+            ->values()
+            ->toArray();
     }
 
     protected function syncChapterPageCount(Chapter $chapter): void
@@ -304,8 +402,11 @@ class MangaChapterController extends Controller
 
         foreach ($pages as $page) {
             if ((int) $page->page_number !== $counter) {
-                $page->update(['page_number' => $counter]);
+                $page->update([
+                    'page_number' => $counter,
+                ]);
             }
+
             $counter++;
         }
     }
@@ -316,6 +417,16 @@ class MangaChapterController extends Controller
             return false;
         }
 
-        return !str_starts_with($path, 'http://') && !str_starts_with($path, 'https://');
+        return !str_starts_with($path, 'http://') &&
+            !str_starts_with($path, 'https://');
+    }
+
+    protected function deleteUploadedFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
+            if ($this->isLocalStoragePath($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
     }
 }

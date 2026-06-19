@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TgStreamController;
+use App\Http\Controllers\StreamProxyController;
 use App\Http\Controllers\StaticController;
 
 // Social / Features
@@ -13,7 +14,7 @@ use App\Http\Controllers\CommentsController;
 use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\MangaCommentsController;
 use App\Http\Controllers\MangaFavoritesController;
-use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Admin\ReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +48,7 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/tg/{messageId}', [TgStreamController::class, 'stream'])->name('tg.stream');
+Route::get('/proxy/stream', [StreamProxyController::class, 'stream'])->name('stream.proxy');
 
 /*
 |--------------------------------------------------------------------------
@@ -111,11 +113,11 @@ Route::middleware('auth')->group(function () {
 | Static Pages
 |--------------------------------------------------------------------------
 */
-Route::get('/faq', [StaticController::class, 'faq'])->name('faq');
-Route::get('/about', [StaticController::class, 'about'])->name('about');
-Route::get('/contact', [StaticController::class, 'contact'])->name('contact');
-Route::get('/dmca', [StaticController::class, 'dmca'])->name('dmca');
-Route::get('/terms', [StaticController::class, 'terms'])->name('terms');
+Route::get('/faq', [StaticController::class, 'show'])->name('faq');
+Route::get('/about', [StaticController::class, 'show'])->name('about');
+Route::get('/contact', [StaticController::class, 'show'])->name('contact');
+Route::get('/dmca', [StaticController::class, 'show'])->name('dmca');
+Route::get('/terms', [StaticController::class, 'show'])->name('terms');
 
 /*
 |--------------------------------------------------------------------------

@@ -3,16 +3,16 @@
 @section('title', 'Manga')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-    <div class="flex items-center justify-between mb-6">
-        <h1 class="sr-only">Manga Home</h1>
-        <div class="flex items-center gap-3">
-            <a href="{{ route('manga.browse') }}" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition shadow-lg shadow-emerald-600/20">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+<div class="container-fluid px-3 py-3" style="max-width:1280px">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="visually-hidden">Manga Home</h1>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('manga.index') }}" class="btn d-inline-flex align-items-center gap-1" style="background:#059669;color:#fff;font-weight:600;font-size:0.875rem;box-shadow:0 4px 6px rgba(5,150,105,0.2)">
+                <svg style="width:1rem;height:1rem" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 Browse All Manga
             </a>
-            <a href="{{ route('manga.updated') }}" class="inline-flex items-center gap-2 bg-[#1f2937]0 hover:bg-gray-700 text-gray-300 px-5 py-2.5 rounded-lg font-semibold text-sm transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <a href="{{ route('manga.updated') }}" class="btn d-inline-flex align-items-center gap-1" style="background:#1f2937;color:#d1d5db;font-weight:600;font-size:0.875rem">
+                <svg style="width:1rem;height:1rem" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 Recently Updated
             </a>
         </div>
@@ -73,7 +73,8 @@
         @mouseleave="if (autoplay) startAutoplay()"
         @touchstart="handleTouchStart($event)"
         @touchend="handleTouchEnd($event)"
-        class="relative rounded-xl overflow-hidden mb-8 h-[400px] md:h-[500px] group focus:outline-none"
+        class="position-relative overflow-hidden mb-4"
+        style="border-radius:0.75rem;height:400px;outline:none"
         tabindex="0" role="region" aria-label="Featured Manga"
     >
         @foreach($featured as $i => $manga)
@@ -85,26 +86,26 @@
             x-transition:leave="transition ease-in duration-500"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="absolute inset-0"
+            class="position-absolute top-0 start-0 end-0 bottom-0"
             :aria-hidden="current !== {{ $i }}"
         >
-            <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ $manga->banner_url ?? asset('fallback.jpg') }}')"></div>
-            <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/60 to-transparent"></div>
-            <div class="absolute inset-0 bg-gradient-to-r from-gray-950/40 to-transparent"></div>
-            <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
-                <h2 class="text-2xl md:text-4xl font-bold text-white mb-2 drop-shadow-lg">{{ $manga->title }}</h2>
-                <div class="flex flex-wrap items-center gap-3 text-sm text-gray-300 mb-3">
-                    <span class="px-2 py-0.5 bg-emerald-600/80 rounded text-xs font-semibold">{{ $manga->type ?? 'Manga' }}</span>
+            <div class="position-absolute top-0 start-0 end-0 bottom-0" style="background-size:cover;background-position:center;background-repeat:no-repeat;background-image:url('{{ $manga->banner_url ?? asset('fallback.jpg') }}')"></div>
+            <div class="position-absolute top-0 start-0 end-0 bottom-0" style="background:linear-gradient(to top,#030712,rgba(3,7,18,0.6),transparent)"></div>
+            <div class="position-absolute top-0 start-0 end-0 bottom-0" style="background:linear-gradient(to right,rgba(3,7,18,0.4),transparent)"></div>
+            <div class="position-absolute bottom-0 start-0 end-0" style="padding:1.5rem 2.5rem">
+                <h2 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:0.5rem;text-shadow:0 2px 4px rgba(0,0,0,0.5)">{{ $manga->title }}</h2>
+                <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:0.875rem;color:#d1d5db;margin-bottom:0.75rem">
+                    <span style="padding:0.125rem 0.5rem;background:rgba(5,150,105,0.8);border-radius:0.25rem;font-size:0.75rem;font-weight:600">{{ $manga->type ?? 'Manga' }}</span>
                     <span>{{ $manga->year }}</span>
-                    <span class="flex items-center">
-                        <svg class="w-4 h-4 text-yellow-500 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <span class="d-flex align-items-center">
+                        <svg style="width:1rem;height:1rem;color:#eab308;margin-right:0.25rem" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                         {{ $manga->rating ?? 'N/A' }}
                     </span>
-                    <span class="px-2 py-0.5 {{ $manga->status === 'Ongoing' ? 'bg-red-600/80' : 'bg-gray-600/80' }} rounded text-xs font-semibold">{{ $manga->status ?? 'Unknown' }}</span>
+                    <span style="padding:0.125rem 0.5rem;border-radius:0.25rem;font-size:0.75rem;font-weight:600;{{ $manga->status === 'Ongoing' ? 'background:rgba(220,38,38,0.8)' : 'background:rgba(75,85,99,0.8)' }};color:#fff">{{ $manga->status ?? 'Unknown' }}</span>
                 </div>
-                <p class="text-gray-300 text-sm max-w-xl line-clamp-2 mb-4 drop-shadow-md">{{ Str::limit($manga->description, 200) }}</p>
-                <a href="{{ route('manga.detail', $manga->slug) }}" class="inline-flex items-center bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95 shadow-lg shadow-emerald-600/30">
-                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
+                <p style="color:#d1d5db;font-size:0.875rem;max-width:36rem;margin-bottom:1rem;text-shadow:0 1px 2px rgba(0,0,0,0.5)">{{ Str::limit($manga->description, 200) }}</p>
+                <a href="{{ route('manga.detail', $manga->slug) }}" class="btn d-inline-flex align-items-center" style="background:#059669;color:#fff;font-weight:600;box-shadow:0 4px 6px rgba(5,150,105,0.3)">
+                    <svg style="width:1.25rem;height:1.25rem;margin-right:0.5rem" fill="currentColor" viewBox="0 0 20 20"><path d="M9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
                     Read Now
                 </a>
             </div>
@@ -112,123 +113,125 @@
         @endforeach
 
         @if($featured->count() > 1)
-        <div class="absolute top-0 left-0 right-0 z-30 flex space-x-1 p-3">
+        <div class="position-absolute top-0 start-0 end-0 d-flex gap-1 p-2" style="z-index:30">
             @foreach($featured as $i => $manga)
-            <div class="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-500 rounded-full transition-all duration-100 ease-linear"
+            <div style="flex:1;height:0.25rem;background:rgba(255,255,255,0.2);border-radius:999px;overflow:hidden">
+                <div style="height:100%;background:#10b981;border-radius:999px;transition:all 0.1s linear"
                      :style="'width: ' + (current === {{ $i }} ? progress + '%' : (current > {{ $i }} ? '100%' : '0%'))"></div>
             </div>
             @endforeach
         </div>
 
-        <button @click="prev()" class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-emerald-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-emerald-500" aria-label="Previous slide">
-            <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        <button @click="prev()" class="position-absolute top-50 start-0 translate-middle-y btn d-flex align-items-center justify-content-center" style="z-index:20;width:2.5rem;height:2.5rem;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;margin-left:0.75rem;opacity:0;transition:opacity 0.3s" aria-label="Previous slide">
+            <svg style="width:1.25rem;height:1.25rem" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
         </button>
-        <button @click="next()" class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-emerald-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-emerald-500" aria-label="Next slide">
-            <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+        <button @click="next()" class="position-absolute top-50 end-0 translate-middle-y btn d-flex align-items-center justify-content-center" style="z-index:20;width:2.5rem;height:2.5rem;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;margin-right:0.75rem;opacity:0;transition:opacity 0.3s" aria-label="Next slide">
+            <svg style="width:1.25rem;height:1.25rem" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
         </button>
 
-        <div class="absolute bottom-4 left-0 right-0 z-30 flex items-center justify-center space-x-4">
-            <div class="flex items-center space-x-2">
+        <div class="position-absolute bottom-0 start-0 end-0 d-flex align-items-center justify-content-center gap-3" style="z-index:30;margin-bottom:1rem">
+            <div class="d-flex align-items-center gap-1">
                 @foreach($featured as $i => $manga)
-                <button @click="goTo({{ $i }})" class="w-2.5 h-2.5 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        :class="current === {{ $i }} ? 'bg-emerald-600 w-6 rounded-full' : 'bg-white/50 hover:bg-white/80'"
+                <button @click="goTo({{ $i }})" style="border-radius:50%;transition:all 0.3s;border:none;cursor:pointer"
+                        :style="current === {{ $i }} ? 'width:1.5rem;height:0.625rem;background:#10b981;border-radius:999px' : 'width:0.625rem;height:0.625rem;background:rgba(255,255,255,0.5)'"
                         :aria-label="'Go to slide ' + ({{ $i }} + 1)"></button>
                 @endforeach
             </div>
-            <span class="text-xs text-white/60 font-mono hidden sm:block" x-text="(current + 1).toString().padStart(2, '0') + ' / ' + total.toString().padStart(2, '0')"></span>
+            <span class="d-none d-sm-inline" style="font-size:0.75rem;color:rgba(255,255,255,0.6);font-family:monospace" x-text="(current + 1).toString().padStart(2, '0') + ' / ' + total.toString().padStart(2, '0')"></span>
         </div>
         @endif
     </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div class="lg:col-span-3 space-y-8">
+    <div class="row">
+        <div class="col-lg-9 d-flex flex-column gap-4">
             <section>
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="section-title">Trending</h2>
-                    <a href="{{ route('manga.trending') }}" class="text-sm text-emerald-500 hover:text-emerald-400">View All</a>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 style="font-size:1.25rem;font-weight:600;color:#fff">Trending</h2>
+                    <a href="{{ route('manga.trending') }}" style="color:#10b981;font-size:0.875rem">View All</a>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
                     @foreach($trending as $manga)
-                    <a href="{{ route('manga.detail', $manga->slug) }}" class="group">
-                        <div class="manga-card">
-                            <img src="{{ $manga->thumbnail_url }}" class="manga-img" loading="lazy">
-                            <div class="absolute top-2 left-2 bg-[#111827]/80 text-xs px-2 py-1 rounded">{{ $manga->type ?? 'Manga' }}</div>
+                    <div class="col">
+                    <a href="{{ route('manga.detail', $manga->slug) }}" class="text-decoration-none">
+                        <div style="position:relative;border-radius:0.75rem;overflow:hidden;background:#111827;aspect-ratio:2/3">
+                            <img src="{{ $manga->thumbnail_url }}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s" loading="lazy">
+                            <div style="position:absolute;top:0.5rem;left:0.5rem;background:rgba(17,24,39,0.8);color:#fff;font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:0.25rem">{{ $manga->type ?? 'Manga' }}</div>
                             @if($manga->chapters_count > 0)
-                            <div class="absolute top-2 right-2 bg-emerald-600/90 text-xs px-2 py-1 rounded font-bold">Ch. {{ $manga->chapters_count }}</div>
+                            <div style="position:absolute;top:0.5rem;right:0.5rem;background:rgba(5,150,105,0.9);color:#fff;font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:0.25rem;font-weight:700">Ch. {{ $manga->chapters_count }}</div>
                             @endif
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-3">
-                                <span class="text-white text-sm font-semibold">View Details</span>
+                            <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);opacity:0;transition:opacity 0.3s;display:flex;align-items:flex-end;padding:0.75rem">
+                                <span style="color:#fff;font-size:0.875rem;font-weight:600">View Details</span>
                             </div>
                         </div>
-                        <h3 class="text-sm text-gray-300 mt-2 line-clamp-1 group-hover:text-white">{{ $manga->title }}</h3>
-                        <div class="flex items-center text-xs text-gray-500 mt-1">
-                            <svg class="w-3 h-3 text-yellow-500 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <h3 style="color:#d1d5db;font-size:0.875rem;margin-top:0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $manga->title }}</h3>
+                        <div class="d-flex align-items-center" style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem">
+                            <svg style="width:0.75rem;height:0.75rem;color:#eab308;margin-right:0.25rem" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                             {{ $manga->rating ?? 'N/A' }}
                         </div>
                     </a>
+                    </div>
                     @endforeach
                 </div>
             </section>
 
             <section>
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="section-title">Recently Updated</h2>
-                    <a href="{{ route('manga.updated') }}" class="text-sm text-emerald-500 hover:text-emerald-400">View All</a>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 style="font-size:1.25rem;font-weight:600;color:#fff">Recently Updated</h2>
+                    <a href="{{ route('manga.updated') }}" style="color:#10b981;font-size:0.875rem">View All</a>
                 </div>
-                <div class="space-y-2">
+                <div class="d-flex flex-column gap-2">
                     @foreach($recentChapters as $chapter)
-                    <a href="{{ route('manga.read', ['slug' => $chapter->manga->slug, 'chapter' => $chapter->number]) }}" class="flex items-center justify-between bg-[#111827]/60 hover:bg-[#1f2937]0/80 rounded-lg px-4 py-3 transition group">
-                        <div class="flex items-center gap-3 min-w-0 flex-1">
-                            <img src="{{ $chapter->manga->thumbnail_url }}" class="w-9 h-12 object-cover rounded flex-shrink-0" alt="">
-                            <div class="min-w-0">
-                                <p class="text-sm text-gray-300 truncate group-hover:text-white">{{ $chapter->manga->title }}</p>
-                                <p class="text-xs text-gray-500">
+                    <a href="{{ route('manga.read', ['slug' => $chapter->manga->slug, 'chapter' => $chapter->number]) }}" class="d-flex align-items-center justify-content-between text-decoration-none" style="background:rgba(17,24,39,0.6);border-radius:0.5rem;padding:0.75rem 1rem;transition:background 0.3s">
+                        <div class="d-flex align-items-center gap-2" style="min-width:0;flex:1">
+                            <img src="{{ $chapter->manga->thumbnail_url }}" style="width:2.25rem;height:3rem;object-fit:cover;border-radius:0.25rem;flex-shrink:0" alt="">
+                            <div style="min-width:0">
+                                <p style="color:#d1d5db;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $chapter->manga->title }}</p>
+                                <p style="font-size:0.75rem;color:#6b7280">
                                     @if($chapter->manga->type === 'Manhwa')
-                                    <span class="text-orange-400 font-medium">Manhwa</span>
+                                    <span style="color:#f97316;font-weight:500">Manhwa</span>
                                     @elseif($chapter->manga->type === 'Manhua')
-                                    <span class="text-blue-400 font-medium">Manhua</span>
+                                    <span style="color:#60a5fa;font-weight:500">Manhua</span>
                                     @elseif($chapter->manga->type === 'One-shot')
-                                    <span class="text-pink-400 font-medium">One-shot</span>
+                                    <span style="color:#f472b6;font-weight:500">One-shot</span>
                                     @elseif($chapter->manga->type === 'Doujinshi')
-                                    <span class="text-purple-400 font-medium">Doujinshi</span>
+                                    <span style="color:#a78bfa;font-weight:500">Doujinshi</span>
                                     @else
-                                    <span class="text-emerald-400 font-medium">Manga</span>
+                                    <span style="color:#34d399;font-weight:500">Manga</span>
                                     @endif
-                                    <span class="text-gray-600 mx-1">•</span>
+                                    <span style="color:#4b5563;margin:0 0.25rem">•</span>
                                     <span>Chap {{ $chapter->number }}</span>
                                     @if($chapter->title)
-                                    <span class="text-gray-600 mx-1">•</span>
-                                    <span class="truncate">{{ $chapter->title }}</span>
+                                    <span style="color:#4b5563;margin:0 0.25rem">•</span>
+                                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $chapter->title }}</span>
                                     @endif
                                 </p>
                             </div>
                         </div>
-                        <span class="text-xs text-gray-600 flex-shrink-0 ml-4">{{ $chapter->created_at->diffForHumans() }}</span>
+                        <span style="font-size:0.75rem;color:#4b5563;flex-shrink:0;margin-left:1rem">{{ $chapter->created_at->diffForHumans() }}</span>
                     </a>
                     @endforeach
                 </div>
             </section>
         </div>
 
-        <div class="space-y-6">
-            <div x-data="{ tab: 'day' }" class="bg-[#111827] rounded-lg p-4">
-                <h3 class="font-bold text-lg mb-3">Most Viewed</h3>
-                <div class="flex space-x-2 mb-4">
-                    <button @click="tab = 'day'" :class="tab === 'day' ? 'bg-emerald-600' : 'bg-[#1f2937]0'" class="px-3 py-1 text-xs rounded transition">Day</button>
-                    <button @click="tab = 'week'" :class="tab === 'week' ? 'bg-emerald-600' : 'bg-[#1f2937]0'" class="px-3 py-1 text-xs rounded transition">Week</button>
-                    <button @click="tab = 'month'" :class="tab === 'month' ? 'bg-emerald-600' : 'bg-[#1f2937]0'" class="px-3 py-1 text-xs rounded transition">Month</button>
+        <div class="col-lg-3 d-flex flex-column gap-3">
+            <div x-data="{ tab: 'day' }" style="background:#111827;border-radius:0.5rem;padding:1rem">
+                <h3 style="font-weight:700;font-size:1.125rem;margin-bottom:0.75rem">Most Viewed</h3>
+                <div class="d-flex gap-1 mb-3">
+                    <button @click="tab = 'day'" :style="tab === 'day' ? 'background:#059669;color:#fff' : 'background:#1f2937;color:#9ca3af'" style="padding:0.25rem 0.75rem;font-size:0.75rem;border-radius:0.25rem;border:none;cursor:pointer;transition:background 0.2s">Day</button>
+                    <button @click="tab = 'week'" :style="tab === 'week' ? 'background:#059669;color:#fff' : 'background:#1f2937;color:#9ca3af'" style="padding:0.25rem 0.75rem;font-size:0.75rem;border-radius:0.25rem;border:none;cursor:pointer;transition:background 0.2s">Week</button>
+                    <button @click="tab = 'month'" :style="tab === 'month' ? 'background:#059669;color:#fff' : 'background:#1f2937;color:#9ca3af'" style="padding:0.25rem 0.75rem;font-size:0.75rem;border-radius:0.25rem;border:none;cursor:pointer;transition:background 0.2s">Month</button>
                 </div>
-                <div class="space-y-3">
+                <div class="d-flex flex-column gap-2">
                     @foreach($mostViewed as $i => $manga)
-                    <a href="{{ route('manga.detail', $manga->slug) }}" class="flex items-center space-x-3 group">
-                        <span class="text-lg font-bold text-gray-600 w-6">{{ $i + 1 }}</span>
-                        <img src="{{ $manga->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm text-gray-300 truncate group-hover:text-white">{{ $manga->title }}</p>
-                            <div class="flex items-center text-xs text-gray-500">
-                                <svg class="w-3 h-3 text-yellow-500 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <a href="{{ route('manga.detail', $manga->slug) }}" class="d-flex align-items-center text-decoration-none" style="gap:0.75rem">
+                        <span style="font-size:1.125rem;font-weight:700;color:#4b5563;width:1.5rem">{{ $i + 1 }}</span>
+                        <img src="{{ $manga->thumbnail_url }}" style="width:2.5rem;height:3.5rem;object-fit:cover;border-radius:0.25rem" alt="">
+                        <div style="flex:1;min-width:0">
+                            <p style="color:#d1d5db;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $manga->title }}</p>
+                            <div class="d-flex align-items-center" style="font-size:0.75rem;color:#6b7280">
+                                <svg style="width:0.75rem;height:0.75rem;color:#eab308;margin-right:0.25rem" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                                 {{ $manga->rating ?? 'N/A' }}
                             </div>
                         </div>
@@ -237,15 +240,15 @@
                 </div>
             </div>
 
-            <div class="bg-[#111827] rounded-lg p-4">
-                <h3 class="font-bold text-lg mb-3">New Release</h3>
-                <div class="space-y-3">
+            <div style="background:#111827;border-radius:0.5rem;padding:1rem">
+                <h3 style="font-weight:700;font-size:1.125rem;margin-bottom:0.75rem">New Release</h3>
+                <div class="d-flex flex-column gap-2">
                     @foreach($newManga->take(5) as $manga)
-                    <a href="{{ route('manga.detail', $manga->slug) }}" class="flex items-center space-x-3 group">
-                        <img src="{{ $manga->thumbnail_url }}" class="w-10 h-14 object-cover rounded" alt="">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm text-gray-300 truncate group-hover:text-white">{{ $manga->title }}</p>
-                            <p class="text-xs text-gray-500">{{ $manga->year }}</p>
+                    <a href="{{ route('manga.detail', $manga->slug) }}" class="d-flex align-items-center text-decoration-none" style="gap:0.75rem">
+                        <img src="{{ $manga->thumbnail_url }}" style="width:2.5rem;height:3.5rem;object-fit:cover;border-radius:0.25rem" alt="">
+                        <div style="flex:1;min-width:0">
+                            <p style="color:#d1d5db;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $manga->title }}</p>
+                            <p style="font-size:0.75rem;color:#6b7280">{{ $manga->year }}</p>
                         </div>
                     </a>
                     @endforeach
@@ -255,47 +258,24 @@
     </div>
 
     @if($newManga->count() > 5)
-    <section class="mt-8">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="section-title">Latest Manga</h2>
-            <a href="{{ route('manga.newest') }}" class="text-sm text-emerald-500 hover:text-emerald-400">View All</a>
+    <section class="mt-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 style="font-size:1.25rem;font-weight:600;color:#fff">Latest Manga</h2>
+            <a href="{{ route('manga.newest') }}" style="color:#10b981;font-size:0.875rem">View All</a>
         </div>
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+        <div class="row row-cols-3 row-cols-sm-4 row-cols-md-6 row-cols-lg-8 g-2">
             @foreach($newManga as $manga)
-            <a href="{{ route('manga.detail', $manga->slug) }}" class="group">
-                <div class="manga-card">
-                    <img src="{{ $manga->thumbnail_url }}" class="manga-img" loading="lazy">
+            <div class="col">
+            <a href="{{ route('manga.detail', $manga->slug) }}" class="text-decoration-none">
+                <div style="position:relative;border-radius:0.75rem;overflow:hidden;background:#111827;aspect-ratio:2/3">
+                    <img src="{{ $manga->thumbnail_url }}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s" loading="lazy">
                 </div>
-                <p class="text-xs text-gray-400 mt-1.5 line-clamp-2 group-hover:text-white leading-tight">{{ $manga->title }}</p>
+                <p style="color:#9ca3af;font-size:0.75rem;margin-top:0.375rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25">{{ $manga->title }}</p>
             </a>
+            </div>
             @endforeach
         </div>
     </section>
     @endif
 </div>
 @endsection
-<style>
-.section-title {
-    @apply text-xl font-semibold text-white mb-4;
-}
-
-.manga-card {
-    @apply relative rounded-xl overflow-hidden bg-[#111827] aspect-[2/3];
-}
-
-.manga-img {
-    @apply w-full h-full object-cover group-hover:scale-105 transition duration-300;
-}
-
-.manga-overlay {
-    @apply absolute inset-0 flex items-end p-3 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition;
-}
-
-.manga-title {
-    @apply text-sm text-gray-300 mt-2 truncate group-hover:text-white;
-}
-
-.manga-meta {
-    @apply text-xs text-gray-500 mt-1;
-}
-</style>

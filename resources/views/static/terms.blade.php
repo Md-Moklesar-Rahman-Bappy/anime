@@ -3,23 +3,21 @@
 @section('title', 'Terms of Service')
 
 @section('content')
-<div class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+<div class="container" style="max-width:56rem;padding:3rem 1rem">
 
-    <!-- Header -->
-    <div class="text-center mb-8">
-        <h1 class="text-3xl font-semibold text-white">
+    <div class="text-center mb-4">
+        <h1 class="fw-semibold" style="color:#fff;font-size:1.75rem">
             Terms of Service
         </h1>
-        <p class="text-gray-400 text-sm mt-2">
+        <p class="mt-2" style="color:#9ca3af;font-size:0.875rem">
             Please read these terms carefully before using AniWaves
         </p>
     </div>
 
-    <!-- Content Card -->
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6 md:p-8 space-y-5 text-gray-400 leading-relaxed">
+    <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.5rem;color:#9ca3af;line-height:1.625" class="d-flex flex-column gap-3">
 
         <p>
-            By accessing or using <span class="text-white font-medium">AniWaves</span>, you agree to comply with these Terms of Service.
+            By accessing or using <span style="color:#fff;font-weight:500">AniWaves</span>, you agree to comply with these Terms of Service.
         </p>
 
         <p>
@@ -36,7 +34,7 @@
             Continued use of the service after changes indicates your acceptance of the updated terms.
         </p>
 
-        <p class="text-sm text-gray-500 pt-2">
+        <p class="pt-1" style="color:#6b7280;font-size:0.875rem">
             If you do not agree with any part of these terms, please discontinue use of the site.
         </p>
 

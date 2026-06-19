@@ -3,41 +3,37 @@
 @section('title', 'Contact')
 
 @section('content')
-<div class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+<div class="container" style="max-width:56rem;padding:3rem 1rem">
 
-    <!-- Header -->
-    <div class="text-center mb-8">
-        <h1 class="text-3xl font-semibold text-white">
+    <div class="text-center mb-4">
+        <h1 class="fw-semibold" style="color:#fff;font-size:1.75rem">
             Contact Us
         </h1>
-        <p class="text-gray-400 text-sm mt-2">
-            We’d love to hear from you
+        <p class="mt-2" style="color:#9ca3af;font-size:0.875rem">
+            We'd love to hear from you
         </p>
     </div>
 
-    <!-- Contact Card -->
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6 md:p-8 space-y-4 text-gray-400">
+    <div style="background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1.5rem;color:#9ca3af" class="d-flex flex-column gap-3">
 
         <p>
             If you have any questions, feedback, or inquiries, feel free to reach out to us.
         </p>
 
-        <div class="flex items-center gap-3">
+        <div class="d-flex align-items-center gap-2">
 
-            <!-- Icon -->
-            <span class="text-indigo-400 text-lg">
+            <span style="color:#818cf8;font-size:1.125rem">
                 ✉
             </span>
 
-            <!-- Email -->
             <a href="mailto:contact@aniwaves.ru"
-               class="text-indigo-400 hover:text-indigo-300 transition font-medium">
+               style="color:#818cf8;font-weight:500">
                 contact@aniwaves.ru
             </a>
 
         </div>
 
-        <p class="text-sm text-gray-500 pt-2">
+        <p class="pt-1" style="color:#6b7280;font-size:0.875rem">
             We aim to respond to all inquiries as quickly as possible.
         </p>
 

@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto"
+<div class="container-fluid px-4"
      x-data="mangaDashboard({
         typeLabels: @json($mangaByType->keys()),
         typeData: @json($mangaByType->values()),
@@ -9,303 +9,79 @@
         statusData: @json($mangaByStatus->values()),
      })">
 
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-            <h1 class="text-2xl font-semibold text-white">Manga Dashboard</h1>
-            <p class="text-gray-400 text-sm">{{ now()->format('l, F j, Y') }}</p>
+            <h1 class="h4 fw-semibold text-white">Manga Dashboard</h1>
+            <p class="small" style="color:#9ca3af">{{ now()->format('l, F j, Y') }}</p>
         </div>
 
-         }}" 
-           class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm">
+        <a href="{{ route('admin.manga.create') }}"
+           class="btn btn-sm" style="background:#059669;border-color:#059669;color:#fff">
             + Add Manga
         </a>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-
+    <div class="row g-3 mb-4">
         @foreach([
-            ['Manga',$totalManga,'📖','text-emerald-400'],
-            ['Chapters',$totalChapters,'📄','text-blue-400'],
-            ['Views',$totalMangaViews,'👁','text-orange-400'],
-            ['Users',$totalUsers,'👥','text-yellow-400'],
-        ] as [$label,$value,$icon,$color])
-
-        <div class="card">
-            <div class="flex justify-between mb-2">
-                <p class="text-xs text-gray-400 uppercase">{{ $label }}</p>
-                <span class="{{ $color }}">{{ $icon }}</span>
+            ['Manga',$totalManga,'📖'],
+            ['Chapters',$totalChapters,'📄'],
+            ['Views',$totalMangaViews,'👁'],
+            ['Users',$totalUsers,'👥'],
+        ] as [$label,$value,$icon])
+        <div class="col-6 col-md-3">
+            <div class="card h-100" style="background:#111827;border:1px solid #374151;border-radius:1rem">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <p class="small text-uppercase mb-0" style="color:#9ca3af;font-size:0.75rem">{{ $label }}</p>
+                        <span>{{ $icon }}</span>
+                    </div>
+                    <p class="h5 fw-bold mb-0">{{ number_format($value) }}</p>
+                </div>
             </div>
-            <p class="text-xl font-bold">{{ number_format($value) }}</p>
         </div>
-
         @endforeach
-
     </div>
 
-    <!-- Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-
-        <div class="card">
-            <h2 class="font-semibold mb-2">Manga by Type</h2>
-            <div class="h-64"><canvas id="mangaByTypeChart"></canvas></div>
-        </div>
-
-        <div class="card">
-            <h2 class="font-semibold mb-2">Manga by Status</h2>
-            <div class="h-64"><canvas id="mangaByStatusChart"></canvas></div>
-        </div>
-
-    </div>
-
-    <!-- Recent Chapters -->
-    <div class="card mb-8">
-
-        <h2 class="font-semibold mb-4">Recent Chapters</h2>
-
-        @forelse($recentChapters as $chapter)
-        <div class="flex gap-3 py-2 border-b border-gray-800 last:border-none">
-
-            <div class="w-9 h-12 bg-gray-800 rounded"></div>
-
-            <div class="flex-1">
-                <p class="text-sm">{{ $chapter->manga->title ?? '-' }}</p>
-                <p class="text-xs text-gray-400">Ch {{ $chapter->number }}</p>
-            </div>
-
-        </div>
-        @empty
-            <p class="text-gray-500 text-sm">No chapters yet</p>
-        @endforelse
-
-    </div>
-
-    <!-- Popular Manga -->
-    <div class="card">
-
-        <h2 class="font-semibold mb-4">Popular Manga</h2>
-
-        @forelse($popularManga as $i => $manga)
-        <div class="flex items-center gap-3 py-2 border-b border-gray-800 last:border-none">
-
-            <span class="text-gray-500 w-5">{{ $i + 1 }}</span>
-
-            <div class="flex-1">
-                <p class="text-sm truncate">{{ $manga->title }}</p>
-                <p class="text-xs text-gray-400">{{ number_format($manga->views) }} views</p>
-            </div>
-
-        </div>
-        @empty
-            <p class="text-gray-500 text-sm">No manga data</p>
-        @endforelse
-
-    </div>
-
-</div>
-
-<style>
-.card {
-    @apply bg-[#111827] border border-gray-800 rounded-2xl p-4;
-}
-</style>
-
-@endsection
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-{{-- @extends('admin.layouts.app')
-
-@section('content')
-<div class="max-w-7xl mx-auto" x-data="mangaDashboard({
-    typeLabels: @json($mangaByType->keys()),
-    typeData: @json($mangaByType->values()),
-    statusLabels: @json($mangaByStatus->keys()),
-    statusData: @json($mangaByStatus->values()),
-})">
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h1 class="text-2xl font-bold">Manga Dashboard</h1>
-            <p class="text-gray-400 text-sm">{{ now()->format('l, F j, Y') }}</p>
-        </div>
-        <div class="flex gap-2">
-            <a href="{{ route('admin.manga.create') }}" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">+ Add Manga</a>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
-            <div class="flex items-center justify-between mb-2">
-                <p class="text-gray-400 text-xs uppercase tracking-wide">Total Manga</p>
-                <span class="text-emerald-500 text-lg">&#128214;</span>
-            </div>
-            <p class="text-2xl font-bold">{{ number_format($totalManga) }}</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
-            <div class="flex items-center justify-between mb-2">
-                <p class="text-gray-400 text-xs uppercase tracking-wide">Chapters</p>
-                <span class="text-blue-500 text-lg">&#128196;</span>
-            </div>
-            <p class="text-2xl font-bold">{{ number_format($totalChapters) }}</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
-            <div class="flex items-center justify-between mb-2">
-                <p class="text-gray-400 text-xs uppercase tracking-wide">Total Views</p>
-                <span class="text-orange-500 text-lg">&#128065;</span>
-            </div>
-            <p class="text-2xl font-bold">{{ number_format($totalMangaViews) }}</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
-            <div class="flex items-center justify-between mb-2">
-                <p class="text-gray-400 text-xs uppercase tracking-wide">Users</p>
-                <span class="text-yellow-500 text-lg">&#128101;</span>
-            </div>
-            <p class="text-2xl font-bold">{{ number_format($totalUsers) }}</p>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
-            <h2 class="font-bold mb-1">Manga by Type</h2>
-            <p class="text-gray-400 text-xs mb-4">Distribution across types</p>
-            <div class="h-64 flex items-center justify-center">
-                <canvas id="mangaByTypeChart" class="max-h-64"></canvas>
-            </div>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
-            <h2 class="font-bold mb-1">Manga by Status</h2>
-            <p class="text-gray-400 text-xs mb-4">Current status distribution</p>
-            <div class="h-64 flex items-center justify-center">
-                <canvas id="mangaByStatusChart" class="max-h-64"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-bold">Recent Chapters</h2>
-                <a href="{{ route('admin.manga.index') }}" class="text-emerald-500 text-sm hover:text-emerald-400">View All</a>
-            </div>
-            @if($recentChapters->count())
-            <div class="space-y-3">
-                @foreach($recentChapters as $chapter)
-                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition-colors">
-                    <div class="w-9 h-12 rounded overflow-hidden bg-gray-800 flex-shrink-0">
-                        @if($chapter->manga && $chapter->manga->thumbnail)
-                        <img src="{{ $chapter->manga->thumbnail_url }}" alt="" class="w-full h-full object-cover">
-                        @endif
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium truncate">{{ $chapter->manga->title ?? 'Unknown' }}</p>
-                        <p class="text-xs text-gray-400">Chapter {{ $chapter->number }}{{ $chapter->title ? ' - '.$chapter->title : '' }}</p>
-                    </div>
-                    <span class="text-xs text-gray-500 flex-shrink-0">{{ $chapter->created_at->diffForHumans() }}</span>
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100" style="background:#111827;border:1px solid #374151;border-radius:1rem">
+                <div class="card-body">
+                    <h2 class="fw-semibold mb-2">Manga by Type</h2>
+                    <div style="height:256px"><canvas id="mangaByTypeChart"></canvas></div>
                 </div>
-                @endforeach
             </div>
-            @else
-            <p class="text-gray-500 text-sm">No chapters yet</p>
-            @endif
         </div>
-
-        <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-bold">Popular Manga</h2>
-                <span class="text-xs text-gray-400">By views</span>
-            </div>
-            @if($popularManga->count())
-            <div class="space-y-3">
-                @foreach($popularManga as $i => $manga)
-                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition-colors">
-                    <span class="text-sm font-bold text-gray-500 w-5 flex-shrink-0">{{ $i + 1 }}</span>
-                    <div class="w-10 h-14 rounded overflow-hidden bg-gray-800 flex-shrink-0">
-                        @if($manga->thumbnail)
-                        <img src="{{ $manga->thumbnail_url }}" alt="" class="w-full h-full object-cover">
-                        @endif
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium truncate">{{ $manga->title }}</p>
-                        <p class="text-xs text-gray-400">{{ $manga->type ?? 'Manga' }} &middot; {{ $manga->status ?? 'N/A' }}</p>
-                    </div>
-                    <div class="text-right flex-shrink-0">
-                        <p class="text-sm font-semibold">{{ number_format($manga->views) }}</p>
-                        <p class="text-xs text-gray-500">views</p>
-                    </div>
+        <div class="col-lg-6">
+            <div class="card h-100" style="background:#111827;border:1px solid #374151;border-radius:1rem">
+                <div class="card-body">
+                    <h2 class="fw-semibold mb-2">Manga by Status</h2>
+                    <div style="height:256px"><canvas id="mangaByStatusChart"></canvas></div>
                 </div>
-                @endforeach
             </div>
-            @else
-            <p class="text-gray-500 text-sm">No manga data yet</p>
-            @endif
         </div>
     </div>
 
-    <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="font-bold">Recent Manga</h2>
-            <a href="{{ route('admin.manga.index') }}" class="text-emerald-500 text-sm hover:text-emerald-400">View All</a>
+    <div class="card mb-4" style="background:#111827;border:1px solid #374151;border-radius:1rem">
+        <div class="card-body">
+            <h2 class="fw-semibold mb-3">Recent Chapters</h2>
+            @forelse($recentChapters as $chapter)
+            <div class="d-flex gap-3 py-2" style="border-bottom:1px solid #374151">
+                <div style="width:36px;height:48px;background:#1f2937;border-radius:0.25rem;overflow:hidden;flex-shrink:0">
+                    @if($chapter->manga && $chapter->manga->thumbnail)
+                    <img src="{{ $chapter->manga->thumbnail_url }}" style="width:100%;height:100%;object-fit:cover">
+                    @endif
+                </div>
+                <div style="flex:1;min-width:0">
+                    <p class="mb-0 small text-truncate">{{ $chapter->manga->title ?? 'Unknown' }}</p>
+                    <p class="mb-0 small" style="color:#9ca3af">Ch {{ $chapter->number }}{{ $chapter->title ? ' - '.$chapter->title : '' }}</p>
+                </div>
+            </div>
+            @empty
+                <p class="small" style="color:#6b7280">No chapters yet</p>
+            @endforelse
         </div>
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-gray-400 border-b border-gray-800">
-                    <th class="text-left py-2 font-medium">Title</th>
-                    <th class="text-left py-2 font-medium">Type</th>
-                    <th class="text-left py-2 font-medium">Status</th>
-                    <th class="text-left py-2 font-medium">Chapters</th>
-                    <th class="text-left py-2 font-medium">Views</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($recentManga as $manga)
-                <tr class="border-b border-gray-800 hover:bg-gray-800 transition-colors">
-                    <td class="py-2 truncate max-w-40">{{ $manga->title }}</td>
-                    <td class="py-2 text-gray-400">{{ $manga->type ?? 'Manga' }}</td>
-                    <td class="py-2">
-                        <span class="px-2 py-0.5 rounded text-xs font-medium
-                            @if($manga->status === 'Completed') bg-green-900 text-green-300
-                            @elseif($manga->status === 'Ongoing') bg-blue-900 text-blue-300
-                            @elseif($manga->status === 'Hiatus') bg-yellow-900 text-yellow-300
-                            @elseif($manga->status === 'Cancelled') bg-red-900 text-red-300
-                            @else bg-gray-800 text-gray-400 @endif">
-                            {{ $manga->status ?? 'N/A' }}
-                        </span>
-                    </td>
-                    <td class="py-2 text-gray-400">{{ $manga->chapters_count ?? 0 }}</td>
-                    <td class="py-2 text-gray-400">{{ number_format($manga->views) }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
     </div>
+
 </div>
 @endsection
 
@@ -375,4 +151,4 @@ function mangaDashboard(chartData) {
     };
 }
 </script>
-@endpush --}}
+@endpush

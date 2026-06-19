@@ -83,7 +83,7 @@ class SitemapController extends Controller
         // ✅ A-Z
         foreach (range('A', 'Z') as $letter) {
             $urls[] = $this->entry(
-                route('az.list', $letter),
+                route('az-list', $letter),
                 '0.4',
                 'weekly',
                 now()

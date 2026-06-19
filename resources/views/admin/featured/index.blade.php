@@ -3,57 +3,38 @@
 @section('title', 'Featured Slider')
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="container" style="max-width:900px">
 
-    <h1 class="text-2xl font-semibold text-white mb-6">
-        Featured Slider
-    </h1>
+    <h1 class="h4 fw-semibold text-white mb-3">Featured Slider</h1>
 
-    <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6 shadow">
+    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem">
 
-        <h2 class="text-lg font-medium text-white mb-2">
-            Auto Fill
-        </h2>
+        <div class="card-body">
+            <h2 class="h5 fw-medium text-white mb-2">Auto Fill</h2>
+            <p class="small mb-4" style="color:#9ca3af">
+                Populate the homepage slider automatically from your anime list.
+            </p>
 
-        <p class="text-sm text-gray-400 mb-5">
-            Populate the homepage slider automatically from your anime list.
-        </p>
-
-        <div class="flex flex-wrap gap-3">
-
-            <!-- Top Rated -->
-            <form method="POST" action="{{ route('admin.featured.auto-fill') }}">
-                @csrf
-                <input type="hidden" name="mode" value="top_rated">
-                <input type="hidden" name="count" value="5">
-
-                <button class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white text-sm rounded-lg transition font-medium">
-                    Top Rated
-                </button>
-            </form>
-
-            <!-- Most Popular -->
-            <form method="POST" action="{{ route('admin.featured.auto-fill') }}">
-                @csrf
-                <input type="hidden" name="mode" value="most_viewed">
-                <input type="hidden" name="count" value="5">
-
-                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition font-medium">
-                    Most Popular
-                </button>
-            </form>
-
-            <!-- Recent -->
-            <form method="POST" action="{{ route('admin.featured.auto-fill') }}">
-                @csrf
-                <input type="hidden" name="mode" value="recent">
-                <input type="hidden" name="count" value="5">
-
-                <button class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition font-medium">
-                    Recent Uploads
-                </button>
-            </form>
-
+            <div class="d-flex flex-wrap gap-2">
+                <form method="POST" action="{{ route('admin.featured.auto-fill') }}">
+                    @csrf
+                    <input type="hidden" name="mode" value="top_rated">
+                    <input type="hidden" name="count" value="5">
+                    <button class="btn btn-sm" style="background:#ca8a04;color:#fff;font-weight:500">Top Rated</button>
+                </form>
+                <form method="POST" action="{{ route('admin.featured.auto-fill') }}">
+                    @csrf
+                    <input type="hidden" name="mode" value="most_viewed">
+                    <input type="hidden" name="count" value="5">
+                    <button class="btn btn-sm" style="background:#4f46e5;color:#fff;font-weight:500">Most Popular</button>
+                </form>
+                <form method="POST" action="{{ route('admin.featured.auto-fill') }}">
+                    @csrf
+                    <input type="hidden" name="mode" value="recent">
+                    <input type="hidden" name="count" value="5">
+                    <button class="btn btn-sm" style="background:#059669;color:#fff;font-weight:500">Recent Uploads</button>
+                </form>
+            </div>
         </div>
 
     </div>

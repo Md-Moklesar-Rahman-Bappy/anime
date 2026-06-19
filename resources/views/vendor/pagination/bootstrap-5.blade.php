@@ -1,91 +1,57 @@
 @if ($paginator->hasPages())
-<nav class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6">
+<nav class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3 mt-4">
 
-    <!-- Info -->
-    <div class="text-sm text-gray-500">
+    <div class="small" style="color:#9ca3af">
         Showing
-        <span class="text-gray-300 font-medium">{{ $paginator->firstItem() }}</span>
+        <span style="color:#d1d5db;font-weight:500">{{ $paginator->firstItem() }}</span>
         to
-        <span class="text-gray-300 font-medium">{{ $paginator->lastItem() }}</span>
+        <span style="color:#d1d5db;font-weight:500">{{ $paginator->lastItem() }}</span>
         of
-        <span class="text-gray-300 font-medium">{{ $paginator->total() }}</span>
+        <span style="color:#d1d5db;font-weight:500">{{ $paginator->total() }}</span>
     </div>
 
-    <!-- Pagination -->
-    <ul class="flex items-center gap-1 text-sm">
-
-        <!-- Previous -->
+    <ul class="pagination pagination-sm mb-0 gap-1">
         @if ($paginator->onFirstPage())
-            <li>
-                <span class="pagination-disabled">‹</span>
+            <li class="page-item disabled">
+                <span class="page-link" style="background:#111827;border-color:#374151;color:#6b7280;border-radius:0.5rem;">‹</span>
             </li>
         @else
-            <li>
-                <a href="{{ $paginator->previousPageUrl() }}" class="pagination-btn">
-                    ‹
-                </a>
+            <li class="page-item">
+                <a href="{{ $paginator->previousPageUrl() }}" class="page-link" style="background:#111827;border-color:#374151;color:#d1d5db;border-radius:0.5rem;">‹</a>
             </li>
         @endif
 
-        <!-- Pages -->
         @foreach ($elements as $element)
-
             @if (is_string($element))
-                <li>
-                    <span class="px-2 text-gray-500">{{ $element }}</span>
+                <li class="page-item disabled">
+                    <span class="page-link" style="background:#111827;border-color:#374151;color:#6b7280;border-radius:0.5rem;">{{ $element }}</span>
                 </li>
             @endif
-
             @if (is_array($element))
                 @foreach ($element as $page => $url)
-
                     @if ($page == $paginator->currentPage())
-                        <li>
-                            <span class="pagination-active">
-                                {{ $page }}
-                            </span>
+                        <li class="page-item active">
+                            <span class="page-link" style="background:#4f46e5;border-color:#6366f1;color:#fff;border-radius:0.5rem;">{{ $page }}</span>
                         </li>
                     @else
-                        <li>
-                            <a href="{{ $url }}" class="pagination-btn">
-                                {{ $page }}
-                            </a>
+                        <li class="page-item">
+                            <a href="{{ $url }}" class="page-link" style="background:#111827;border-color:#374151;color:#d1d5db;border-radius:0.5rem;">{{ $page }}</a>
                         </li>
                     @endif
-
                 @endforeach
             @endif
-
         @endforeach
 
-        <!-- Next -->
         @if ($paginator->hasMorePages())
-            <li>
-                <a href="{{ $paginator->nextPageUrl() }}" class="pagination-btn">
-                    ›
-                </a>
+            <li class="page-item">
+                <a href="{{ $paginator->nextPageUrl() }}" class="page-link" style="background:#111827;border-color:#374151;color:#d1d5db;border-radius:0.5rem;">›</a>
             </li>
         @else
-            <li>
-                <span class="pagination-disabled">›</span>
+            <li class="page-item disabled">
+                <span class="page-link" style="background:#111827;border-color:#374151;color:#6b7280;border-radius:0.5rem;">›</span>
             </li>
         @endif
-
     </ul>
 
 </nav>
 @endif
-
-<style>
-.pagination-btn {
-    @apply px-3 py-1.5 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
-}
-
-.pagination-active {
-    @apply px-3 py-1.5 bg-indigo-600 text-white rounded-lg border border-indigo-500;
-}
-
-.pagination-disabled {
-    @apply px-3 py-1.5 bg-[#111827] border border-gray-800 text-gray-600 rounded-lg cursor-not-allowed;
-}
-</style>

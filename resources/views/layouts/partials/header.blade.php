@@ -2,31 +2,31 @@
 $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all());
 @endphp
 
-<header class="bg-[#0a0a0f] border-b border-gray-800 sticky top-0 z-50"
+<header style="background:#0a0a0f;border-bottom:1px solid #374151;position:sticky;top:0;z-index:50;"
         x-data="{ mobileNav: false }">
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="container-xl" style="padding:0 1rem;">
 
         <!-- Top Bar -->
-        <div class="flex items-center justify-between h-14">
+        <div class="d-flex align-items-center justify-content-between" style="height:3.5rem;">
 
             <!-- LEFT -->
-            <div class="flex items-center gap-6">
+            <div class="d-flex align-items-center gap-4">
 
                 <!-- Logo -->
-                 }}" class="text-xl font-bold text-indigo-500 tracking-tight">
+                <a href="{{ route('home') }}" style="font-size:1.25rem;font-weight:700;color:#6366f1;text-decoration:none;letter-spacing:-0.025em;">
                     AniWaves
                 </a>
 
                 <!-- Desktop Nav -->
-                <nav class="hidden lg:flex gap-1 text-sm">
+                <nav class="d-none d-lg-flex gap-1" style="font-size:0.875rem;">
 
                     <a href="{{ route('home') }}" class="nav-link">Home</a>
 
                     <!-- Genres -->
-                    <div x-data="{ open:false }" class="relative">
+                    <div x-data="{ open:false }" style="position:relative;">
                         <button @mouseenter="open=true" @mouseleave="open=false"
-                                class="nav-link flex items-center gap-1">
+                                class="nav-link" style="display:flex;align-items:center;gap:0.25rem;">
                             Genres ▼
                         </button>
 
@@ -34,9 +34,9 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
                              class="dropdown-wide" x-cloak>
 
                             @foreach($genres->chunk(ceil($genres->count()/3)) as $chunk)
-                                <div class="flex-1">
+                                <div style="flex:1;">
                                     @foreach($chunk as $genre)
-                                         }}" class="dropdown-item">
+                                        <a href="{{ route('genre', $genre->slug) }}" class="dropdown-item">
                                             {{ $genre->name }}
                                         </a>
                                     @endforeach
@@ -47,9 +47,9 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
                     </div>
 
                     <!-- Types -->
-                    <div x-data="{ open:false }" class="relative">
+                    <div x-data="{ open:false }" style="position:relative;">
                         <button @mouseenter="open=true" @mouseleave="open=false"
-                                class="nav-link flex items-center gap-1">
+                                class="nav-link" style="display:flex;align-items:center;gap:0.25rem;">
                             Types ▼
                         </button>
 
@@ -57,7 +57,7 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
                              class="dropdown-small" x-cloak>
 
                             @foreach(['tv','movie','ova','ona','special','music'] as $type)
-                                 }}" class="dropdown-item">
+                                                <a href="{{ route('filter', ['type' => $type]) }}" class="dropdown-item">
                                     {{ strtoupper($type) }}
                                 </a>
                             @endforeach
@@ -73,10 +73,10 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
             </div>
 
             <!-- RIGHT -->
-            <div class="flex items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
 
                 <!-- Search -->
-                <div class="hidden md:block relative" x-data="searchDropdown()">
+                <div class="d-none d-md-block position-relative" x-data="searchDropdown()">
 
                     <input type="text"
                            x-model="query"
@@ -102,29 +102,29 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
 
                 <!-- Auth -->
                 @auth
-                <div x-data="{ open:false }" class="relative">
+                <div x-data="{ open:false }" style="position:relative;">
 
-                    <button @click="open = !open">
+                    <button @click="open = !open" style="background:none;border:none;padding:0;">
                         <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}"
-                             class="w-8 h-8 rounded-full">
+                             style="width:2rem;height:2rem;border-radius:50%;">
                     </button>
 
                     <div x-show="open" @click.outside="open=false"
                          class="dropdown-account" x-cloak>
 
-                        <p class="p-3 text-sm text-gray-400 border-b border-gray-800">
+                        <p style="padding:0.75rem;font-size:0.875rem;color:#9ca3af;border-bottom:1px solid #374151;margin:0;">
                             {{ auth()->user()->name }}
                         </p>
 
-                         }}" class="dropdown-item">Profile</a>
+                        <a href="{{ route('profile.edit') }}" class="dropdown-item">Profile</a>
 
                         @if(auth()->user()->isAdmin())
-                             }}" class="dropdown-item">Admin</a>
+                            <a href="{{ route('admin.dashboard') }}" class="dropdown-item">Admin</a>
                         @endif
 
-                         }}">
+                        <form method="POST" action="{{ route('auth.logout') }}">
                             @csrf
-                            <button class="dropdown-item w-full text-left">Logout</button>
+                            <button class="dropdown-item" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">Logout</button>
                         </form>
 
                     </div>
@@ -135,7 +135,7 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
                 @endauth
 
                 <!-- Mobile Toggle -->
-                <button class="lg:hidden text-gray-400"
+                <button class="d-lg-none" style="color:#9ca3af;background:none;border:none;font-size:1.5rem;"
                         @click="mobileNav = !mobileNav">
                     ☰
                 </button>
@@ -144,10 +144,12 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
         </div>
 
         <!-- Mobile Nav -->
-        <div x-show="mobileNav" class="lg:hidden space-y-1 pb-4" x-cloak>
-            <a href="{{ route('home') }}" class="mobile-link">Home</a>
-            <a href="{{ route('updated') }}" class="mobile-link">Updated</a>
-            <a href="{{ route('trending') }}" class="mobile-link">Popular</a>
+        <div x-show="mobileNav" class="d-lg-none" style="padding-bottom:1rem;" x-cloak>
+            <div class="d-flex flex-column gap-1">
+                <a href="{{ route('home') }}" class="mobile-link">Home</a>
+                <a href="{{ route('updated') }}" class="mobile-link">Updated</a>
+                <a href="{{ route('trending') }}" class="mobile-link">Popular</a>
+            </div>
         </div>
 
     </div>
@@ -155,18 +157,24 @@ $genres = Cache::remember('genres_list', 1800, fn() => \App\Models\Genre::all())
 
 <!-- Styles -->
 <style>
-.nav-link { @apply text-gray-300 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition; }
-.dropdown-wide { @apply absolute mt-1 bg-[#141424] p-4 rounded-xl border border-gray-800 flex gap-4 z-50 min-w-[500px]; }
-.dropdown-small { @apply absolute mt-1 bg-[#141424] p-3 rounded-xl border border-gray-800 z-50; }
-.dropdown-item { @apply block px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg; }
+.nav-link { color:#d1d5db; text-decoration:none; padding:0.5rem 0.75rem; border-radius:0.5rem; transition:background 0.15s,color 0.15s; display:inline-block; }
+.nav-link:hover { color:#fff; background:rgba(255,255,255,0.05); }
+.dropdown-wide { position:absolute; margin-top:0.25rem; background:#141424; padding:1rem; border-radius:0.75rem; border:1px solid #374151; display:flex; gap:1rem; z-index:50; min-width:500px; }
+.dropdown-small { position:absolute; margin-top:0.25rem; background:#141424; padding:0.75rem; border-radius:0.75rem; border:1px solid #374151; z-index:50; }
+.dropdown-item { display:block; padding:0.375rem 0.75rem; font-size:0.875rem; color:#9ca3af; border-radius:0.5rem; text-decoration:none; transition:background 0.15s,color 0.15s; }
+.dropdown-item:hover { color:#fff; background:rgba(255,255,255,0.05); }
 
-.search-input { @apply bg-[#141424] text-sm text-white px-3 py-2 rounded-lg border border-gray-800 focus:ring-indigo-500; }
-.search-dropdown { @apply absolute mt-2 bg-[#141424] rounded-xl border border-gray-800 shadow-xl w-full; }
-.search-item { @apply flex items-center gap-2 px-4 py-2 hover:bg-white/5; }
-.search-thumb { @apply w-6 h-8 rounded object-cover; }
+.search-input { background:#141424; font-size:0.875rem; color:#fff; padding:0.5rem 0.75rem; border-radius:0.5rem; border:1px solid #374151; outline:none; width:100%; }
+.search-input:focus { border-color:#6366f1; box-shadow:0 0 0 2px rgba(99,102,241,0.3); }
+.search-dropdown { position:absolute; margin-top:0.5rem; background:#141424; border-radius:0.75rem; border:1px solid #374151; box-shadow:0 10px 30px rgba(0,0,0,0.5); width:100%; z-index:50; }
+.search-item { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 1rem; text-decoration:none; color:#d1d5db; }
+.search-item:hover { background:rgba(255,255,255,0.05); }
+.search-thumb { width:1.5rem; height:2rem; border-radius:0.25rem; object-fit:cover; }
 
-.dropdown-account { @apply absolute right-0 mt-2 w-48 bg-[#141424] rounded-xl border border-gray-800 shadow-xl; }
+.dropdown-account { position:absolute; right:0; margin-top:0.5rem; width:12rem; background:#141424; border-radius:0.75rem; border:1px solid #374151; box-shadow:0 10px 30px rgba(0,0,0,0.5); z-index:50; }
 
-.btn-primary { @apply bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg; }
-.mobile-link { @apply block px-3 py-2 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg; }
+.btn-primary { background:#4f46e5; color:#fff; padding:0.375rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; transition:background 0.15s; }
+.btn-primary:hover { background:#6366f1; }
+.mobile-link { display:block; padding:0.5rem 0.75rem; color:#d1d5db; border-radius:0.5rem; text-decoration:none; transition:background 0.15s,color 0.15s; }
+.mobile-link:hover { color:#fff; background:rgba(255,255,255,0.05); }
 </style>

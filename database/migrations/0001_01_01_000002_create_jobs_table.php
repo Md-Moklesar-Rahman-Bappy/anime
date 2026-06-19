@@ -13,28 +13,22 @@ return new class extends Migration
     {
         /*
         |--------------------------------------------------------------------------
-        | Jobs Table
+        | Jobs Table (Queue System)
         |--------------------------------------------------------------------------
         */
         Schema::create('jobs', function (Blueprint $table) {
             $table->id();
 
-            // Queue name (important for multi-queue setup)
             $table->string('queue')->index();
 
-            // Serialized job payload
             $table->longText('payload');
 
-            // Retry attempts
             $table->unsignedTinyInteger('attempts');
 
-            // When worker reserved job
             $table->unsignedInteger('reserved_at')->nullable()->index();
 
-            // When job becomes available
             $table->unsignedInteger('available_at')->index();
 
-            // Unix timestamp
             $table->unsignedInteger('created_at')->index();
         });
 
@@ -52,7 +46,6 @@ return new class extends Migration
             $table->integer('pending_jobs');
             $table->integer('failed_jobs');
 
-            // JSON-like storage
             $table->longText('failed_job_ids');
 
             $table->mediumText('options')->nullable();
@@ -64,7 +57,7 @@ return new class extends Migration
 
         /*
         |--------------------------------------------------------------------------
-        | Failed Jobs Table
+        | Failed Jobs
         |--------------------------------------------------------------------------
         */
         Schema::create('failed_jobs', function (Blueprint $table) {
@@ -87,7 +80,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // ✅ safe drop order
         Schema::dropIfExists('failed_jobs');
         Schema::dropIfExists('job_batches');
         Schema::dropIfExists('jobs');

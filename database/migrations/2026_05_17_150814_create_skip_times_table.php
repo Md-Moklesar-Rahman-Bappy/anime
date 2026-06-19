@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('skip_times', function (Blueprint $table) {
@@ -21,25 +18,25 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->foreignId('episode_id')
-                ->constrained()
+                ->constrained('episodes')
                 ->cascadeOnDelete()
                 ->unique(); // ✅ one skip config per episode
 
             /*
             |--------------------------------------------------------------------------
-            | Skip Segments
+            | Skip Segments (seconds)
             |--------------------------------------------------------------------------
             */
 
-            // Intro skip
+            // Intro
             $table->unsignedInteger('intro_start')->nullable();
             $table->unsignedInteger('intro_end')->nullable();
 
-            // Outro skip
+            // Outro
             $table->unsignedInteger('outro_start')->nullable();
             $table->unsignedInteger('outro_end')->nullable();
 
-            // Optional extra (recap)
+            // Recap
             $table->unsignedInteger('recap_start')->nullable();
             $table->unsignedInteger('recap_end')->nullable();
 
@@ -61,9 +58,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('skip_times');

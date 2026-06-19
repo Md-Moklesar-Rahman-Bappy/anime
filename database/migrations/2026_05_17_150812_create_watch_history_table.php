@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('watch_history', function (Blueprint $table) {
@@ -21,36 +18,27 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
             $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->foreignId('episode_id')
-                ->constrained()
-                ->cascadeOnDelete()
-                ->index();
+                ->constrained('episodes')
+                ->cascadeOnDelete();
 
             /*
             |--------------------------------------------------------------------------
             | Playback Tracking
             |--------------------------------------------------------------------------
             */
-            $table->integer('progress')->default(0); // seconds watched
+            $table->unsignedInteger('progress')->default(0); // seconds watched
             $table->boolean('completed')->default(false);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Indexing
-            |--------------------------------------------------------------------------
-            */
-            $table->index(['user_id', 'updated_at']);
 
             /*
             |--------------------------------------------------------------------------
             | Constraints
             |--------------------------------------------------------------------------
             */
-            $table->unique(['user_id', 'episode_id']); // ✅ prevent duplicate rows
+            $table->unique(['user_id', 'episode_id']); // ✅ prevent duplicates
 
             /*
             |--------------------------------------------------------------------------
@@ -59,14 +47,15 @@ return new class extends Migration
             */
             $table->timestamps();
 
-            // Optional:
-            // $table->softDeletes();
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes (AFTER timestamps)
+            |--------------------------------------------------------------------------
+            */
+            $table->index(['user_id', 'updated_at']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('watch_history');

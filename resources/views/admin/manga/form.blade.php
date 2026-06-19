@@ -1,177 +1,123 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="container" style="max-width:900px">
 
-    <h1 class="text-2xl font-semibold text-white mb-6">
+    <h1 class="h4 fw-semibold text-white mb-3">
         {{ isset($manga) ? 'Edit Manga' : 'Create Manga' }}
     </h1>
 
-    {{ isset($manga) ? route('admin.manga.update', $manga) : route('admin.manga.store') }}
-
+    <form action="{{ isset($manga) ? route('admin.manga.update', $manga) : route('admin.manga.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         @if(isset($manga)) @method('PUT') @endif
 
-        <!-- Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <div>
-                <label class="text-gray-400 text-sm">Title</label>
-                <input type="text" name="title"
-                    value="{{ old('title', $manga->title ?? '') }}"
-                    class="form-input" required>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Title</label>
+                <input type="text" name="title" value="{{ old('title', $manga->title ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff" required>
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Type</label>
-                <select name="type" class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Type</label>
+                <select name="type" class="form-select" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
                     @foreach(['Manga','Manhwa','Manhua','One-shot','Doujinshi'] as $type)
-                        <option value="{{ $type }}"
-                            @selected(old('type', $manga->type ?? '') == $type)>
-                            {{ $type }}
-                        </option>
+                        <option value="{{ $type }}" @selected(old('type', $manga->type ?? '') == $type)>{{ $type }}</option>
                     @endforeach
                 </select>
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Status</label>
-                <select name="status" class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Status</label>
+                <select name="status" class="form-select" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
                     @foreach(['Ongoing','Completed','Hiatus','Cancelled'] as $status)
-                        <option value="{{ $status }}"
-                            @selected(old('status', $manga->status ?? '') == $status)>
-                            {{ $status }}
-                        </option>
+                        <option value="{{ $status }}" @selected(old('status', $manga->status ?? '') == $status)>{{ $status }}</option>
                     @endforeach
                 </select>
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Year</label>
-                <input type="number" name="year"
-                    value="{{ old('year', $manga->year ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Year</label>
+                <input type="number" name="year" value="{{ old('year', $manga->year ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Rating</label>
-                <input type="number" step="0.1" name="rating"
-                    value="{{ old('rating', $manga->rating ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Rating</label>
+                <input type="number" step="0.1" name="rating" value="{{ old('rating', $manga->rating ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Score</label>
-                <input type="number" step="0.1" name="score"
-                    value="{{ old('score', $manga->score ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Score</label>
+                <input type="number" step="0.1" name="score" value="{{ old('score', $manga->score ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Author</label>
-                <input type="text" name="author"
-                    value="{{ old('author', $manga->author ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Author</label>
+                <input type="text" name="author" value="{{ old('author', $manga->author ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Artist</label>
-                <input type="text" name="artist"
-                    value="{{ old('artist', $manga->artist ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Artist</label>
+                <input type="text" name="artist" value="{{ old('artist', $manga->artist ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Publisher</label>
-                <input type="text" name="publisher"
-                    value="{{ old('publisher', $manga->publisher ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Publisher</label>
+                <input type="text" name="publisher" value="{{ old('publisher', $manga->publisher ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Source</label>
-                <input type="text" name="source"
-                    value="{{ old('source', $manga->source ?? '') }}"
-                    class="form-input">
+            <div class="col-md-6">
+                <label class="small" style="color:#9ca3af">Source</label>
+                <input type="text" name="source" value="{{ old('source', $manga->source ?? '') }}"
+                    class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
             </div>
-
         </div>
 
-        <!-- Extra -->
-        <div>
-            <label class="text-gray-400 text-sm">Alternative Titles</label>
-            <input type="text" name="alternative_titles"
-                value="{{ old('alternative_titles', $manga->alternative_titles ?? '') }}"
-                class="form-input">
+        <div class="mt-3">
+            <label class="small" style="color:#9ca3af">Alternative Titles</label>
+            <input type="text" name="alternative_titles" value="{{ old('alternative_titles', $manga->alternative_titles ?? '') }}"
+                class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">
         </div>
 
-        <div>
-            <label class="text-gray-400 text-sm">Description</label>
-            <textarea name="description" rows="5" class="form-input">
-{{ old('description', $manga->description ?? '') }}
-            </textarea>
+        <div class="mt-3">
+            <label class="small" style="color:#9ca3af">Description</label>
+            <textarea name="description" rows="5" class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff">{{ old('description', $manga->description ?? '') }}</textarea>
         </div>
 
-        <!-- Uploads -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-            <div>
-                <label class="text-gray-400 text-sm">Thumbnail</label>
-                <input type="file" name="thumbnail" class="file-input">
+        <div class="row g-3 mt-2">
+            <div class="col-md-4">
+                <label class="small" style="color:#9ca3af">Thumbnail</label>
+                <input type="file" name="thumbnail" class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#9ca3af">
             </div>
-
-            <div>
-                <label class="text-gray-400 text-sm">Banner</label>
-                <input type="file" name="banner" class="file-input">
+            <div class="col-md-4">
+                <label class="small" style="color:#9ca3af">Banner</label>
+                <input type="file" name="banner" class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#9ca3af">
             </div>
-
-            <div class="flex items-end">
-                <label class="flex items-center gap-2 text-gray-300">
-                    <input type="checkbox" name="featured"
-                        @checked(old('featured', $manga->featured ?? false))
-                        class="accent-emerald-500">
+            <div class="col-md-4 d-flex align-items-end">
+                <label class="d-flex align-items-center gap-2" style="color:#d1d5db">
+                    <input type="checkbox" name="featured" @checked(old('featured', $manga->featured ?? false))>
                     Featured
                 </label>
             </div>
-
         </div>
 
-        <!-- Genres -->
-        <div>
-            <label class="text-gray-400 text-sm mb-2 block">Genres</label>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-
+        <div class="mt-3">
+            <label class="small mb-2 d-block" style="color:#9ca3af">Genres</label>
+            <div class="row row-cols-2 row-cols-md-4 g-2">
                 @foreach($genres as $genre)
-                <label class="flex items-center gap-2 text-sm text-gray-300">
-                    <input type="checkbox"
-                        name="genres[]"
-                        value="{{ $genre->id }}"
-                        @checked(isset($manga) && $manga->genres->contains($genre->id))
-                        class="accent-emerald-500">
-                    {{ $genre->name }}
-                </label>
+                <div class="col">
+                    <label class="d-flex align-items-center gap-2 small" style="color:#d1d5db">
+                        <input type="checkbox" name="genres[]" value="{{ $genre->id }}"
+                            @checked(isset($manga) && $manga->genres->contains($genre->id))>
+                        {{ $genre->name }}
+                    </label>
+                </div>
                 @endforeach
-
             </div>
         </div>
 
-        <!-- Submit -->
-        <button type="submit"
-            class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg transition">
+        <button type="submit" class="btn mt-3" style="background:#059669;color:#fff">
             {{ isset($manga) ? 'Update Manga' : 'Create Manga' }}
         </button>
 
     </form>
 </div>
-
-<style>
-.form-input {
-    @apply w-full mt-1 px-3 py-2 bg-[#1f2937] border border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500;
-}
-.file-input {
-    @apply w-full text-sm text-gray-400 file:mr-3 file:px-4 file:py-2 file:bg-[#1f2937] file:text-white file:border-0 file:rounded-lg;
-}
-</style>
 
 @endsection

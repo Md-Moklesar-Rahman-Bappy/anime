@@ -2,18 +2,13 @@
 
 @php
 $alignmentClasses = match ($align) {
-    'left' => 'ltr:origin-top-left rtl:origin-top-right start-0',
-    'top' => 'origin-top',
-    default => 'ltr:origin-top-right rtl:origin-top-left end-0',
-};
-
-$width = match ($width) {
-    '48' => 'w-48',
-    default => $width,
+    'left' => 'start-0',
+    'top' => '',
+    default => 'end-0',
 };
 @endphp
 
-<div class="relative" x-data="{ open: false }" @click.outside="open = false">
+<div class="position-relative" x-data="{ open: false }" @click.outside="open = false">
     <div @click="open = !open">
         {{ $trigger }}
     </div>
@@ -21,10 +16,10 @@ $width = match ($width) {
     <div 
         x-show="open"
         x-transition
-        class="absolute z-50 mt-2 {{ $width }} {{ $alignmentClasses }}"
-        style="display: none;"
+        class="position-absolute z-3 mt-2 {{ $alignmentClasses }}"
+        style="display:none;min-width:12rem"
     >
-        <div class="bg-[#111827] border border-gray-800 rounded-lg shadow-xl py-1">
+        <div style="background:#111827;border:1px solid #374151;border-radius:0.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);padding:0.25rem 0">
             {{ $content }}
         </div>
     </div>
