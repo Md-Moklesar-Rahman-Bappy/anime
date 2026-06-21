@@ -4,42 +4,64 @@ namespace App\Http\Controllers;
 
 use App\Models\Manga;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MangaController extends Controller
 {
     public function __invoke(Request $request, string $slug)
     {
         try {
+
             /*
             |--------------------------------------------------------------------------
-            | Load Manga (Optimized)
+            | LOAD MANGA (OPTIMIZED)
             |--------------------------------------------------------------------------
             */
-            $manga = Manga::where('slug', $slug)
+            $manga = Manga::query()
+                ->where('slug', $slug)
+                ->select([
+                    'id',
+                    'title',
+                    'slug',
+                    'description',
+                    'thumbnail',
+                    'banner',
+                    'type',
+                    'status',
+                    'year',
+                    'rating',
+                    'score',
+                    'views',
+                ])
                 ->with([
                     'genres:id,name,slug',
-                    'chapters' => fn($q) =>
-                    $q->select('id', 'manga_id', 'number', 'title')
-                        ->orderByDesc('number')
-                        ->limit(50), // ✅ prevent heavy load
+
+                    'chapters' => function ($q) {
+                        $q->select('id', 'manga_id', 'number', 'title')
+                            ->orderByDesc('number')
+                            ->limit(50); // ✅ safe limit
+                    },
                 ])
                 ->withCount('chapters')
                 ->firstOrFail();
 
-            /*
-            |--------------------------------------------------------------------------
-            | Related Manga (Optimized)
-            |--------------------------------------------------------------------------
-            */
-            $related = Manga::where('id', '!=', $manga->id)
-                ->select('id', 'title', 'slug', 'thumbnail', 'views')
-                ->orderByDesc('views') // ✅ better than latest()
-                ->take(8)
-                ->get();
 
             /*
             |--------------------------------------------------------------------------
-            | Favorite State
+            | RELATED MANGA (FAST & CLEAN)
+            |--------------------------------------------------------------------------
+            */
+            $related = Manga::query()
+                ->where('id', '!=', $manga->id)
+                ->select('id', 'title', 'slug', 'thumbnail', 'views')
+                ->orderByDesc('views')
+                ->limit(8)
+                ->get();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | FAVORITE STATE
             |--------------------------------------------------------------------------
             */
             $isFavorited = false;
@@ -51,20 +73,30 @@ class MangaController extends Controller
                     ->exists();
             }
 
+
             /*
             |--------------------------------------------------------------------------
-            | Response
+            | OPTIONAL: INCREMENT VIEW COUNT (SAFE)
+            |--------------------------------------------------------------------------
+            */
+            $manga->increment('views');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSE
             |--------------------------------------------------------------------------
             */
             return view('manga-detail', [
-                'manga' => $manga,
-                'related' => $related,
-                'isFavorited' => $isFavorited,
+                'manga'        => $manga,
+                'related'      => $related,
+                'isFavorited'  => $isFavorited,
             ]);
         } catch (\Throwable $e) {
 
-            $this->logError('Manga detail failed', $e, [
-                'slug' => $slug,
+            Log::error('Manga detail failed', [
+                'slug'  => $slug,
+                'error' => $e->getMessage(),
             ]);
 
             abort(404);

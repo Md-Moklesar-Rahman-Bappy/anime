@@ -12,52 +12,81 @@ class ReportController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
-    | INDEX (LIST + FILTERS)
+    | INDEX (AJAX + FILTER + SEARCH + LIVE SUPPORT)
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
     {
         try {
             $status = $request->input('status');
-            $type   = $request->input('type');
+            $search = trim((string) $request->input('search'));
 
-            $query = Report::with([
-                    'episode.anime:id,title,slug',
+            $query = Report::query()
+                ->with([
+                    'episode:id,anime_id,number',
+                    'episode.anime:id,title',
                     'user:id,name'
                 ])
-                ->select('id', 'episode_id', 'user_id', 'issue_type', 'status', 'created_at')
                 ->latest();
 
             /*
             |--------------------------------------------------------------------------
-            | Filters
+            | FILTER: STATUS
             |--------------------------------------------------------------------------
             */
-            if (!empty($status)) {
+            if ($status && in_array($status, ['pending', 'resolved', 'dismissed'])) {
                 $query->where('status', $status);
             }
 
-            if (!empty($type)) {
-                $query->where('issue_type', $type);
+            /*
+            |--------------------------------------------------------------------------
+            | SEARCH
+            |--------------------------------------------------------------------------
+            */
+            if ($search !== '') {
+                $safe = '%' . addcslashes($search, '%_') . '%';
+
+                $query->where(function ($q) use ($safe) {
+                    $q->where('issue_type', 'like', $safe)
+                        ->orWhere('description', 'like', $safe)
+                        ->orWhereHas('user', fn($u) => $u->where('name', 'like', $safe))
+                        ->orWhereHas('episode.anime', fn($a) => $a->where('title', 'like', $safe));
+                });
             }
 
-            $reports = $query
-                ->paginate(20)
-                ->withQueryString();
+            $reports = $query->paginate(15)->withQueryString();
+
+            /*
+            |--------------------------------------------------------------------------
+            | AJAX RESPONSE
+            |--------------------------------------------------------------------------
+            */
+            if ($request->ajax()) {
+                return response()->json([
+                    'html' => view('admin.reports._list', compact('reports'))->render(),
+                    'url'  => $request->fullUrl(),
+                ]);
+            }
 
             return view('admin.reports.index', compact('reports'));
-
         } catch (\Throwable $e) {
 
-            $this->logError('Report index failed', $e);
+            report($e);
 
-            return $this->redirectError('Failed to load reports.');
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to load reports.',
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to load reports.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | UPDATE REPORT STATUS
+    | UPDATE STATUS (AJAX READY)
     |--------------------------------------------------------------------------
     */
     public function update(UpdateReportRequest $request, Report $report)
@@ -75,20 +104,24 @@ class ReportController extends Controller
             }
 
             return back()->with('success', 'Report updated successfully.');
-
         } catch (\Throwable $e) {
 
-            $this->logError('Report update failed', $e, [
-                'report_id' => $report->id,
-            ]);
+            report($e);
 
-            return $this->redirectError('Failed to update report.');
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update report.',
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to update report.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | STORE REPORT (FRONTEND)
+    | STORE (FRONTEND REPORT)
     |--------------------------------------------------------------------------
     */
     public function store(StoreReportRequest $request)
@@ -107,7 +140,7 @@ class ReportController extends Controller
                 'episode_id' => $request->input('episode_id'),
                 'user_id'    => $user->id,
                 'issue_type' => $request->input('issue_type'),
-                'description'=> $request->input('description'),
+                'description' => $request->input('description'),
                 'status'     => 'pending',
             ]);
 
@@ -115,17 +148,49 @@ class ReportController extends Controller
                 'status'  => 'ok',
                 'message' => 'Report submitted successfully.',
             ]);
-
         } catch (\Throwable $e) {
 
-            $this->logError('Report submission failed', $e, [
-                'episode_id' => $request->input('episode_id'),
-                'ip' => $request->ip(),
-            ]);
+            report($e);
 
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to submit report.',
+            ], 500);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BULK RESOLVE (PRO FEATURE)
+    |--------------------------------------------------------------------------
+    */
+    public function bulkResolve(Request $request)
+    {
+        try {
+            $ids = $request->input('ids', []);
+
+            if (!is_array($ids) || empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No reports selected.',
+                ], 422);
+            }
+
+            Report::whereIn('id', $ids)
+                ->where('status', 'pending')
+                ->update(['status' => 'resolved']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Selected reports resolved.',
+            ]);
+        } catch (\Throwable $e) {
+
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Bulk resolve failed.',
             ], 500);
         }
     }

@@ -1,64 +1,93 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="container-fluid px-4">
 
-    <h1 class="h4 fw-semibold text-white mb-3">Requests</h1>
+<div
+    x-data="liveRequests()"
+    x-init="init()"
+    class="max-w-7xl mx-auto relative"
+>
 
-    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
-        <div class="table-responsive">
-            <table class="table table-dark table-borderless mb-0 align-middle">
-                <thead>
-                    <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
-                        <th class="p-3 text-start">Anime</th>
-                        <th class="p-3 text-start">User</th>
-                        <th class="p-3 text-start">Description</th>
-                        <th class="p-3 text-start">Status</th>
-                        <th class="p-3 text-start">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($requests as $req)
-                    <tr style="border-bottom:1px solid #374151">
-                        <td class="p-3 text-white">{{ $req->anime_title }}</td>
-                        <td class="p-3" style="color:#d1d5db">{{ $req->user->name }}</td>
-                        <td class="p-3" style="color:#9ca3af">{{ Str::limit($req->description, 60) }}</td>
-                        <td class="p-3">
-                            <span class="badge rounded-1 fw-normal" style="font-size:0.75rem;
-                                @switch($req->status)
-                                    @case('pending') background:rgba(234,179,8,0.1);color:#facc15 @break
-                                    @case('fulfilled') background:rgba(34,197,94,0.1);color:#4ade80 @break
-                                    @case('rejected') background:rgba(239,68,68,0.1);color:#f87171 @break
-                                    @default background:#374151;color:#9ca3af
-                                @endswitch
-                            ">{{ ucfirst($req->status) }}</span>
-                        </td>
-                        <td class="p-3">
-                            <form action="{{ route('admin.requests.update', $req) }}" method="POST">
-                                @csrf @method('PUT')
-                                <select name="status" onchange="this.form.submit()"
-                                    class="form-select form-select-sm" style="background:#1f2937;color:#fff;border:1px solid #4b5563">
-                                    <option value="pending" @selected($req->status=='pending')>Pending</option>
-                                    <option value="fulfilled" @selected($req->status=='fulfilled')>Fulfilled</option>
-                                    <option value="rejected" @selected($req->status=='rejected')>Rejected</option>
-                                </select>
-                            </form>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="p-5 text-center" style="color:#6b7280">
-                            <p class="h5" style="color:#d1d5db">No requests found</p>
-                            <p class="small mt-1">User requests will appear here</p>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+    {{-- HEADER --}}
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+
+        <div>
+            <h1 class="text-xl font-semibold text-white">
+                Requests
+            </h1>
+
+            <p class="text-xs text-gray-500 mt-1">
+                Auto refreshing every 7 seconds
+            </p>
         </div>
-        <div class="p-3" style="border-top:1px solid #374151">
-            {{ $requests->links() }}
+
+        <button
+            type="button"
+            @click="bulkFulfill()"
+            class="btn-success text-sm"
+        >
+            Mark Visible Pending as Fulfilled
+        </button>
+
+    </div>
+
+    {{-- FILTERS --}}
+    <div class="form-card mb-6 grid md:grid-cols-3 gap-4">
+
+        <div>
+            <label class="form-label">Search</label>
+            <input
+                type="text"
+                x-model="search"
+                @input.debounce.500ms="fetch()"
+                placeholder="Anime title, user, description..."
+                class="form-input"
+            >
+        </div>
+
+        <div>
+            <label class="form-label">Status</label>
+            <select
+                x-model="status"
+                @change="fetch()"
+                class="form-input"
+            >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="fulfilled">Fulfilled</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+
+        <div class="flex items-end">
+            <button
+                type="button"
+                @click="search=''; status=''; fetch()"
+                class="btn-cancel w-full"
+            >
+                Reset
+            </button>
+        </div>
+
+    </div>
+
+    {{-- LOADING --}}
+    <div
+        x-show="loading"
+        x-transition.opacity
+        class="absolute inset-0 bg-black/40 flex items-center justify-center z-50 rounded-xl"
+        x-cloak
+    >
+        <div class="bg-gray-900 border border-gray-700 px-4 py-2 rounded text-sm text-gray-300 shadow">
+            Updating requests...
         </div>
     </div>
+
+    {{-- LIST --}}
+    <div id="requests-container" @click="handlePagination($event)">
+        @include('admin.requests._list')
+    </div>
+
 </div>
+
 @endsection

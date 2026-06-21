@@ -1,97 +1,91 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="container-fluid px-4"
-    x-data="{
-        search: '{{ request('search') }}',
 
-        fetchResults(page = 1) {
-            const params = new URLSearchParams();
-            if (this.search) params.set('search', this.search);
-            params.set('page', page);
+<div
+    x-data="ajaxPagination({
+        target: 'anime-list',
+        url: '{{ route('admin.anime.index') }}'
+    })"
+    x-init="init()"
+    class="max-w-7xl mx-auto relative"
+>
 
-            fetch('{{ route('admin.anime.search') }}?' + params.toString(), {
-                headers: { 'Accept': 'application/json' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('anime-table-body').innerHTML = data.html;
-                document.getElementById('anime-pagination').innerHTML = data.pagination;
-            });
-        },
+    {{-- HEADER --}}
+    <div class="flex items-center justify-between mb-6">
 
-        handleClick(e) {
-            const link = e.target.closest('.paginate-link');
-            if (link) this.fetchResults(link.dataset.page);
-        }
-    }">
-
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h4 fw-semibold text-white">Anime</h1>
+        <h1 class="text-xl font-semibold text-white">
+            Anime
+        </h1>
 
         <a href="{{ route('admin.anime.create') }}"
-           class="btn btn-sm" style="background:#4f46e5;border-color:#4f46e5;color:#fff">
+           class="btn-primary">
             Add Anime
         </a>
-    </div>
-
-    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem">
-
-        <div class="p-3" style="border-bottom:1px solid #374151">
-            <div class="position-relative">
-                <input
-                    type="text"
-                    x-model="search"
-                    x-on:input.debounce.300ms="fetchResults(1)"
-                    placeholder="Search anime..."
-                    class="form-control"
-                    style="background:#1f2937;border:1px solid #4b5563;color:#fff;padding:0.625rem 2.5rem 0.625rem 2.5rem"
-                >
-
-                <svg class="position-absolute" style="left:0.75rem;top:0.75rem;width:1rem;height:1rem;color:#6b7280"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-
-                <button
-                    x-show="search.length"
-                    x-on:click="search=''; fetchResults(1)"
-                    class="position-absolute btn btn-sm border-0"
-                    style="right:0.5rem;top:0.5rem;color:#6b7280">
-
-                    <svg style="width:1rem;height:1rem" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                              d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-dark table-borderless mb-0 align-middle">
-                <thead>
-                <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
-                    <th class="p-3 text-start">Title</th>
-                    <th class="p-3 text-start">Type</th>
-                    <th class="p-3 text-start">Status</th>
-                    <th class="p-3 text-start">Episodes</th>
-                    <th class="p-3 text-start">Actions</th>
-                </tr>
-                </thead>
-                <tbody id="anime-table-body">
-                    @include('admin.anime._table')
-                </tbody>
-            </table>
-        </div>
-
-        <div id="anime-pagination"
-             class="p-3"
-             style="border-top:1px solid #374151"
-             x-on:click.prevent="handleClick($event)">
-            @include('admin.anime._pagination')
-        </div>
 
     </div>
+
+    {{-- SEARCH --}}
+    <form
+        action="{{ route('admin.anime.index') }}"
+        method="GET"
+        @submit.prevent="filter($event)"
+        class="form-card mb-6"
+    >
+
+        <div class="relative">
+
+            {{-- INPUT --}}
+            <input
+                type="text"
+                name="search"
+                value="{{ request('search') }}"
+                placeholder="Search anime..."
+                class="form-input pl-10 pr-10"
+            >
+
+            {{-- SEARCH ICON --}}
+            <svg class="absolute left-3 top-3 w-4 h-4 text-gray-500 pointer-events-none"
+                 fill="none"
+                 stroke="currentColor"
+                 viewBox="0 0 24 24">
+                <path stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+
+            {{-- CLEAR BUTTON --}}
+            <button
+                type="button"
+                x-show="$el.querySelector('input').value"
+                @click="$el.querySelector('input').value = ''; filter($event)"
+                class="absolute right-3 top-2 text-gray-500 hover:text-white text-sm"
+            >
+                ✕
+            </button>
+
+        </div>
+
+    </form>
+
+    {{-- LOADING OVERLAY --}}
+    <div
+        x-show="loading"
+        x-transition
+        class="absolute inset-0 bg-black/40 flex items-center justify-center z-50 rounded-xl"
+        x-cloak
+    >
+        <div class="bg-gray-900 border border-gray-700 px-4 py-2 rounded text-sm text-gray-300">
+            Loading...
+        </div>
+    </div>
+
+    {{-- AJAX CONTENT --}}
+    <div id="anime-list">
+        @include('admin.anime._list')
+    </div>
+
 </div>
+
 @endsection

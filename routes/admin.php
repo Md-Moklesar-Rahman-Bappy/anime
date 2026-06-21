@@ -35,6 +35,7 @@ Route::prefix('admin')
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/manga-dashboard', [MangaDashboardController::class, 'index'])->name('manga.dashboard');
 
+
         /*
         |--------------------------------------------------------------------------
         | Anime
@@ -55,6 +56,7 @@ Route::prefix('admin')
             )->name('episodes.delete-video');
         });
 
+
         /*
         |--------------------------------------------------------------------------
         | Anime Genres
@@ -65,8 +67,10 @@ Route::prefix('admin')
             Route::post('/', [AdminGenreController::class, 'store'])->name('store');
             Route::put('/{genre}', [AdminGenreController::class, 'update'])->name('update');
             Route::delete('/{genre}', [AdminGenreController::class, 'destroy'])->name('destroy');
-            Route::post('/import-from-mal', [AdminGenreController::class, 'importFromMal'])->name('import');
+            Route::post('/import-from-mal', [AdminGenreController::class, 'importFromMal'])
+                ->name('import-from-mal'); // ✅ fixed
         });
+
 
         /*
         |--------------------------------------------------------------------------
@@ -78,6 +82,7 @@ Route::prefix('admin')
         Route::prefix('manga/{manga}')->name('manga.')->group(function () {
             Route::resource('chapters', MangaChapterController::class);
         });
+
 
         /*
         |--------------------------------------------------------------------------
@@ -91,6 +96,7 @@ Route::prefix('admin')
             Route::delete('/{mangaGenre}', [AdminMangaGenreController::class, 'destroy'])->name('destroy');
         });
 
+
         /*
         |--------------------------------------------------------------------------
         | Featured
@@ -99,8 +105,10 @@ Route::prefix('admin')
         Route::prefix('featured')->name('featured.')->group(function () {
             Route::get('/', [FeaturedController::class, 'index'])->name('index');
             Route::post('/', [FeaturedController::class, 'update'])->name('update');
-            Route::post('/auto-fill', [FeaturedController::class, 'autoFill'])->name('auto');
+            Route::post('/auto-fill', [FeaturedController::class, 'autoFill'])
+                ->name('auto-fill'); // ✅ fixed
         });
+
 
         /*
         |--------------------------------------------------------------------------
@@ -113,20 +121,39 @@ Route::prefix('admin')
             Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
         });
 
+
         /*
         |--------------------------------------------------------------------------
-        | Reports & Requests
+        | Reports (✅ PRO SYSTEM READY)
         |--------------------------------------------------------------------------
         */
         Route::prefix('reports')->name('reports.')->group(function () {
+
             Route::get('/', [ReportController::class, 'index'])->name('index');
+
             Route::put('/{report}', [ReportController::class, 'update'])->name('update');
+
+            // ✅ NEW: bulk resolve
+            Route::post('/bulk-resolve', [ReportController::class, 'bulkResolve'])
+                ->name('bulk-resolve');
         });
 
-        Route::prefix('requests')->name('requests.')->group(function () {
-            Route::get('/', [AdminRequestController::class, 'index'])->name('index');
-            Route::put('/{animeRequest}', [AdminRequestController::class, 'update'])->name('update');
-        });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Requests
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('requests')->name('requests.')->group(function () {
+        Route::get('/', [AdminRequestController::class, 'index'])->name('index');
+
+        Route::put('/{animeRequest}', [AdminRequestController::class, 'update'])
+            ->name('update');
+
+        Route::post('/bulk-fulfill', [AdminRequestController::class, 'bulkFulfill'])
+            ->name('bulk-fulfill');
+    });
+
 
         /*
         |--------------------------------------------------------------------------
@@ -139,6 +166,7 @@ Route::prefix('admin')
             Route::delete('/manga/{mangaComment}', [CommentController::class, 'destroyManga'])->name('manga');
         });
 
+
         /*
         |--------------------------------------------------------------------------
         | Settings
@@ -149,6 +177,7 @@ Route::prefix('admin')
             Route::post('/', [SettingController::class, 'update'])->name('update');
         });
 
+
         /*
         |--------------------------------------------------------------------------
         | Jikan Import
@@ -157,6 +186,7 @@ Route::prefix('admin')
         Route::prefix('jikan')->name('jikan.')->group(function () {
             Route::get('/', [JikanController::class, 'searchForm'])->name('search');
             Route::post('/search', [JikanController::class, 'search'])->name('results');
+
             Route::get('/preview/{malId}', [JikanController::class, 'preview'])
                 ->whereNumber('malId')
                 ->name('preview');
@@ -165,8 +195,10 @@ Route::prefix('admin')
                 ->whereNumber('malId')
                 ->name('import');
 
-            Route::post('/batch-import', [JikanController::class, 'batchImport'])->name('batch');
+            Route::post('/batch-import', [JikanController::class, 'batchImport'])
+                ->name('batch-import'); // ✅ fixed
         });
+
 
         /*
         |--------------------------------------------------------------------------
@@ -181,6 +213,7 @@ Route::prefix('admin')
         Route::prefix('telegram')->name('telegram.')->group(function () {
             Route::post('/import', [ScraperController::class, 'telegramImport'])->name('import');
         });
+
 
         /*
         |--------------------------------------------------------------------------

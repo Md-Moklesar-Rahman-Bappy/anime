@@ -11,7 +11,13 @@
 
     <form action="{{ isset($manga) ? route('admin.manga.update', $manga) : route('admin.manga.store') }}"
           method="POST"
-          enctype="multipart/form-data">
+          enctype="multipart/form-data"
+          x-data="adminForm({ id: 'manga-{{ $manga->id ?? 'new' }}' })"
+          x-init="init()"
+          @input.debounce.500ms="saveDraft()"
+          @change.debounce.500ms="saveDraft()"
+          @submit="submit($event)"
+    >
 
         @csrf
         @if(isset($manga)) @method('PUT') @endif
@@ -21,18 +27,17 @@
 
             {{-- TITLE --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Title</label>
+                <label class="form-label">Title</label>
                 <input type="text" name="title"
                        value="{{ old('title', $manga->title ?? '') }}"
                        required
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
             {{-- TYPE --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Type</label>
-                <select name="type"
-                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                <label class="form-label">Type</label>
+                <select name="type" class="form-input">
                     @foreach(['Manga','Manhwa','Manhua','One-shot','Doujinshi'] as $type)
                         <option value="{{ $type }}" @selected(old('type', $manga->type ?? '') == $type)>
                             {{ $type }}
@@ -43,9 +48,8 @@
 
             {{-- STATUS --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Status</label>
-                <select name="status"
-                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-input">
                     @foreach(['Ongoing','Completed','Hiatus','Cancelled'] as $status)
                         <option value="{{ $status }}" @selected(old('status', $manga->status ?? '') == $status)>
                             {{ $status }}
@@ -56,109 +60,98 @@
 
             {{-- YEAR --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Year</label>
+                <label class="form-label">Year</label>
                 <input type="number" name="year"
                        value="{{ old('year', $manga->year ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
             {{-- RATING --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Rating</label>
+                <label class="form-label">Rating</label>
                 <input type="number" step="0.1" name="rating"
                        value="{{ old('rating', $manga->rating ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
             {{-- SCORE --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Score</label>
+                <label class="form-label">Score</label>
                 <input type="number" step="0.1" name="score"
                        value="{{ old('score', $manga->score ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
             {{-- AUTHOR --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Author</label>
+                <label class="form-label">Author</label>
                 <input type="text" name="author"
                        value="{{ old('author', $manga->author ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
             {{-- ARTIST --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Artist</label>
+                <label class="form-label">Artist</label>
                 <input type="text" name="artist"
                        value="{{ old('artist', $manga->artist ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
             {{-- PUBLISHER --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Publisher</label>
+                <label class="form-label">Publisher</label>
                 <input type="text" name="publisher"
                        value="{{ old('publisher', $manga->publisher ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
             {{-- SOURCE --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Source</label>
+                <label class="form-label">Source</label>
                 <input type="text" name="source"
                        value="{{ old('source', $manga->source ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
         </div>
 
         {{-- ALT TITLES --}}
         <div class="mt-5">
-            <label class="text-sm text-gray-400 mb-1 block">Alternative Titles</label>
+            <label class="form-label">Alternative Titles</label>
             <input type="text" name="alternative_titles"
                    value="{{ old('alternative_titles', $manga->alternative_titles ?? '') }}"
-                   class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                   class="form-input">
         </div>
 
         {{-- DESCRIPTION --}}
         <div class="mt-5">
-            <label class="text-sm text-gray-400 mb-1 block">Description</label>
-            <textarea name="description"
-                      rows="5"
-                      class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">{{ old('description', $manga->description ?? '') }}</textarea>
+            <label class="form-label">Description</label>
+            <textarea name="description" rows="5" class="form-input">{{ old('description', $manga->description ?? '') }}</textarea>
         </div>
 
         {{-- FILES --}}
-        <div class="grid md:grid-cols-3 gap-4 mt-5">
+        <div class="grid md:grid-cols-2 gap-4 mt-6">
 
-            <div>
-                <label class="text-sm text-gray-400 mb-1 block">Thumbnail</label>
-                <input type="file"
-                       name="thumbnail"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-2 text-gray-300">
-            </div>
-
-            <div>
-                <label class="text-sm text-gray-400 mb-1 block">Banner</label>
-                <input type="file"
-                       name="banner"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-2 text-gray-300">
-            </div>
-
-            <div class="flex items-end">
-                <label class="flex items-center gap-2 text-sm text-gray-300">
-                    <input type="checkbox"
-                           name="featured"
-                           @checked(old('featured', $manga->featured ?? false))>
-                    Featured
-                </label>
-            </div>
+            <x-admin.dropzone name="thumbnail" label="Thumbnail" />
+            <x-admin.dropzone name="banner" label="Banner" />
 
         </div>
 
-        {{-- GENRES --}}
+        {{-- FEATURED --}}
         <div class="mt-5">
-            <label class="text-sm text-gray-400 mb-2 block">Genres</label>
+            <label class="flex items-center gap-2 text-sm text-gray-300">
+                <input type="checkbox"
+                       name="featured"
+                       value="1"
+                       @checked(old('featured', $manga->featured ?? false))>
+                Featured
+            </label>
+        </div>
+
+        {{-- GENRES --}}
+        <div class="mt-6">
+            <label class="form-label mb-2">Genres</label>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
 
@@ -176,8 +169,7 @@
         </div>
 
         {{-- ACTION --}}
-        <button type="submit"
-                class="mt-6 px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+        <button type="submit" class="btn-success mt-6">
             {{ isset($manga) ? 'Update Manga' : 'Create Manga' }}
         </button>
 

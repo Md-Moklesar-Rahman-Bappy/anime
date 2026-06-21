@@ -32,7 +32,7 @@
 
 <body class="bg-[#0b0e16] text-gray-200 font-sans antialiased">
 
-<div class="flex h-screen">
+<div class="flex h-screen overflow-hidden">
 
     {{-- SIDEBAR --}}
     <aside class="w-64 bg-gray-900 border-r border-gray-700 p-4 flex flex-col"
@@ -40,20 +40,21 @@
            x-init="$watch('panel', val => localStorage.setItem('admin_panel', val))">
 
         {{-- LOGO --}}
-        <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2 mb-6 text-indigo-500 font-bold text-lg">
+        <a href="{{ route('admin.dashboard') }}"
+           class="flex items-center gap-2 mb-6 text-indigo-500 font-bold text-lg">
             🎬 Admin
         </a>
 
-        {{-- SWITCH --}}
+        {{-- PANEL SWITCH --}}
         <div class="flex bg-gray-800 rounded-lg p-1 text-xs mb-4">
             <button @click="panel='anime'"
                 :class="panel==='anime' ? 'bg-indigo-600 text-white' : 'text-gray-400'"
-                class="flex-1 py-1 rounded">
+                class="flex-1 py-1 rounded transition">
                 Anime
             </button>
             <button @click="panel='manga'"
                 :class="panel==='manga' ? 'bg-emerald-600 text-white' : 'text-gray-400'"
-                class="flex-1 py-1 rounded">
+                class="flex-1 py-1 rounded transition">
                 Manga
             </button>
         </div>
@@ -61,11 +62,30 @@
         {{-- ANIME NAV --}}
         <nav x-show="panel==='anime'" class="space-y-1 flex-1">
 
-            <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Dashboard</a>
-            <a href="{{ route('admin.anime.index') }}" class="nav-link {{ request()->routeIs('admin.anime.*') ? 'active' : '' }}">Anime</a>
-            <a href="{{ route('admin.featured.index') }}" class="nav-link {{ request()->routeIs('admin.featured.*') ? 'active' : '' }}">Featured</a>
-            <a href="{{ route('admin.genres.index') }}" class="nav-link {{ request()->routeIs('admin.genres.*') ? 'active' : '' }}">Genres</a>
-            <a href="{{ route('admin.jikan.search') }}" class="nav-link">MAL Import</a>
+            <a href="{{ route('admin.dashboard') }}"
+               class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                Dashboard
+            </a>
+
+            <a href="{{ route('admin.anime.index') }}"
+               class="nav-link {{ request()->routeIs('admin.anime.*') ? 'active' : '' }}">
+                Anime
+            </a>
+
+            <a href="{{ route('admin.featured.index') }}"
+               class="nav-link {{ request()->routeIs('admin.featured.*') ? 'active' : '' }}">
+                Featured
+            </a>
+
+            <a href="{{ route('admin.genres.index') }}"
+               class="nav-link {{ request()->routeIs('admin.genres.*') ? 'active' : '' }}">
+                Genres
+            </a>
+
+            <a href="{{ route('admin.jikan.search') }}"
+               class="nav-link">
+                MAL Import
+            </a>
 
             <hr class="border-gray-700 my-3">
 
@@ -91,18 +111,17 @@
 
         </nav>
 
-        <a href="{{ route('home') }}" class="mt-4 text-sm text-gray-500 hover:text-white">
+        {{-- BACK --}}
+        <a href="{{ route('home') }}"
+           class="mt-4 text-sm text-gray-500 hover:text-white transition">
             ← Back to site
         </a>
 
     </aside>
 
     {{-- MAIN --}}
-    <main class="flex-1 overflow-auto p-6">
-
-        {{-- CONTENT --}}
+    <main class="flex-1 overflow-y-auto p-6 space-y-6">
         @yield('content')
-
     </main>
 
 </div>
@@ -111,7 +130,7 @@
 <div x-data="toastCenter()" x-init="init()" x-cloak>
     <div
         x-show="showToast"
-        x-transition
+        x-transition.opacity.duration.300ms
         class="fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-xl text-sm"
         :class="type === 'success'
             ? 'bg-green-500/20 text-green-300 border border-green-500/30'
@@ -121,15 +140,14 @@
 </div>
 
 @if(session('success'))
-    <div x-data x-init="$dispatch('toast', { message: @js(session('success')), type: 'success' })"></div>
+<div x-data x-init="$dispatch('toast', { message: @js(session('success')), type: 'success' })"></div>
 @endif
 
 @if(session('error'))
-    <div x-data x-init="$dispatch('toast', { message: @js(session('error')), type: 'error' })"></div>
+<div x-data x-init="$dispatch('toast', { message: @js(session('error')), type: 'error' })"></div>
 @endif
 
-
-{{-- HELPERS --}}
+{{-- NAV STYLE --}}
 <style>
 .nav-link {
     @apply block px-3 py-2 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition;

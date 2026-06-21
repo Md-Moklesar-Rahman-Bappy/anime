@@ -13,7 +13,7 @@
     <div class="grid lg:grid-cols-3 gap-6 mb-6">
 
         {{-- SEARCH --}}
-        <div class="lg:col-span-2 bg-gray-900 border border-gray-700 rounded-xl p-5">
+        <div class="lg:col-span-2 table-card p-5">
 
             <h2 class="text-lg font-medium text-white mb-4">
                 Search & Import
@@ -23,16 +23,18 @@
                 @csrf
 
                 <div class="flex gap-3">
+
                     <input type="text"
                            name="q"
                            value="{{ old('q', $query ?? '') }}"
                            placeholder="Search MyAnimeList..."
                            required
-                           class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-indigo-500">
+                           class="flex-1 form-input">
 
-                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
+                    <button class="btn-primary">
                         Search
                     </button>
+
                 </div>
 
             </form>
@@ -56,8 +58,9 @@
 
         </div>
 
+
         {{-- MASS IMPORT --}}
-        <div class="bg-gray-900 border border-gray-700 rounded-xl p-5">
+        <div class="table-card p-5">
 
             <h2 class="text-lg font-medium text-white mb-2">
                 Mass Import
@@ -82,7 +85,7 @@
                         <input type="hidden" name="batch_size" value="{{ $batch }}">
                         <input type="hidden" name="with_episodes" value="1">
 
-                        <button class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm">
+                        <button class="w-full btn-primary text-sm">
                             Import Next {{ $batch }}
                         </button>
                     </form>
@@ -92,7 +95,7 @@
                     <form action="{{ route('admin.jikan.reset-progress') }}" method="POST">
                         @csrf
 
-                        <button class="w-full px-3 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-lg text-sm">
+                        <button class="w-full btn-cancel text-sm">
                             Reset Progress
                         </button>
                     </form>
@@ -103,6 +106,7 @@
         </div>
     </div>
 
+
     {{-- RESULTS --}}
     @isset($results)
 
@@ -112,7 +116,7 @@
 
             @foreach($results as $item)
 
-            <div class="bg-gray-900 border border-gray-700 rounded-xl flex overflow-hidden">
+            <div class="table-card flex overflow-hidden">
 
                 {{-- IMAGE --}}
                 @if($item['thumbnail'])
@@ -127,6 +131,7 @@
                         {{ $item['title'] }}
                     </h3>
 
+                    {{-- TAGS --}}
                     <div class="flex flex-wrap gap-2 mt-2 text-xs text-gray-400">
 
                         <span class="bg-gray-800 px-2 py-1 rounded">
@@ -145,6 +150,7 @@
 
                     </div>
 
+                    {{-- ACTION --}}
                     <div class="mt-3 text-sm">
 
                         @if(in_array($item['mal_id'], $existingMalIds ?? []))
@@ -169,15 +175,17 @@
         </div>
 
         @else
+
             <p class="text-gray-400">
                 No results found.
             </p>
+
         @endif
 
     @else
 
         {{-- EMPTY STATE --}}
-        <div class="bg-gray-900 border border-gray-700 rounded-xl p-8 text-center text-gray-500">
+        <div class="table-card p-8 text-center text-gray-500">
 
             <p class="text-white font-medium mb-2">
                 Search for anime

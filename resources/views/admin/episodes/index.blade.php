@@ -1,122 +1,213 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="container-fluid px-4">
 
-    <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="max-w-7xl mx-auto">
+
+    {{-- HEADER --}}
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+
         <div>
-            <h1 class="h4 fw-semibold text-white">
+            <h1 class="text-xl font-semibold text-white">
                 Episodes: {{ $anime->title }}
             </h1>
+
             <a href="{{ route('admin.anime.index') }}"
-               class="small" style="color:#9ca3af">
+               class="text-sm text-gray-500 hover:text-white">
                 ← Back to Anime
             </a>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="flex items-center gap-3 flex-wrap">
+
+            {{-- REFRESH --}}
             @if($anime->mal_id)
-            <form action="{{ route('admin.jikan.refresh-episodes', $anime->mal_id) }}" method="POST">
-                @csrf
-                <button type="submit"
-                    class="btn btn-sm d-flex align-items-center gap-1" style="background:#059669;color:#fff">
-                    <svg style="width:1rem;height:1rem" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                              d="M4 4v5h.5m15 2A8 8 0 004.5 9M4 9h4m12 11v-5h-.5m0 0A8 8 0 014 15"/>
-                    </svg>
-                    Refresh
-                </button>
-            </form>
+                <form action="{{ route('admin.jikan.refresh-episodes', $anime->mal_id) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn-success text-sm flex items-center gap-1">
+
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 4v5h.5m15 2A8 8 0 004.5 9M4 9h4m12 11v-5h-.5m0 0A8 8 0 014 15"/>
+                        </svg>
+
+                        Refresh
+                    </button>
+                </form>
             @endif
 
+            {{-- ADD --}}
             <a href="{{ route('admin.anime.episodes.create', $anime) }}"
-               class="btn btn-sm" style="background:#4f46e5;color:#fff">
+               class="btn-primary text-sm">
                 Add Episode
             </a>
 
-            <div x-data="{ open: false }" class="position-relative">
+            {{-- QUICK IMPORT --}}
+            <div x-data="{ open: false }" class="relative">
+
                 <button @click="open = !open"
-                        class="btn btn-sm" style="background:#1f2937;color:#d1d5db;border:1px solid #4b5563">
+                        class="btn-cancel text-sm">
                     Quick Import
                 </button>
-                <div x-show="open" @click.outside="open=false"
-                     class="position-absolute end-0 mt-2"
-                     style="width:12rem;background:#111827;border:1px solid #374151;border-radius:0.5rem;z-index:50">
+
+                <div x-show="open"
+                     @click.outside="open = false"
+                     x-transition
+                     class="absolute right-0 mt-2 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-lg z-50">
+
                     <a href="{{ route('admin.anime.episodes.create', $anime) }}?source=youtube"
-                       class="d-block px-3 py-2 small" style="color:#d1d5db">
+                       class="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800">
                         From YouTube
                     </a>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
-        <div class="table-responsive">
-            <table class="table table-dark table-borderless mb-0 align-middle">
-                <thead>
-                <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
-                    <th class="p-3 text-start">#</th>
-                    <th class="p-3 text-start">Title</th>
-                    <th class="p-3 text-start">Source</th>
-                    <th class="p-3 text-start">Duration</th>
-                    <th class="p-3 text-start">Sub</th>
-                    <th class="p-3 text-start">Dub</th>
-                    <th class="p-3 text-start">Actions</th>
-                </tr>
+
+    {{-- TABLE --}}
+    <div class="table-card">
+
+        <div class="overflow-x-auto">
+
+            <table class="w-full text-sm">
+
+                {{-- HEADER --}}
+                <thead class="table-head">
+                    <tr>
+                        <th class="p-4 text-left">#</th>
+                        <th class="p-4 text-left">Title</th>
+                        <th class="p-4 text-left">Source</th>
+                        <th class="p-4 text-left">Duration</th>
+                        <th class="p-4 text-left">Sub</th>
+                        <th class="p-4 text-left">Dub</th>
+                        <th class="p-4 text-left">Actions</th>
+                    </tr>
                 </thead>
+
+                {{-- BODY --}}
                 <tbody>
+
                 @forelse($episodes as $ep)
-                <tr style="border-bottom:1px solid #374151">
-                    <td class="p-3 text-white">{{ $ep->number }}</td>
-                    <td class="p-3" style="color:#d1d5db">{{ $ep->title ?? 'Episode '.$ep->number }}</td>
-                    <td class="p-3">
-                        <span class="badge rounded-1 fw-normal" style="font-size:0.75rem;
-                            @switch($ep->source_type)
-                                @case('youtube') background:rgba(239,68,68,0.1);color:#f87171 @break
-                                @case('upload') background:rgba(34,197,94,0.1);color:#4ade80 @break
-                                @case('external') background:rgba(34,211,238,0.1);color:#22d3ee @break
-                                @default background:#374151;color:#9ca3af
-                            @endswitch
-                        ">
+
+                <tr class="table-row">
+
+                    {{-- NUMBER --}}
+                    <td class="p-4 text-white">
+                        {{ $ep->number }}
+                    </td>
+
+                    {{-- TITLE --}}
+                    <td class="p-4 text-gray-300">
+                        {{ $ep->title ?? 'Episode '.$ep->number }}
+                    </td>
+
+                    {{-- SOURCE --}}
+                    <td class="p-4">
+                        @php
+                            $badge = match($ep->source_type) {
+                                'youtube' => 'badge-danger',
+                                'upload' => 'badge-success',
+                                'external' => 'badge-indigo',
+                                default => 'bg-gray-700 text-gray-300 px-2 py-1 text-xs rounded',
+                            };
+                        @endphp
+
+                        <span class="{{ $badge }}">
                             {{ ucfirst($ep->source_type ?? '-') }}
                         </span>
                     </td>
-                    <td class="p-3" style="color:#9ca3af">{{ $ep->duration ? $ep->duration.'m' : '-' }}</td>
-                    <td class="p-3" style="color:#d1d5db">{{ $ep->has_sub ? '✔' : '—' }}</td>
-                    <td class="p-3" style="color:#d1d5db">{{ $ep->has_dub ? '✔' : '—' }}</td>
-                    <td class="p-3">
-                        <div class="d-flex gap-3 small">
-                            <a href="{{ route('admin.anime.episodes.edit', [$anime, $ep]) }}" style="color:#60a5fa">Edit</a>
+
+                    {{-- DURATION --}}
+                    <td class="p-4 text-gray-400">
+                        {{ $ep->duration ? $ep->duration . 'm' : '-' }}
+                    </td>
+
+                    {{-- SUB --}}
+                    <td class="p-4 text-gray-300">
+                        {{ $ep->has_sub ? '✔' : '—' }}
+                    </td>
+
+                    {{-- DUB --}}
+                    <td class="p-4 text-gray-300">
+                        {{ $ep->has_dub ? '✔' : '—' }}
+                    </td>
+
+                    {{-- ACTIONS --}}
+                    <td class="p-4">
+
+                        <div class="flex flex-wrap items-center gap-3 text-sm">
+
+                            <a href="{{ route('admin.anime.episodes.edit', [$anime, $ep]) }}"
+                               class="text-blue-400 hover:text-blue-300">
+                                Edit
+                            </a>
+
                             @if($ep->video_path && $ep->storage_disk === 'local')
-                            <form action="{{ route('admin.anime.episodes.delete-video', [$anime, $ep]) }}"
-                                  method="POST" onsubmit="return confirm('Delete video file?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm border-0 p-0" style="color:#fb923c">Video</button>
-                            </form>
+                                <form action="{{ route('admin.anime.episodes.delete-video', [$anime, $ep]) }}"
+                                      method="POST"
+                                      onsubmit="return confirm('Delete video file?')">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button class="text-orange-400 hover:text-orange-300">
+                                        Video
+                                    </button>
+                                </form>
                             @endif
+
                             <form action="{{ route('admin.anime.episodes.destroy', [$anime, $ep]) }}"
-                                  method="POST" onsubmit="return confirm('Delete this episode?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm border-0 p-0" style="color:#f87171">Delete</button>
+                                  method="POST"
+                                  onsubmit="return confirm('Delete this episode?')">
+                                @csrf
+                                @method('DELETE')
+
+                                <button class="text-red-400 hover:text-red-300">
+                                    Delete
+                                </button>
                             </form>
+
                         </div>
+
                     </td>
+
                 </tr>
+
                 @empty
+
                 <tr>
-                    <td colspan="7" class="p-5 text-center" style="color:#6b7280">
-                        <p class="h5" style="color:#d1d5db">No episodes found</p>
-                        <p class="small mt-1">Add your first episode</p>
+                    <td colspan="7" class="p-10 text-center text-gray-500">
+
+                        <p class="text-white font-medium mb-1">
+                            No episodes found
+                        </p>
+
+                        <p class="text-sm">
+                            Add your first episode
+                        </p>
+
                     </td>
                 </tr>
+
                 @endforelse
+
                 </tbody>
+
             </table>
+
         </div>
-        <div class="p-3" style="border-top:1px solid #374151">
+
+        {{-- PAGINATION --}}
+        <div class="p-4 border-t border-gray-700">
             {{ $episodes->links() }}
         </div>
+
     </div>
+
 </div>
+
 @endsection

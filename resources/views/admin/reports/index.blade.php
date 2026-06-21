@@ -1,66 +1,93 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="container-fluid px-4">
 
-    <h1 class="h4 fw-semibold text-white mb-3">Reports</h1>
+<div
+    x-data="liveReports()"
+    x-init="init()"
+    class="max-w-7xl mx-auto relative"
+>
 
-    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
-        <div class="table-responsive">
-            <table class="table table-dark table-borderless mb-0 align-middle">
-                <thead>
-                    <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
-                        <th class="p-3 text-start">Anime</th>
-                        <th class="p-3 text-start">Episode</th>
-                        <th class="p-3 text-start">User</th>
-                        <th class="p-3 text-start">Issue</th>
-                        <th class="p-3 text-start">Status</th>
-                        <th class="p-3 text-start">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($reports as $report)
-                    <tr style="border-bottom:1px solid #374151">
-                        <td class="p-3 text-white">{{ $report->episode->anime->title ?? '—' }}</td>
-                        <td class="p-3" style="color:#d1d5db">{{ 'Ep '.$report->episode->number }}</td>
-                        <td class="p-3" style="color:#d1d5db">{{ $report->user->name }}</td>
-                        <td class="p-3" style="color:#9ca3af">{{ $report->issue_type }}</td>
-                        <td class="p-3">
-                            <span class="badge rounded-1 fw-normal" style="font-size:0.75rem;
-                                @switch($report->status)
-                                    @case('pending') background:rgba(234,179,8,0.1);color:#facc15 @break
-                                    @case('resolved') background:rgba(34,197,94,0.1);color:#4ade80 @break
-                                    @case('dismissed') background:#374151;color:#9ca3af @break
-                                @endswitch
-                            ">{{ ucfirst($report->status) }}</span>
-                        </td>
-                        <td class="p-3">
-                            <form action="{{ route('admin.reports.update', $report) }}" method="POST">
-                                @csrf @method('PUT')
-                                <select name="status" onchange="this.form.submit()"
-                                    class="form-select form-select-sm" style="background:#1f2937;color:#fff;border:1px solid #4b5563">
-                                    <option value="pending" @selected($report->status=='pending')>Pending</option>
-                                    <option value="resolved" @selected($report->status=='resolved')>Resolved</option>
-                                    <option value="dismissed" @selected($report->status=='dismissed')>Dismissed</option>
-                                </select>
-                            </form>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="p-5 text-center" style="color:#6b7280">
-                            <p class="h5" style="color:#d1d5db">No reports found</p>
-                            <p class="small mt-1">User reports will appear here</p>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+    {{-- HEADER --}}
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+
+        <div>
+            <h1 class="text-xl font-semibold text-white">
+                Reports
+            </h1>
+
+            <p class="text-xs text-gray-500 mt-1">
+                Auto refreshing every 7 seconds
+            </p>
         </div>
-        <div class="p-3" style="border-top:1px solid #374151">
-            {{ $reports->links() }}
+
+        <button
+            type="button"
+            @click="bulkResolve()"
+            class="btn-success text-sm"
+        >
+            Mark Visible Pending as Resolved
+        </button>
+
+    </div>
+
+    {{-- FILTERS --}}
+    <div class="form-card mb-6 grid md:grid-cols-3 gap-4">
+
+        <div>
+            <label class="form-label">Search</label>
+            <input
+                type="text"
+                x-model="search"
+                @input.debounce.500ms="fetch()"
+                placeholder="Anime, user, issue..."
+                class="form-input"
+            >
+        </div>
+
+        <div>
+            <label class="form-label">Status</label>
+            <select
+                x-model="status"
+                @change="fetch()"
+                class="form-input"
+            >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="resolved">Resolved</option>
+                <option value="dismissed">Dismissed</option>
+            </select>
+        </div>
+
+        <div class="flex items-end">
+            <button
+                type="button"
+                @click="search=''; status=''; fetch()"
+                class="btn-cancel w-full"
+            >
+                Reset
+            </button>
+        </div>
+
+    </div>
+
+    {{-- LOADING --}}
+    <div
+        x-show="loading"
+        x-transition.opacity
+        class="absolute inset-0 bg-black/40 flex items-center justify-center z-50 rounded-xl"
+        x-cloak
+    >
+        <div class="bg-gray-900 border border-gray-700 px-4 py-2 rounded text-sm text-gray-300 shadow">
+            Updating reports...
         </div>
     </div>
 
+    {{-- LIST --}}
+    <div id="reports-container" @click="handlePagination($event)">
+        @include('admin.reports._list')
+    </div>
+
 </div>
+
 @endsection

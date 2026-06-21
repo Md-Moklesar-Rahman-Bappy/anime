@@ -6,70 +6,84 @@
 
     {{-- TITLE --}}
     <h1 class="text-xl font-semibold text-white mb-6">
-        {{ isset($chapter) ? 'Edit' : 'Create' }} Chapter - {{ $manga->title }}
+        {{ isset($chapter) ? 'Edit Chapter' : 'Create Chapter' }} – {{ $manga->title }}
     </h1>
 
-    <form action="{{ isset($chapter)
+    <form
+        action="{{ isset($chapter)
             ? route('admin.manga.chapters.update', [$manga, $chapter])
             : route('admin.manga.chapters.store', $manga) }}"
-          method="POST"
-          enctype="multipart/form-data">
+        method="POST"
+        enctype="multipart/form-data"
+        x-data="adminForm({
+            key: 'chapter_form_{{ $chapter->id ?? 'new' }}'
+        })"
+        x-init="init()"
+        @input.debounce.500ms="saveDraft()"
+        @change.debounce.500ms="saveDraft()"
+        @submit="submit($event)"
+    >
 
         @csrf
         @if(isset($chapter)) @method('PUT') @endif
 
-        {{-- ROW --}}
+        {{-- GRID --}}
         <div class="grid md:grid-cols-2 gap-4">
 
             {{-- NUMBER --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Chapter Number</label>
+                <label class="form-label">Chapter Number</label>
                 <input type="number"
                        step="0.1"
                        name="number"
                        value="{{ old('number', $chapter->number ?? '') }}"
                        required
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-indigo-500">
+                       class="form-input">
             </div>
 
             {{-- TITLE --}}
             <div>
-                <label class="text-sm text-gray-400 mb-1 block">Title (optional)</label>
+                <label class="form-label">Title (optional)</label>
                 <input type="text"
                        name="title"
                        value="{{ old('title', $chapter->title ?? '') }}"
-                       class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                       class="form-input">
             </div>
 
         </div>
 
-        {{-- FILE UPLOAD --}}
-        <div class="mt-5">
-            <label class="text-sm text-gray-400 mb-1 block">Upload Page Images</label>
-            <input type="file"
-                   name="pages[]"
-                   multiple
-                   accept="image/*"
-                   class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-gray-300">
-            <p class="text-xs text-gray-500 mt-1">
-                Images sorted alphabetically (jpg, png, webp)
+
+        {{-- FILE UPLOAD (DRAG DROP) --}}
+        <div class="mt-6">
+            <x-admin.dropzone
+                name="pages[]"
+                label="Upload Chapter Pages"
+                accept="image/*"
+                :multiple="true"
+            />
+
+            <p class="text-xs text-gray-500 mt-2">
+                Drag & drop multiple images. Order can be adjusted before upload.
             </p>
         </div>
 
+
         {{-- URL INPUT --}}
-        <div class="mt-5">
-            <label class="text-sm text-gray-400 mb-1 block">Or Image URLs</label>
+        <div class="mt-6">
+            <label class="form-label">Or Image URLs</label>
+
             <textarea name="page_urls"
                       rows="4"
-                      class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                      class="form-input"
                       placeholder="https://example.com/page-01.jpg">{{ old('page_urls', isset($chapter) ? $chapter->pages->pluck('image_path')->implode("\n") : '') }}</textarea>
         </div>
+
 
         {{-- EXISTING PAGES --}}
         @if(isset($chapter) && $chapter->pages->count())
         <div class="mt-6">
 
-            <label class="text-sm text-gray-400 block mb-2">
+            <label class="form-label block mb-2">
                 Existing Pages
             </label>
 
@@ -107,16 +121,17 @@
         </div>
         @endif
 
+
         {{-- ACTIONS --}}
         <div class="flex gap-3 mt-6">
 
             <button type="submit"
-                    class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
-                {{ isset($chapter) ? 'Update' : 'Create' }}
+                    class="btn-success">
+                {{ isset($chapter) ? 'Update Chapter' : 'Create Chapter' }}
             </button>
 
-            route('admin.manga.chapters.index', $manga) }}"
-               class="px-5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg">
+            <a href="{{ route('admin.manga.chapters.index', $manga) }}"
+               class="btn-cancel">
                 Cancel
             </a>
 

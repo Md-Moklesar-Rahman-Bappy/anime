@@ -17,7 +17,7 @@ class AnimeController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | INDEX (LIST + SEARCH + AJAX)
+    | INDEX (LIST + SEARCH + AJAX PAGINATION)
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
@@ -27,53 +27,44 @@ class AnimeController extends Controller
 
             $query = Anime::query()
                 ->withCount('episodes')
-                ->select('id', 'title', 'slug', 'type', 'status', 'studio', 'updated_at')
                 ->latest('updated_at');
 
-            /*
-            |--------------------------------------------------------------------------
-            | Search
-            |--------------------------------------------------------------------------
-            */
+            // ✅ SEARCH
             if ($search !== '') {
                 $safe = '%' . addcslashes($search, '%_') . '%';
 
                 $query->where(function ($q) use ($safe) {
                     $q->where('title', 'like', $safe)
-                      ->orWhere('type', 'like', $safe)
-                      ->orWhere('status', 'like', $safe)
-                      ->orWhere('studio', 'like', $safe);
+                        ->orWhere('type', 'like', $safe)
+                        ->orWhere('status', 'like', $safe)
+                        ->orWhere('studio', 'like', $safe);
                 });
             }
 
             $animeList = $query->paginate(20)->withQueryString();
 
-            /*
-            |--------------------------------------------------------------------------
-            | AJAX Response
-            |--------------------------------------------------------------------------
-            */
+            // ✅ AJAX RESPONSE (IMPORTANT)
             if ($request->ajax()) {
                 return response()->json([
-                    'html' => view('admin.anime._table', compact('animeList'))->render(),
-                    'pagination' => view('admin.anime._pagination', compact('animeList'))->render(),
-                    'total' => $animeList->total(),
+                    'html' => view('admin.anime._list', compact('animeList'))->render(),
+                    'url'  => $request->fullUrl(),
                 ]);
             }
 
             return view('admin.anime.index', compact('animeList'));
-
         } catch (\Throwable $e) {
 
-            $this->logError('Admin Anime Index Failed', $e);
+            report($e);
 
-            return $this->redirectError('Failed to load anime list.');
+            return redirect()
+                ->route('admin.anime.index')
+                ->with('error', 'Failed to load anime list.');
         }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | CREATE FORM
+    | CREATE
     |--------------------------------------------------------------------------
     */
     public function create()
@@ -101,10 +92,9 @@ class AnimeController extends Controller
             return redirect()
                 ->route('admin.anime.index')
                 ->with('success', 'Anime created successfully.');
-
         } catch (\Throwable $e) {
 
-            $this->logError('Anime Create Failed', $e);
+            report($e);
 
             return back()
                 ->withInput()
@@ -143,12 +133,9 @@ class AnimeController extends Controller
             return redirect()
                 ->route('admin.anime.index')
                 ->with('success', 'Anime updated successfully.');
-
         } catch (\Throwable $e) {
 
-            $this->logError('Anime Update Failed', $e, [
-                'id' => $anime->id,
-            ]);
+            report($e);
 
             return back()
                 ->withInput()
@@ -166,6 +153,7 @@ class AnimeController extends Controller
         try {
             $this->crud->delete($anime);
 
+            // ✅ AJAX DELETE SUPPORT
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
@@ -176,14 +164,18 @@ class AnimeController extends Controller
             return redirect()
                 ->route('admin.anime.index')
                 ->with('success', 'Anime deleted.');
-
         } catch (\Throwable $e) {
 
-            $this->logError('Anime Delete Failed', $e, [
-                'id' => $anime->id,
-            ]);
+            report($e);
 
-            return $this->redirectError('Delete failed.');
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Delete failed.',
+                ], 500);
+            }
+
+            return back()->with('error', 'Delete failed.');
         }
     }
 

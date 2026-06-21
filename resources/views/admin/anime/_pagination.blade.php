@@ -1,19 +1,25 @@
 @if ($animeList->hasPages())
-<div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3 mt-3">
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
 
-    <p class="small mb-0" style="color:#9ca3af">
-        Showing {{ $animeList->firstItem() }}–{{ $animeList->lastItem() }} of {{ $animeList->total() }}
+    {{-- INFO --}}
+    <p class="text-sm text-gray-400">
+        Showing
+        <span class="text-white">{{ $animeList->firstItem() }}</span> –
+        <span class="text-white">{{ $animeList->lastItem() }}</span>
+        of
+        <span class="text-white">{{ $animeList->total() }}</span>
     </p>
 
-    <div class="d-flex align-items-center gap-1">
+    {{-- PAGINATION --}}
+    <div class="flex items-center gap-1 text-sm">
 
+        {{-- PREV --}}
         @if ($animeList->onFirstPage())
-            <span class="btn btn-sm" style="color:#6b7280;background:#111827;border-radius:0.5rem;cursor:not-allowed">
-                Prev
-            </span>
+            <span class="pagination-disabled px-3 py-2">Prev</span>
         @else
-            <button data-page="{{ $animeList->currentPage() - 1 }}"
-                class="btn btn-sm paginate-link" style="color:#d1d5db;background:#1f2937;border-radius:0.5rem">
+            <button
+                data-page="{{ $animeList->currentPage() - 1 }}"
+                class="pagination-btn px-3 py-2 paginate-link">
                 Prev
             </button>
         @endif
@@ -25,38 +31,43 @@
             $end = min($last, $current + 2);
         @endphp
 
+        {{-- LEFT DOTS --}}
         @if ($start > 1)
-            <span class="px-2" style="color:#6b7280">...</span>
+            <span class="px-2 text-gray-500">...</span>
         @endif
 
+        {{-- PAGE NUMBERS --}}
         @for ($page = $start; $page <= $end; $page++)
             @if ($page == $current)
-                <span class="btn btn-sm" style="background:#4f46e5;color:#fff;border-radius:0.5rem;font-weight:600">
+                <span class="pagination-active px-3 py-2">
                     {{ $page }}
                 </span>
             @else
-                <button data-page="{{ $page }}"
-                    class="btn btn-sm paginate-link" style="color:#d1d5db;background:#1f2937;border-radius:0.5rem">
+                <button
+                    data-page="{{ $page }}"
+                    class="pagination-btn px-3 py-2 paginate-link">
                     {{ $page }}
                 </button>
             @endif
         @endfor
 
+        {{-- RIGHT DOTS --}}
         @if ($end < $last)
-            <span class="px-2" style="color:#6b7280">...</span>
+            <span class="px-2 text-gray-500">...</span>
         @endif
 
+        {{-- NEXT --}}
         @if ($animeList->hasMorePages())
-            <button data-page="{{ $animeList->currentPage() + 1 }}"
-                class="btn btn-sm paginate-link" style="color:#d1d5db;background:#1f2937;border-radius:0.5rem">
+            <button
+                data-page="{{ $animeList->currentPage() + 1 }}"
+                class="pagination-btn px-3 py-2 paginate-link">
                 Next
             </button>
         @else
-            <span class="btn btn-sm" style="color:#6b7280;background:#111827;border-radius:0.5rem;cursor:not-allowed">
-                Next
-            </span>
+            <span class="pagination-disabled px-3 py-2">Next</span>
         @endif
 
     </div>
+
 </div>
 @endif

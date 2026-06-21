@@ -5,34 +5,36 @@
 <div class="max-w-6xl mx-auto">
 
     {{-- HEADER --}}
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
 
         <div>
             <h1 class="text-xl font-semibold text-white">
                 Chapters: {{ $manga->title }}
             </h1>
 
-             }}" class="text-sm text-gray-500 hover:text-white">
+            <a href="{{ route('admin.manga.index') }}"
+               class="text-sm text-gray-500 hover:text-white">
                 ← Back to Manga
             </a>
         </div>
 
-         }}" 
-           class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm">
+        <a href="{{ route('admin.manga.chapters.create', $manga) }}"
+           class="btn-success text-sm">
             Add Chapter
         </a>
 
     </div>
 
+
     {{-- TABLE --}}
-    <div class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+    <div class="table-card">
 
         <div class="overflow-x-auto">
 
             <table class="w-full text-sm">
 
-                {{-- THEAD --}}
-                <thead class="bg-gray-800 text-gray-400 border-b border-gray-700">
+                {{-- HEADER --}}
+                <thead class="table-head">
                     <tr>
                         <th class="p-4 text-left">#</th>
                         <th class="p-4 text-left">Title</th>
@@ -42,12 +44,12 @@
                     </tr>
                 </thead>
 
-                {{-- TBODY --}}
+                {{-- BODY --}}
                 <tbody>
 
                 @forelse($chapters as $chapter)
 
-                <tr class="border-b border-gray-700">
+                <tr class="table-row">
 
                     {{-- NUMBER --}}
                     <td class="p-4 text-indigo-400 font-semibold">
@@ -74,12 +76,12 @@
 
                         <div class="flex items-center gap-4 text-sm">
 
-                             }}" 
+                            <a href="{{ route('admin.manga.chapters.edit', [$manga, $chapter]) }}"
                                class="text-blue-400 hover:text-blue-300">
                                 Edit
                             </a>
 
-                             }}"
+                            <form action="{{ route('admin.manga.chapters.destroy', [$manga, $chapter]) }}"
                                   method="POST"
                                   onsubmit="return confirm('Delete this chapter and all its pages?')">
                                 @csrf

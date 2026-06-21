@@ -5,43 +5,53 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AnimeRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class RequestController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
-    | INDEX (LIST + FILTER + AJAX)
+    | INDEX - LIVE / AJAX / SEARCH / FILTER
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
     {
         try {
             $status = $request->input('status');
+            $search = trim((string) $request->input('search'));
 
-            $query = AnimeRequest::with([
-                    'user:id,name'
-                ])
-                ->select(
-                    'id',
-                    'user_id',
-                    'title',
-                    'status',
-                    'created_at'
-                )
+            $query = AnimeRequest::query()
+                ->with('user:id,name')
                 ->latest();
 
             /*
             |--------------------------------------------------------------------------
-            | FILTER
+            | FILTER BY STATUS
             |--------------------------------------------------------------------------
             */
-            if (!empty($status)) {
+            if ($status && in_array($status, ['pending', 'fulfilled', 'rejected'], true)) {
                 $query->where('status', $status);
             }
 
-            $requests = $query
-                ->paginate(20)
-                ->withQueryString();
+            /*
+            |--------------------------------------------------------------------------
+            | SEARCH
+            |--------------------------------------------------------------------------
+            */
+            if ($search !== '') {
+                $safe = '%' . addcslashes($search, '%_') . '%';
+
+                $query->where(function ($q) use ($safe) {
+                    $q->where('anime_title', 'like', $safe)
+                        ->orWhere('description', 'like', $safe)
+                        ->orWhereHas('user', function ($userQuery) use ($safe) {
+                            $userQuery->where('name', 'like', $safe);
+                        });
+                });
+            }
+
+            $requests = $query->paginate(15)->withQueryString();
 
             /*
             |--------------------------------------------------------------------------
@@ -50,19 +60,25 @@ class RequestController extends Controller
             */
             if ($request->ajax()) {
                 return response()->json([
-                    'html' => view('admin.requests._table', compact('requests'))->render(),
-                    'pagination' => view('admin.requests._pagination', compact('requests'))->render(),
-                    'total' => $requests->total(),
+                    'html' => view('admin.requests._list', compact('requests'))->render(),
+                    'url'  => $request->fullUrl(),
                 ]);
             }
 
             return view('admin.requests.index', compact('requests'));
-
         } catch (\Throwable $e) {
+            Log::error('Admin requests index failed', [
+                'error' => $e->getMessage(),
+            ]);
 
-            $this->logError('Anime request index failed', $e);
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to load requests.',
+                ], 500);
+            }
 
-            return $this->redirectError('Failed to load requests.');
+            return back()->with('error', 'Failed to load requests.');
         }
     }
 
@@ -73,36 +89,78 @@ class RequestController extends Controller
     */
     public function update(Request $request, AnimeRequest $animeRequest)
     {
-        $data = $request->validate([
-            'status' => 'required|in:pending,fulfilled,rejected',
-        ]);
-
         try {
+            $data = $request->validate([
+                'status' => [
+                    'required',
+                    Rule::in(['pending', 'fulfilled', 'rejected']),
+                ],
+            ]);
+
             $animeRequest->update([
                 'status' => $data['status'],
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | AJAX RESPONSE
-            |--------------------------------------------------------------------------
-            */
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Request updated successfully.',
+                    'message' => 'Request status updated.',
+                    'request' => $animeRequest->fresh(),
                 ]);
             }
 
-            return back()->with('success', 'Request updated successfully.');
-
+            return back()->with('success', 'Request status updated.');
         } catch (\Throwable $e) {
-
-            $this->logError('Anime request update failed', $e, [
+            Log::error('Request update failed', [
                 'request_id' => $animeRequest->id,
+                'error'      => $e->getMessage(),
             ]);
 
-            return $this->redirectError('Failed to update request.');
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update request.',
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to update request.');
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BULK FULFILL VISIBLE PENDING REQUESTS
+    |--------------------------------------------------------------------------
+    */
+    public function bulkFulfill(Request $request)
+    {
+        try {
+            $ids = $request->input('ids', []);
+
+            if (!is_array($ids) || count($ids) === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No requests selected.',
+                ], 422);
+            }
+
+            AnimeRequest::whereIn('id', $ids)
+                ->where('status', 'pending')
+                ->update(['status' => 'fulfilled']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visible pending requests marked as fulfilled.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Bulk fulfill requests failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update requests.',
+            ], 500);
         }
     }
 }

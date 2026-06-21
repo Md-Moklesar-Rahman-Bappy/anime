@@ -12,7 +12,7 @@
 
 
     {{-- ANIME CARD --}}
-    <div class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden mb-6">
+    <div class="table-card mb-6 overflow-hidden">
 
         <div class="flex flex-col md:flex-row">
 
@@ -97,13 +97,14 @@
                 @endif
 
             </div>
+
         </div>
     </div>
 
 
     {{-- EPISODES --}}
     @if(count($episodes) > 0)
-    <div class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden mb-6">
+    <div class="table-card mb-6 overflow-hidden">
 
         <div class="p-4 border-b border-gray-700">
             <h2 class="text-lg text-white">
@@ -114,7 +115,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
 
-                <thead class="bg-gray-800 text-gray-400 border-b border-gray-700">
+                <thead class="table-head">
                     <tr>
                         <th class="p-4 text-left">#</th>
                         <th class="p-4 text-left">Title</th>
@@ -125,7 +126,7 @@
 
                 <tbody>
                     @foreach($episodes as $ep)
-                    <tr class="border-b border-gray-700">
+                    <tr class="table-row">
 
                         <td class="p-4 text-white">
                             {{ $ep['number'] }}
@@ -153,7 +154,7 @@
     @endif
 
 
-    {{-- IMPORT --}}
+    {{-- IMPORT ACTION --}}
     <div class="flex flex-col md:flex-row items-center justify-between gap-4">
 
         <form action="{{ route('admin.jikan.import', $anime['mal_id']) }}" method="POST">
@@ -161,11 +162,11 @@
 
             <button type="submit"
                 onclick="return confirm('{{ $alreadyImported ? 'Re-import (update)' : 'Import' }} {{ $anime['title'] }}?')"
-                class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
+                class="btn-primary px-6 py-3">
 
                 {{ $alreadyImported ? 'Re-import (Update)' : 'Import Anime' }}
-            </button>
 
+            </button>
         </form>
 
         <div class="text-xs text-gray-500">
