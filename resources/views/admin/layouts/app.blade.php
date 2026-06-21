@@ -40,7 +40,7 @@
            x-init="$watch('panel', val => localStorage.setItem('admin_panel', val))">
 
         {{-- LOGO --}}
-         }}" class="flex items-center gap-2 mb-6 text-indigo-500 font-bold text-lg">
+        <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2 mb-6 text-indigo-500 font-bold text-lg">
             🎬 Admin
         </a>
 
@@ -61,78 +61,81 @@
         {{-- ANIME NAV --}}
         <nav x-show="panel==='anime'" class="space-y-1 flex-1">
 
-             }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Dashboard</a>
-
-             }}" class="nav-link {{ request()->routeIs('admin.anime.*') ? 'active' : '' }}">Anime</a>
-
-             }}" class="nav-link {{ request()->routeIs('admin.featured.*') ? 'active' : '' }}">Featured</a>
-
-             }}" class="nav-link {{ request()->routeIs('admin.genres.*') ? 'active' : '' }}">Genres</a>
-
-             }}" class="nav-link">MAL Import</a>
+            <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Dashboard</a>
+            <a href="{{ route('admin.anime.index') }}" class="nav-link {{ request()->routeIs('admin.anime.*') ? 'active' : '' }}">Anime</a>
+            <a href="{{ route('admin.featured.index') }}" class="nav-link {{ request()->routeIs('admin.featured.*') ? 'active' : '' }}">Featured</a>
+            <a href="{{ route('admin.genres.index') }}" class="nav-link {{ request()->routeIs('admin.genres.*') ? 'active' : '' }}">Genres</a>
+            <a href="{{ route('admin.jikan.search') }}" class="nav-link">MAL Import</a>
 
             <hr class="border-gray-700 my-3">
 
-             }}" class="nav-link">Users</a>
-             }}" class="nav-link">Comments</a>
-             }}" class="nav-link">Reports</a>
-             }}" class="nav-link">Settings</a>
+            <a href="{{ route('admin.users.index') }}" class="nav-link">Users</a>
+            <a href="{{ route('admin.comments.index') }}" class="nav-link">Comments</a>
+            <a href="{{ route('admin.reports.index') }}" class="nav-link">Reports</a>
+            <a href="{{ route('admin.settings.index') }}" class="nav-link">Settings</a>
 
         </nav>
 
         {{-- MANGA NAV --}}
         <nav x-show="panel==='manga'" x-cloak class="space-y-1 flex-1">
 
-             }}" class="nav-link">Dashboard</a>
-             }}" class="nav-link">Manga</a>
-             }}" class="nav-link">Genres</a>
+            <a href="{{ route('admin.manga.dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ route('admin.manga.index') }}" class="nav-link">Manga</a>
+            <a href="{{ route('admin.manga.genres.index') }}" class="nav-link">Genres</a>
 
             <hr class="border-gray-700 my-3">
 
-             }}" class="nav-link">Comments</a>
-             }}" class="nav-link">Users</a>
-             }}" class="nav-link">Settings</a>
+            <a href="{{ route('admin.comments.index') }}" class="nav-link">Comments</a>
+            <a href="{{ route('admin.users.index') }}" class="nav-link">Users</a>
+            <a href="{{ route('admin.settings.index') }}" class="nav-link">Settings</a>
 
         </nav>
 
-         }}" class="mt-4 text-sm text-gray-500 hover:text-white">
+        <a href="{{ route('home') }}" class="mt-4 text-sm text-gray-500 hover:text-white">
             ← Back to site
         </a>
 
     </aside>
 
-    {{-- MAIN CONTENT --}}
+    {{-- MAIN --}}
     <main class="flex-1 overflow-auto p-6">
 
-        {{-- ALERTS --}}
-        @if(session('success'))
-            <div class="alert-success">{{ session('success') }}</div>
-        @endif
-
-        @if(session('error'))
-            <div class="alert-error">{{ session('error') }}</div>
-        @endif
-
+        {{-- CONTENT --}}
         @yield('content')
 
     </main>
 
 </div>
 
-{{-- Tailwind helpers --}}
+{{-- ✅ TOAST SYSTEM --}}
+<div x-data="toastCenter()" x-init="init()" x-cloak>
+    <div
+        x-show="showToast"
+        x-transition
+        class="fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-xl text-sm"
+        :class="type === 'success'
+            ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+            : 'bg-red-500/20 text-red-300 border border-red-500/30'">
+        <span x-text="message"></span>
+    </div>
+</div>
+
+@if(session('success'))
+    <div x-data x-init="$dispatch('toast', { message: @js(session('success')), type: 'success' })"></div>
+@endif
+
+@if(session('error'))
+    <div x-data x-init="$dispatch('toast', { message: @js(session('error')), type: 'error' })"></div>
+@endif
+
+
+{{-- HELPERS --}}
 <style>
 .nav-link {
     @apply block px-3 py-2 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition;
 }
 .nav-link.active {
     @apply bg-indigo-600 text-white;
-}
-
-.alert-success {
-    @apply mb-4 px-4 py-2 rounded bg-green-500/10 text-green-400 border border-green-500/20;
-}
-.alert-error {
-    @apply mb-4 px-4 py-2 rounded bg-red-500/10 text-red-400 border border-red-500/20;
 }
 </style>
 
