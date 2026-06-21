@@ -1,44 +1,53 @@
 @if ($paginator->hasPages())
-<nav class="flex justify-center mt-8">
+    <nav role="navigation"
+         aria-label="Pagination Navigation"
+         class="mt-8 flex items-center justify-between gap-3">
 
-    <ul class="flex items-center gap-1 text-sm">
-
-        {{-- Previous --}}
+        {{-- ─────── PREVIOUS ─────── --}}
         @if ($paginator->onFirstPage())
-            <span class="pagination-disabled">‹</span>
+            <span class="pagination-disabled" aria-disabled="true" aria-label="Previous page (disabled)">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span class="ml-1.5 hidden sm:inline">Previous</span>
+            </span>
         @else
-            <a href="{{ $paginator->previousPageUrl() }}" class="pagination-btn">‹</a>
+            {{ $paginator->previousPageUrl() }}
+               rel="prev"
+               class="pagination-btn"
+               aria-label="Go to previous page">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span class="ml-1.5 hidden sm:inline">Previous</span>
+            </a>
         @endif
 
-        {{-- Pages --}}
-        @foreach ($elements as $element)
+        {{-- ─────── CURRENT PAGE INDICATOR ─────── --}}
+        <span class="text-xs text-gray-500">
+            Page
+            <strong class="text-gray-300 font-semibold">{{ $paginator->currentPage() }}</strong>
+        </span>
 
-            @if (is_string($element))
-                <span class="px-2 text-gray-500">{{ $element }}</span>
-            @endif
-
-            @if (is_array($element))
-                @foreach ($element as $page => $url)
-
-                    @if ($page == $paginator->currentPage())
-                        <span class="pagination-active">{{ $page }}</span>
-                    @else
-                        <a href="{{ $url }}" class="pagination-btn">{{ $page }}</a>
-                    @endif
-
-                @endforeach
-            @endif
-
-        @endforeach
-
-        {{-- Next --}}
+        {{-- ─────── NEXT ─────── --}}
         @if ($paginator->hasMorePages())
-            <a href="{{ $paginator->nextPageUrl() }}" class="pagination-btn">›</a>
+            {{ $paginator->nextPageUrl() }}
+               rel="next"
+               class="pagination-btn"
+               aria-label="Go to next page">
+                <span class="mr-1.5 hidden sm:inline">Next</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+            </a>
         @else
-            <span class="pagination-disabled">›</span>
+            <span class="pagination-disabled" aria-disabled="true" aria-label="Next page (disabled)">
+                <span class="mr-1.5 hidden sm:inline">Next</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+            </span>
         @endif
 
-    </ul>
-
-</nav>
+    </nav>
 @endif

@@ -1,379 +1,453 @@
 @extends('layouts.main')
 
-@section('title', $episode->anime->title . ' - Episode ' . $episode->number)
-
-@push('styles')
-<style>
-    .player-shell {
-        background:#000;border-radius:0.75rem;overflow:hidden;border:1px solid #374151;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);
-    }
-    .player-surface {
-        position:relative;width:100%;aspect-ratio:16/9;background:#000;
-    }
-    .player-control-bar {
-        display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.75rem 1rem;background:#111827;border-top:1px solid #374151;
-    }
-    .ctrl-group {
-        display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;
-    }
-    .ctrl-btn {
-        display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;border-radius:0.5rem;background:#1f2937;color:#d1d5db;border:1px solid #374151;font-size:0.875rem;transition:all 0.2s;
-    }
-    .ctrl-btn.active {
-        background:#4f46e5;color:#fff;border-color:#6366f1;
-    }
-    .ctrl-btn .label {
-        display:none;
-    }
-    @media (min-width:576px) {
-        .ctrl-btn .label { display:inline; }
-    }
-    .server-select {
-        background:#1f2937;color:#fff;font-size:0.875rem;border-radius:0.5rem;padding:0.5rem 0.75rem;border:1px solid #374151;
-    }
-    .server-select:focus {
-        outline:none;box-shadow:0 0 0 2px #4f46e5;
-    }
-    .player-dropdown {
-        position:absolute;right:0;top:100%;margin-top:0.5rem;width:16rem;background:#111827;border:1px solid #374151;border-radius:0.75rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);z-index:1050;overflow:hidden;
-    }
-    .skip-overlay {
-        position:absolute;bottom:1rem;right:1rem;z-index:20;display:flex;gap:0.5rem;
-    }
-    .skip-btn {
-        padding:0.5rem 1rem;border-radius:0.5rem;background:#4f46e5;color:#fff;font-weight:500;box-shadow:0 4px 6px rgba(0,0,0,0.3);border:none;cursor:pointer;transition:background 0.2s;
-    }
-    .skip-btn:hover { background:#6366f1; }
-    .section-card {
-        background:#111827;border:1px solid #374151;border-radius:0.75rem;padding:1rem;
-    }
-    .comment-box {
-        width:100%;background:#1f2937;color:#fff;border-radius:0.5rem;padding:0.75rem 1rem;border:1px solid #374151;
-    }
-    .comment-box:focus {
-        outline:none;box-shadow:0 0 0 2px #4f46e5;
-    }
-    .thumb-cover {
-        object-fit:cover;border-radius:0.5rem;background:#1f2937;
-    }
-</style>
-@endpush
+@section('title', $anime->title . ' · Episode ' . $episode->number)
+@section('description', 'Watch ' . $anime->title . ' Episode ' . $episode->number . ' ' . ($episode->title ? '— ' . $episode->title : '') . ' free in HD.')
+@section('og:title', $anime->title . ' · Episode ' . $episode->number)
+@section('og:image', $episode->thumbnail_url ?? $anime->banner_url ?? $anime->thumbnail_url)
+@section('og:type', 'video.episode')
 
 @section('content')
-<div class="container-fluid px-3 py-3" style="max-width:1280px">
+<div class="max-w-[1400px] mx-auto" x-data="watchPage()" x-init="init()">
 
-    <div class="row">
-        <div class="col-lg-8 d-flex flex-column gap-3">
+    {{-- ╔══════════════════════════════════════════╗
+         ║         MAIN GRID                        ║
+         ╚══════════════════════════════════════════╝ --}}
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-            <div class="player-shell"
-                 x-data="player()"
+        {{-- ─────── LEFT: PLAYER + INFO ─────── --}}
+        <div class="lg:col-span-8 space-y-4">
+
+            {{-- ╔══════════════════════════════════════════╗
+                 ║         PLAYER                           ║
+                 ╚══════════════════════════════════════════╝ --}}
+            <div class="rounded-2xl overflow-hidden border border-gray-800 bg-black shadow-2xl"
+                 x-data="player({
+                    servers: @js($allServers),
+                    isYoutube: @js($isYoutubeInit ?? false),
+                    youtubeId: @js($youtubeVideoId ?? null),
+                    nextUrl: @js($nextEpisode ? route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number]) : null),
+                    prevUrl: @js($prevEpisode ? route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) : null),
+                    episodeId: {{ $episode->id }},
+                    animeId: {{ $anime->id }},
+                    isAuth: @js(auth()->check()),
+                    loginUrl: '{{ route('auth.login') }}',
+                    skipTimes: @js($skipTimes ?? null),
+                 })"
                  x-init="init()"
-                 x-cloak>
+                 @keydown.window.prevent.space="togglePlay()"
+                 @keydown.window.j="skip(-10)"
+                 @keydown.window.l="skip(10)"
+                 @keydown.window.k="togglePlay()"
+                 @keydown.window.m="toggleMute()"
+                 @keydown.window.f="toggleFullscreen()"
+            >
 
-                <div class="player-surface">
+                {{-- VIDEO SURFACE --}}
+                <div class="relative aspect-video bg-black group">
 
                     @if($initialServer)
                         @php
-                            $_mimeMap = [
+                            $mimeMap = [
                                 'mp4'  => 'video/mp4',
                                 'webm' => 'video/webm',
                                 'm3u8' => 'application/x-mpegURL',
                             ];
-
-                            $_mimeType = $_mimeMap[$initialServer['type']] ?? null;
-                            $_isEmbedInit = $initialServer['type'] === 'embed';
+                            $mimeType    = $mimeMap[$initialServer['type']] ?? null;
+                            $isEmbedInit = $initialServer['type'] === 'embed';
                         @endphp
 
-                        <iframe
-                            x-show="isEmbed"
-                            :src="embedUrl"
-                            style="width:100%;height:100%;border:0"
-                            allowfullscreen
-                            allow="autoplay; encrypted-media; picture-in-picture"
-                        ></iframe>
+                        {{-- Embed iframe --}}
+                        <iframe x-show="isEmbed"
+                                x-cloak
+                                :src="embedUrl"
+                                class="absolute inset-0 w-full h-full border-0"
+                                allowfullscreen
+                                allow="autoplay; encrypted-media; picture-in-picture">
+                        </iframe>
 
-                        <div x-show="!isEmbed" style="width:100%;height:100%">
-                            <video
-                                id="videoPlayer"
-                                style="width:100%;height:100%"
-                                playsinline
-                                controls
-                                preload="metadata"
-                                @if($episode->thumbnail_url)
-                                    poster="{{ $episode->thumbnail_url }}"
-                                @endif
-                                @if($isYoutubeInit)
-                                    data-plyr-provider="youtube"
-                                    data-plyr-embed-id="{{ $youtubeVideoId ?? '' }}"
-                                @endif
-                            >
-                                @if(!$isYoutubeInit && !$_isEmbedInit)
-                                    <source src="{{ $initialServer['url'] }}" @if($_mimeType) type="{{ $_mimeType }}" @endif>
-                                @endif
-                            </video>
+                        {{-- Native / Plyr video --}}
+                        <video x-show="!isEmbed"
+                               x-ref="video"
+                               class="absolute inset-0 w-full h-full"
+                               playsinline
+                               preload="metadata"
+                               @if($episode->thumbnail_url)
+                                   poster="{{ $episode->thumbnail_url }}"
+                               @endif
+                               @if($isYoutubeInit)
+                                   data-plyr-provider="youtube"
+                                   data-plyr-embed-id="{{ $youtubeVideoId ?? '' }}"
+                               @endif
+                        >
+                            @if(!$isYoutubeInit && !$isEmbedInit)
+                                <source src="{{ $initialServer['url'] }}"
+                                        @if($mimeType) type="{{ $mimeType }}" @endif>
+                            @endif
+                        </video>
+
+                        {{-- Skip buttons --}}
+                        <div class="absolute bottom-16 right-4 z-10 flex gap-2"
+                             x-show="showSkipIntro || showSkipOutro"
+                             x-cloak
+                             x-transition>
+                            <button x-show="showSkipIntro"
+                                    @click="skipIntro()"
+                                    class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-xl font-semibold text-sm transition flex items-center gap-2">
+                                <i class="fas fa-forward"></i>
+                                Skip Intro
+                            </button>
+                            <button x-show="showSkipOutro"
+                                    @click="skipOutro()"
+                                    class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-xl font-semibold text-sm transition flex items-center gap-2">
+                                <i class="fas fa-forward-step"></i>
+                                Next Episode
+                            </button>
                         </div>
-                    @else
-                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0a0f;color:#6b7280">
-                            <div class="text-center">
-                                <svg style="width:4rem;height:4rem;margin:0 auto 0.75rem;display:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                </svg>
-                                <p style="font-size:0.875rem">No video source available for this episode.</p>
+
+                        {{-- "Next Episode" countdown overlay --}}
+                        <div x-show="showNextCountdown"
+                             x-cloak
+                             x-transition.opacity
+                             class="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                            <div class="text-center max-w-md p-6">
+                                <p class="text-sm text-gray-400 uppercase tracking-wider mb-2">Next Episode</p>
+
+                                @if($nextEpisode)
+                                    <h3 class="text-xl font-bold text-white mb-1">
+                                        Episode {{ $nextEpisode->number }}
+                                    </h3>
+                                    @if($nextEpisode->title)
+                                        <p class="text-sm text-gray-400 mb-5">{{ $nextEpisode->title }}</p>
+                                    @endif
+                                @endif
+
+                                <p class="text-3xl font-black text-indigo-400 mb-5" x-text="`Playing in ${countdownSeconds}s`"></p>
+
+                                <div class="flex justify-center gap-2">
+                                    <button @click="cancelNextCountdown()" class="btn-cancel">
+                                        Cancel
+                                    </button>
+                                    <button @click="playNextNow()" class="btn-primary">
+                                        <i class="fas fa-play"></i> Play Now
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    @else
+                        {{-- NO VIDEO SOURCE FALLBACK --}}
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 bg-[#0a0a0f]">
+                            <i class="fas fa-video-slash text-5xl mb-3"></i>
+                            <p class="text-sm">No video source available for this episode.</p>
+                            <p class="text-xs text-gray-600 mt-1">Try a different server or report this issue.</p>
+                        </div>
                     @endif
-
-                    <div class="skip-overlay" x-show="showSkipIntro || showSkipOutro" x-cloak>
-                        <button class="skip-btn" x-show="showSkipIntro" @click="skipIntro()">Skip Intro</button>
-                        <button class="skip-btn" x-show="showSkipOutro" @click="skipOutro()">Skip Outro</button>
-                    </div>
                 </div>
 
-                <div class="player-control-bar">
+                {{-- CONTROL BAR --}}
+                <div class="bg-[#0f111a] border-t border-gray-800 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
 
-                    <div class="ctrl-group">
-                        <button class="ctrl-btn" @click="togglePlay()" title="Play / Pause (Space)">
-                            <i class="fa-solid" :class="playing ? 'fa-pause' : 'fa-play'"></i>
-                            <span class="label">Play</span>
+                    {{-- LEFT GROUP: playback --}}
+                    <div class="flex items-center gap-1">
+                        <button @click="togglePlay()"
+                                class="ctrl-btn"
+                                title="Play / Pause (Space)">
+                            <i class="fas" :class="playing ? 'fa-pause' : 'fa-play'"></i>
+                            <span class="hidden sm:inline" x-text="playing ? 'Pause' : 'Play'"></span>
                         </button>
 
-                        <button class="ctrl-btn" @click="skip(-10)" title="Rewind 10s (J)">
-                            <i class="fa-solid fa-backward"></i>
-                            <span class="label">10s</span>
+                        <button @click="skip(-10)" class="ctrl-btn" title="Rewind 10s (J)">
+                            <i class="fas fa-backward"></i>
+                            <span class="hidden sm:inline">-10s</span>
                         </button>
 
-                        <button class="ctrl-btn" @click="skip(10)" title="Forward 10s (L)">
-                            <i class="fa-solid fa-forward"></i>
-                            <span class="label">10s</span>
+                        <button @click="skip(10)" class="ctrl-btn" title="Forward 10s (L)">
+                            <i class="fas fa-forward"></i>
+                            <span class="hidden sm:inline">+10s</span>
                         </button>
 
-                        <button class="ctrl-btn" :class="{ active: config.lightMode }" @click="toggleLight()" title="Light mode">
-                            <i class="fa-solid fa-lightbulb"></i>
-                            <span class="label">Light</span>
-                        </button>
-                    </div>
-
-                    <div class="ctrl-group">
-                        <button class="ctrl-btn" :class="{ active: config.autoPlay }" @click="toggleAutoPlay()">
-                            <i class="fa-solid" :class="config.autoPlay ? 'fa-check-square' : 'fa-square'"></i>
-                            <span class="label">Auto Play</span>
-                        </button>
-
-                        <button class="ctrl-btn" :class="{ active: config.autoNext }" @click="toggleAutoNext()">
-                            <i class="fa-solid" :class="config.autoNext ? 'fa-check-square' : 'fa-square'"></i>
-                            <span class="label">Auto Next</span>
-                        </button>
-
-                        <button class="ctrl-btn" :class="{ active: config.autoSkip }" @click="toggleAutoSkip()">
-                            <i class="fa-solid" :class="config.autoSkip ? 'fa-check-square' : 'fa-square'"></i>
-                            <span class="label">Auto Skip</span>
+                        <button @click="toggleTheater()"
+                                class="ctrl-btn"
+                                :class="config.theater && 'active'"
+                                title="Theater mode (T)">
+                            <i class="fas fa-tv"></i>
+                            <span class="hidden md:inline">Theater</span>
                         </button>
                     </div>
 
-                    <div class="ctrl-group">
+                    {{-- CENTER GROUP: auto features --}}
+                    <div class="flex items-center gap-1">
+                        <button @click="toggle('autoPlay')"
+                                class="ctrl-btn"
+                                :class="config.autoPlay && 'active'">
+                            <i class="fas" :class="config.autoPlay ? 'fa-check-square' : 'fa-square'"></i>
+                            <span class="hidden md:inline">Auto Play</span>
+                        </button>
+
+                        <button @click="toggle('autoNext')"
+                                class="ctrl-btn"
+                                :class="config.autoNext && 'active'">
+                            <i class="fas" :class="config.autoNext ? 'fa-check-square' : 'fa-square'"></i>
+                            <span class="hidden md:inline">Auto Next</span>
+                        </button>
+
+                        <button @click="toggle('autoSkip')"
+                                class="ctrl-btn"
+                                :class="config.autoSkip && 'active'">
+                            <i class="fas" :class="config.autoSkip ? 'fa-check-square' : 'fa-square'"></i>
+                            <span class="hidden md:inline">Auto Skip</span>
+                        </button>
+                    </div>
+
+                    {{-- RIGHT GROUP: nav + tools --}}
+                    <div class="flex items-center gap-1">
                         @if($prevEpisode)
-                            <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) }}" class="ctrl-btn" title="Previous Episode (B)">
-                                <i class="fa-solid fa-backward-step"></i>
-                                <span class="label">Prev</span>
+                            {{ route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) }}-btn" title="Previous (B)">
+                                <i class="fas fa-backward-step"></i>
+                                <span class="hidden sm:inline">Prev</span>
                             </a>
                         @endif
 
                         @if($nextEpisode)
-                            <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number]) }}" class="ctrl-btn" title="Next Episode (N)">
-                                <span class="label">Next</span>
-                                <i class="fa-solid fa-forward-step"></i>
+                            {{ route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number]) }}-btn" title="Next (N)">
+                                <span class="hidden sm:inline">Next</span>
+                                <i class="fas fa-forward-step"></i>
                             </a>
                         @endif
-                    </div>
-
-                    <div class="ctrl-group">
 
                         @if(count($allServers) > 1)
-                            <select class="server-select" @change="switchServer($event.target.selectedIndex)">
+                            <select @change="switchServer($event.target.selectedIndex)"
+                                    class="form-select text-xs py-1.5 ml-1">
                                 @foreach($allServers as $i => $s)
-                                    <option value="{{ $s['server_id'] }}" @if($i === 0) selected @endif>
+                                    <option value="{{ $s['server_id'] }}" @selected($i === 0)>
                                         {{ $s['label'] }}
                                     </option>
                                 @endforeach
                             </select>
                         @endif
 
-                        <div class="position-relative" @click.outside="listOpen = false">
-                            <button class="ctrl-btn" @click="toggleList()">
-                                <i class="fa-solid fa-bookmark"></i>
-                                <span class="label">List</span>
+                        {{-- List dropdown --}}
+                        <div class="relative" @click.outside="listOpen = false">
+                            <button @click="listOpen = !listOpen; reportOpen = false"
+                                    class="ctrl-btn"
+                                    :class="favoriteCategory && 'active'"
+                                    title="Add to list">
+                                <i class="fas fa-bookmark"></i>
+                                <span class="hidden lg:inline">List</span>
                             </button>
 
-                            <div class="player-dropdown" x-show="listOpen" x-cloak>
-                                <template x-for="cat in categories" :key="cat.value">
-                                    <button class="w-100 d-flex align-items-center gap-2 px-3 py-2 text-start" style="background:none;border:none;color:#d1d5db;font-size:0.875rem;transition:background 0.2s"
-                                            :class="{ active: favoriteCategory === cat.value }"
-                                            @click="updateList(favoriteCategory === cat.value ? null : cat.value)">
-                                        <span style="width:1rem;text-align:center;color:#818cf8">
-                                            <i class="fa-solid fa-check" x-show="favoriteCategory === cat.value"></i>
+                            <div x-show="listOpen"
+                                 x-cloak
+                                 x-transition
+                                 class="absolute right-0 top-full mt-2 w-56 z-20 rounded-xl bg-[#0f111a] border border-gray-800 shadow-xl py-1">
+
+                                @php
+                                    $listCategories = [
+                                        ['watching',      'Watching',       'fa-play',         'text-blue-400'],
+                                        ['completed',     'Completed',      'fa-circle-check', 'text-emerald-400'],
+                                        ['plan_to_watch', 'Plan to Watch',  'fa-clock',        'text-amber-400'],
+                                        ['on_hold',       'On Hold',        'fa-pause',        'text-orange-400'],
+                                        ['dropped',       'Dropped',        'fa-circle-xmark', 'text-red-400'],
+                                    ];
+                                @endphp
+
+                                @foreach($listCategories as [$value, $label, $icon, $color])
+                                    <button @click="updateList(favoriteCategory === '{{ $value }}' ? null : '{{ $value }}')"
+                                            class="dropdown-link justify-between"
+                                            :class="favoriteCategory === '{{ $value }}' && 'bg-indigo-600/20 text-white'">
+                                        <span class="flex items-center gap-2">
+                                            <i class="fas {{ $icon }} {{ $color }} w-4"></i>
+                                            {{ $label }}
                                         </span>
-                                        <span x-text="cat.label"></span>
+                                        <i class="fas fa-check text-indigo-400 text-xs"
+                                           x-show="favoriteCategory === '{{ $value }}'"></i>
                                     </button>
-                                </template>
+                                @endforeach
 
-                                <hr style="border-color:#374151;margin:0.25rem 0">
+                                <div class="border-t border-gray-800 my-1"></div>
 
-                                <button class="w-100 d-flex align-items-center gap-2 px-3 py-2 text-start" style="background:none;border:none;color:#d1d5db;font-size:0.875rem;transition:background 0.2s"
-                                        :class="{ active: !favoriteCategory }"
-                                        @click="updateList(null)">
-                                    <span style="width:1rem;text-align:center;color:#818cf8">
-                                        <i class="fa-solid fa-check" x-show="!favoriteCategory"></i>
-                                    </span>
-                                    <span>Not in list</span>
+                                <button @click="updateList(null)"
+                                        class="dropdown-link text-red-400 hover:text-red-300"
+                                        x-show="favoriteCategory">
+                                    <i class="fas fa-times w-4"></i>
+                                    Remove from list
                                 </button>
                             </div>
                         </div>
 
-                        <div class="position-relative" @click.outside="reportOpen = false">
-                            <button class="ctrl-btn" @click="toggleReport()">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                                <span class="label">Report</span>
+                        {{-- Report dropdown --}}
+                        <div class="relative" @click.outside="reportOpen = false">
+                            <button @click="reportOpen = !reportOpen; listOpen = false" class="ctrl-btn" title="Report issue">
+                                <i class="fas fa-triangle-exclamation"></i>
+                                <span class="hidden lg:inline">Report</span>
                             </button>
 
-                            <div class="player-dropdown" x-show="reportOpen" x-cloak>
-                                <div style="padding:0.75rem" class="d-flex flex-column gap-2">
+                            <div x-show="reportOpen"
+                                 x-cloak
+                                 x-transition
+                                 class="absolute right-0 top-full mt-2 w-72 z-20 rounded-xl bg-[#0f111a] border border-gray-800 shadow-xl p-3 space-y-3">
 
-                                    <div>
-                                        <label class="d-block" style="font-size:0.75rem;color:#6b7280;margin-bottom:0.25rem">Issue type</label>
-                                        <select x-model="reportType" class="server-select w-100">
-                                            <template x-for="it in issueTypes" :key="it.value">
-                                                <option :value="it.value" x-text="it.label"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="d-block" style="font-size:0.75rem;color:#6b7280;margin-bottom:0.25rem">Description</label>
-                                        <textarea x-model="reportDesc"
-                                                  rows="3"
-                                                  class="comment-box"
-                                                  style="font-size:0.875rem"
-                                                  placeholder="Describe the issue..."></textarea>
-                                    </div>
-
-                                    <button @click="submitReport()"
-                                            :disabled="submitting"
-                                            class="btn d-block w-100"
-                                            style="background:#4f46e5;color:#fff;font-size:0.875rem"
-                                            x-text="submitting ? 'Submitting...' : 'Submit Report'">
-                                    </button>
+                                <div>
+                                    <label class="form-label text-xs">Issue type</label>
+                                    <select x-model="reportType" class="form-select text-sm">
+                                        <option value="broken_video">Broken video</option>
+                                        <option value="wrong_episode">Wrong episode</option>
+                                        <option value="subtitle_issue">Subtitle issue</option>
+                                        <option value="audio_issue">Audio issue</option>
+                                        <option value="other">Other</option>
+                                    </select>
                                 </div>
+
+                                <div>
+                                    <label class="form-label text-xs">Description (optional)</label>
+                                    <textarea x-model="reportDesc"
+                                              rows="3"
+                                              class="form-textarea text-sm"
+                                              placeholder="Describe the issue..."></textarea>
+                                </div>
+
+                                <button @click="submitReport()"
+                                        :disabled="submitting"
+                                        class="btn-primary w-full">
+                                    <span x-text="submitting ? 'Submitting...' : 'Submit Report'"></span>
+                                </button>
                             </div>
                         </div>
-
                     </div>
-
                 </div>
             </div>
 
-            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                <div class="d-flex align-items-center gap-2">
+            {{-- ╔══════════════════════════════════════════╗
+                 ║         EPISODE PICKER + NAV             ║
+                 ╚══════════════════════════════════════════╝ --}}
+            <div class="flex flex-wrap items-center justify-between gap-3">
+
+                <div class="flex items-center gap-2">
                     @if($prevEpisode)
-                        <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) }}"
-                           class="ctrl-btn">
-                            <i class="fa-solid fa-arrow-left"></i>
-                            <span class="label">Prev</span>
+                        {{ route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number]) }} class="btn-cancel btn-sm">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="hidden sm:inline">Prev</span>
                         </a>
                     @endif
 
                     @if($nextEpisode)
-                        <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number]) }}"
-                           class="ctrl-btn active">
-                            <span class="label">Next</span>
-                            <i class="fa-solid fa-arrow-right"></i>
+                        {{ route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number]) }} class="btn-primary btn-sm">
+                            <span class="hidden sm:inline">Next</span>
+                            <i class="fas fa-arrow-right"></i>
                         </a>
                     @endif
                 </div>
 
-                <select onchange="window.location.href=this.value" class="server-select">
+                <select onchange="window.location.href = this.value" class="form-select text-sm">
                     @foreach($anime->episodes as $ep)
                         <option value="{{ route('watch', ['slug' => $anime->slug, 'ep' => $ep->number]) }}"
-                                {{ $ep->id === $episode->id ? 'selected' : '' }}>
-                            Episode {{ $ep->number }} {{ $ep->title ? '- ' . $ep->title : '' }}
+                                @selected($ep->id === $episode->id)>
+                            Episode {{ $ep->number }}{{ $ep->title ? ' — ' . Str::limit($ep->title, 40) : '' }}
                         </option>
                     @endforeach
                 </select>
             </div>
 
-            <div class="section-card">
-                <div class="d-flex align-items-start justify-content-between gap-3">
-                    <div>
-                        <h1 style="font-size:1.5rem;font-weight:600;color:#fff">
-                            {{ $anime->title }} — Episode {{ $episode->number }}
+            {{-- ╔══════════════════════════════════════════╗
+                 ║         EPISODE INFO                     ║
+                 ╚══════════════════════════════════════════╝ --}}
+            <div class="card p-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs uppercase tracking-wider text-gray-500 mb-1">Now Watching</p>
+                        <h1 class="text-xl sm:text-2xl font-bold text-white">
+                            {{ $anime->title }}
                         </h1>
-
-                        @if($episode->title)
-                            <p style="color:#9ca3af;font-size:0.875rem;margin-top:0.25rem">{{ $episode->title }}</p>
-                        @endif
+                        <p class="text-sm text-gray-400 mt-1">
+                            Episode {{ $episode->number }}{{ $episode->title ? ' — ' . $episode->title : '' }}
+                        </p>
                     </div>
 
-                    <div class="d-flex flex-wrap gap-1">
+                    <div class="flex flex-wrap gap-1">
                         @if($episode->has_sub)
-                            <span style="display:inline-flex;align-items:center;padding:0.25rem 0.625rem;border-radius:0.5rem;font-size:0.75rem;font-weight:500;background:#2563eb;color:#fff">SUB</span>
+                            <span class="badge-sky">SUB</span>
                         @endif
                         @if($episode->has_dub)
-                            <span style="display:inline-flex;align-items:center;padding:0.25rem 0.625rem;border-radius:0.5rem;font-size:0.75rem;font-weight:500;background:#16a34a;color:#fff">DUB</span>
+                            <span class="badge-success">DUB</span>
                         @endif
                     </div>
                 </div>
+
+                {{-- Keyboard shortcuts hint --}}
+                <details class="mt-4 group">
+                    <summary class="text-xs text-gray-500 hover:text-gray-300 cursor-pointer flex items-center gap-2 select-none">
+                        <i class="fas fa-keyboard"></i>
+                        Keyboard shortcuts
+                        <i class="fas fa-chevron-down text-[10px] group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-gray-400">
+                        <div><kbd class="kbd">Space</kbd> Play/Pause</div>
+                        <div><kbd class="kbd">J</kbd> -10s</div>
+                        <div><kbd class="kbd">L</kbd> +10s</div>
+                        <div><kbd class="kbd">M</kbd> Mute</div>
+                        <div><kbd class="kbd">F</kbd> Fullscreen</div>
+                        <div><kbd class="kbd">T</kbd> Theater mode</div>
+                        <div><kbd class="kbd">N</kbd> Next ep</div>
+                        <div><kbd class="kbd">B</kbd> Prev ep</div>
+                    </div>
+                </details>
             </div>
 
-            <div class="section-card">
-                <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">Comments</h3>
+            {{-- ╔══════════════════════════════════════════╗
+                 ║         COMMENTS                         ║
+                 ╚══════════════════════════════════════════╝ --}}
+            <div class="card p-5">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-comments text-indigo-400"></i>
+                    Comments
+                    <span class="text-sm text-gray-500 font-normal">({{ $comments->total() }})</span>
+                </h3>
 
                 @auth
-                    <form action="{{ route('comments.store') }}" method="POST" style="margin-bottom:1.25rem">
+                    {{ route('comments.store') }} method="POST" class="mb-5 space-y-2">
                         @csrf
                         <input type="hidden" name="episode_id" value="{{ $episode->id }}">
-
                         <textarea name="body"
                                   rows="3"
-                                  class="comment-box"
-                                  placeholder="Write a comment..."
-                                  required></textarea>
-
-                        <button type="submit"
-                                class="btn mt-2"
-                                style="background:#4f46e5;color:#fff;font-size:0.875rem">
-                            Post Comment
-                        </button>
+                                  required
+                                  class="form-textarea"
+                                  placeholder="Share your thoughts about this episode..."></textarea>
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn-primary btn-sm">
+                                <i class="fas fa-paper-plane"></i>
+                                Post Comment
+                            </button>
+                        </div>
                     </form>
                 @else
-                    <p style="color:#9ca3af;font-size:0.875rem;margin-bottom:1rem">
-                        <a href="{{ route('auth.login') }}" style="color:#818cf8">Login</a>
-                        to comment.
-                    </p>
+                    <div class="mb-5 rounded-lg border border-gray-800 bg-gray-900/50 p-4 text-center">
+                        <p class="text-sm text-gray-400">
+                            <a href="{{ route('auth.login') }}" class="text-indigo-400 hover:text-indigo-300">Login</a>
+                            to join the discussion.
+                        </p>
+                    </div>
                 @endauth
 
-                <div class="d-flex flex-column gap-3">
-                    @foreach($comments as $comment)
-                        <div class="d-flex gap-2">
-                            <img
-                                src="https://ui-avatars.com/api/?name={{ urlencode($comment->user->name) }}&background=4f46e5&color=fff"
-                                style="width:2rem;height:2rem;border-radius:50%"
-                                alt="{{ $comment->user->name }}"
-                            >
+                <div class="space-y-4">
+                    @forelse($comments as $comment)
+                        <div class="flex gap-3">
+                            ={{ urlencode($comment->user->name) }}&background=6366f1&color=fff&size=64"
+                                 class="w-9 h-9 rounded-full shrink-0"
+                                 alt="{{ $comment->user->name }}">
 
-                            <div style="flex:1">
-                                <div class="d-flex align-items-center gap-1">
-                                    <span style="font-size:0.875rem;font-weight:600;color:#fff">{{ $comment->user->name }}</span>
-                                    <span style="font-size:0.75rem;color:#6b7280">{{ $comment->created_at->diffForHumans() }}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-sm font-semibold text-white">{{ $comment->user->name }}</span>
+                                    <span class="text-xs text-gray-500">{{ $comment->created_at->diffForHumans() }}</span>
 
                                     @auth
-                                        @if(auth()->user()->isSuperAdmin())
-                                            <form action="{{ route('comments.destroy', $comment) }}"
-                                                  method="POST"
-                                                  class="ms-auto"
+                                        @if(auth()->user()->isSuperAdmin() || auth()->id() === $comment->user_id)
+                                            {{ route('comments.destroy', $comment) }}"
+                                                  method="POST" class="ml-auto"
                                                   onsubmit="return confirm('Delete this comment?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" style="font-size:0.75rem;color:#ef4444;background:none;border:none;cursor:pointer">
+                                                <button type="submit"
+                                                        class="text-xs text-red-400 hover:text-red-300 transition">
                                                     Delete
                                                 </button>
                                             </form>
@@ -381,48 +455,81 @@
                                     @endauth
                                 </div>
 
-                                <p style="color:#d1d5db;font-size:0.875rem;margin-top:0.25rem">{{ $comment->body }}</p>
+                                <p class="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-line">
+                                    {{ $comment->body }}
+                                </p>
                             </div>
                         </div>
-                    @endforeach
+                    @empty
+                        <div class="text-center py-8">
+                            <i class="fas fa-comments text-3xl text-gray-700 mb-2"></i>
+                            <p class="text-sm text-gray-500">No comments yet. Be the first to comment!</p>
+                        </div>
+                    @endforelse
                 </div>
 
                 @if($comments->hasPages())
-                    <div class="mt-3">
-                        {{ $comments->links() }}
+                    <div class="mt-5">
+                        {{ $comments->withQueryString()->links() }}
                     </div>
                 @endif
             </div>
-
         </div>
 
-        <div class="col-lg-4 d-flex flex-column gap-3">
+        {{-- ─────── RIGHT: EPISODES + INFO ─────── --}}
+        <aside class="lg:col-span-4 space-y-4">
 
-            <div class="section-card">
-                <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">Episodes</h3>
+            {{-- ╔══════════════════════════════════════════╗
+                 ║         EPISODE LIST                     ║
+                 ╚══════════════════════════════════════════╝ --}}
+            <div class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                        <i class="fas fa-list text-indigo-400"></i>
+                        Episodes
+                    </h3>
+                    <span class="text-xs text-gray-500">{{ $anime->episodes->count() }} total</span>
+                </div>
 
-                <div style="max-height:500px;overflow-y:auto;padding-right:0.25rem" class="d-flex flex-column gap-1">
+                <div class="max-h-[500px] overflow-y-auto space-y-1 pr-1" x-ref="episodeList">
                     @foreach($anime->episodes as $ep)
-                        <a href="{{ route('watch', ['slug' => $anime->slug, 'ep' => $ep->number]) }}"
-                           class="d-flex align-items-center gap-2 text-decoration-none" style="padding:0.5rem;border-radius:0.75rem;transition:background 0.2s;{{ $ep->id === $episode->id ? 'background:rgba(79,70,229,0.2);border:1px solid #4f46e5' : '' }}">
-                            <img src="{{ $ep->thumbnail_url }}"
-                                 style="width:5rem;height:3rem;object-fit:cover;border-radius:0.5rem;background:#1f2937"
-                                 alt="Episode {{ $ep->number }}"
-                                 loading="lazy">
+                        @php $isCurrent = $ep->id === $episode->id; @endphp
 
-                            <div style="flex:1;min-width:0">
-                                <p style="color:#fff;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Episode {{ $ep->number }}</p>
-                                @if($ep->title)
-                                    <p style="color:#6b7280;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $ep->title }}</p>
+                        {{ route('watch', ['slug' => $anime->slug, 'ep' => $ep->number]) }}
+                           @if($isCurrent) data-current x-init="$nextTick(() => $el.scrollIntoView({ block: 'center', behavior: 'instant' }))" @endif
+                           class="flex items-center gap-2 p-2 rounded-lg transition group
+                                  {{ $isCurrent
+                                      ? 'bg-indigo-600/20 border border-indigo-600/40'
+                                      : 'hover:bg-white/[0.03] border border-transparent' }}">
+
+                            <div class="aspect-thumb w-20 rounded-md overflow-hidden bg-gray-900 shrink-0 relative">
+                                @if($ep->thumbnail_url)
+                                    {{ $ep->thumbnail_url }}
+                                         class="w-full h-full object-cover group-hover:scale-105 transition"
+                                         loading="lazy" alt="">
+                                @endif
+                                @if($isCurrent)
+                                    <div class="absolute inset-0 bg-indigo-600/30 flex items-center justify-center">
+                                        <i class="fas fa-play text-white text-xs"></i>
+                                    </div>
                                 @endif
                             </div>
 
-                            <div class="d-flex flex-column gap-0">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium clamp-1 {{ $isCurrent ? 'text-white' : 'text-gray-300 group-hover:text-white' }}">
+                                    Episode {{ $ep->number }}
+                                </p>
+                                @if($ep->title)
+                                    <p class="text-xs text-gray-500 clamp-1">{{ $ep->title }}</p>
+                                @endif
+                            </div>
+
+                            <div class="flex flex-col gap-0.5 shrink-0">
                                 @if($ep->has_sub)
-                                    <span style="font-size:0.625rem;color:#60a5fa;font-weight:500">SUB</span>
+                                    <span class="text-[9px] font-bold text-sky-400">SUB</span>
                                 @endif
                                 @if($ep->has_dub)
-                                    <span style="font-size:0.625rem;color:#4ade80;font-weight:500">DUB</span>
+                                    <span class="text-[9px] font-bold text-emerald-400">DUB</span>
                                 @endif
                             </div>
                         </a>
@@ -430,34 +537,69 @@
                 </div>
             </div>
 
-            <div class="section-card">
-                <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">{{ $anime->title }}</h3>
-                <p style="color:#9ca3af;font-size:0.875rem">
-                    {{ \Illuminate\Support\Str::limit($anime->description, 150) }}
-                </p>
-                <a href="{{ route('anime.detail', $anime->slug) }}"
-                   class="d-inline-block mt-2" style="color:#818cf8;font-size:0.875rem">
-                    View Details
+            {{-- ╔══════════════════════════════════════════╗
+                 ║         ABOUT THIS ANIME                 ║
+                 ╚══════════════════════════════════════════╝ --}}
+            <div class="card p-4">
+                <div class="flex gap-3 mb-3">
+                    {{ $anime->thumbnail_url ?? $anime->poster_url }}
+                         class="aspect-poster w-16 rounded-md object-cover bg-gray-900 shrink-0"
+                         alt="{{ $anime->title }}" loading="lazy">
+
+                    <div class="min-w-0">
+                        <p class="text-xs uppercase tracking-wider text-gray-500">About</p>
+                        <p class="text-sm font-semibold text-white clamp-2">{{ $anime->title }}</p>
+                        <div class="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                            @if($anime->type)<span class="uppercase">{{ $anime->type }}</span>@endif
+                            @if($anime->year)<span>•</span><span>{{ $anime->year }}</span>@endif
+                            @if($anime->rating)
+                                <span>•</span>
+                                <span class="text-amber-400">⭐ {{ number_format($anime->rating, 1) }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                @if($anime->description)
+                    <p class="text-xs text-gray-400 clamp-3 leading-relaxed">
+                        {{ $anime->description }}
+                    </p>
+                @endif
+
+                {{ route('anime.detail', $anime->slug) }} class="inline-flex items-center gap-1 mt-3 text-xs text-indigo-400 hover:text-indigo-300 transition">
+                    View full details <i class="fas fa-arrow-right text-[10px]"></i>
                 </a>
             </div>
 
+            {{-- ╔══════════════════════════════════════════╗
+                 ║         RELATED ANIME                    ║
+                 ╚══════════════════════════════════════════╝ --}}
             @if($related->count())
-                <div class="section-card">
-                    <h3 style="font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:0.75rem">Related</h3>
+                <div class="card p-4">
+                    <h3 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-link text-pink-400"></i>
+                        Related
+                    </h3>
 
-                    <div class="d-flex flex-column gap-1">
+                    <div class="space-y-2">
                         @foreach($related as $rel)
-                            <a href="{{ route('anime.detail', $rel->slug) }}" class="d-flex align-items-center gap-2 text-decoration-none" style="padding:0.5rem;border-radius:0.75rem;transition:background 0.2s">
-                                <img src="{{ $rel->thumbnail_url }}"
-                                     style="width:2.5rem;height:3.5rem;object-fit:cover;border-radius:0.5rem;background:#1f2937"
-                                     alt="{{ $rel->title }}"
-                                     loading="lazy">
+                            {{ route('anime.detail', $rel->slug) }}
+                               class="flex items-center gap-2 p-2 -m-2 rounded-lg hover:bg-white/[0.03] transition group">
 
-                                <div style="flex:1;min-width:0">
-                                    <p style="color:#fff;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $rel->title }}</p>
-                                    <p style="color:#6b7280;font-size:0.75rem">
-                                        {{ $rel->type }} @if($rel->year) | {{ $rel->year }} @endif
+                                <div class="aspect-poster w-10 rounded overflow-hidden bg-gray-900 shrink-0">
+                                    {{ $rel->thumbnail_url ?? $rel->poster_url }}
+                                         class="w-full h-full object-cover group-hover:scale-105 transition"
+                                         alt="" loading="lazy">
+                                </div>
+
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm text-gray-200 clamp-1 group-hover:text-white">
+                                        {{ $rel->title }}
                                     </p>
+                                    <div class="flex items-center gap-1 text-xs text-gray-500">
+                                        @if($rel->type)<span>{{ $rel->type }}</span>@endif
+                                        @if($rel->year)<span>• {{ $rel->year }}</span>@endif
+                                    </div>
                                 </div>
                             </a>
                         @endforeach
@@ -465,313 +607,35 @@
                 </div>
             @endif
 
-        </div>
+        </aside>
     </div>
 </div>
 @endsection
 
-@push('scripts')
-<script>
-    window.PLAYER_SERVERS = @json($allServers);
-    window.PLAYER_LANGUAGES = @json($languages);
-    window.PLAYER_IS_YOUTUBE = {{ $isYoutubeInit ? 'true' : 'false' }};
-    window.PLAYER_IS_FAVORITED = {{ $isFavorited ? 'true' : 'false' }};
-    window.PLAYER_FAV_CATEGORY = {!! $favCategory ? json_encode($favCategory) : 'null' !!};
-    window.PLAYER_NEXT_URL = {!! $nextEpisode ? json_encode(route('watch', ['slug' => $anime->slug, 'ep' => $nextEpisode->number])) : 'null' !!};
-    window.PLAYER_PREV_URL = {!! $prevEpisode ? json_encode(route('watch', ['slug' => $anime->slug, 'ep' => $prevEpisode->number])) : 'null' !!};
-    window.PLAYER_ANIME_ID = {{ $anime->id }};
-    window.PLAYER_EPISODE_ID = {{ $episode->id }};
-    window.PLAYER_IS_AUTH = {{ auth()->check() ? 'true' : 'false' }};
-    window.PLAYER_LOGIN_URL = '{{ route('auth.login') }}';
-    window.PLAYER_SKIP_TIMES = @json($skipTimes);
+@push('head')
+<style>
+    [x-cloak] { display: none !important; }
 
-    function player() {
-        return {
-            video: null,
-            playing: false,
-            isEmbed: false,
-            embedUrl: '',
-            currentServerIndex: 0,
-
-            listOpen: false,
-            reportOpen: false,
-            submitting: false,
-
-            showSkipIntro: false,
-            showSkipOutro: false,
-
-            favoriteCategory: window.PLAYER_FAV_CATEGORY,
-            categories: [
-                { value: 'watching', label: 'Watching' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'plan_to_watch', label: 'Plan to Watch' },
-                { value: 'on_hold', label: 'On Hold' },
-                { value: 'dropped', label: 'Dropped' }
-            ],
-
-            issueTypes: [
-                { value: 'broken_video', label: 'Broken video' },
-                { value: 'wrong_episode', label: 'Wrong episode' },
-                { value: 'subtitle_issue', label: 'Subtitle issue' },
-                { value: 'audio_issue', label: 'Audio issue' },
-                { value: 'other', label: 'Other' }
-            ],
-
-            reportType: 'broken_video',
-            reportDesc: '',
-
-            config: {
-                autoPlay: true,
-                autoNext: true,
-                autoSkip: true,
-                lightMode: false,
-            },
-
-            init() {
-                const saved = localStorage.getItem('player_config');
-                if (saved) {
-                    try {
-                        this.config = { ...this.config, ...JSON.parse(saved) };
-                    } catch (e) {}
-                }
-
-                this.setupPlayer(window.PLAYER_SERVERS?.[0] ?? null);
-
-                window.addEventListener('keydown', (e) => {
-                    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-
-                    if (e.code === 'Space') {
-                        e.preventDefault();
-                        this.togglePlay();
-                    }
-
-                    if (e.key.toLowerCase() === 'j') this.skip(-10);
-                    if (e.key.toLowerCase() === 'l') this.skip(10);
-
-                    if (e.key.toLowerCase() === 'n' && window.PLAYER_NEXT_URL) {
-                        window.location.href = window.PLAYER_NEXT_URL;
-                    }
-
-                    if (e.key.toLowerCase() === 'b' && window.PLAYER_PREV_URL) {
-                        window.location.href = window.PLAYER_PREV_URL;
-                    }
-                });
-            },
-
-            saveConfig() {
-                localStorage.setItem('player_config', JSON.stringify(this.config));
-            },
-
-            setupPlayer(server) {
-                if (!server) return;
-
-                this.isEmbed = server.type === 'embed';
-                this.embedUrl = this.isEmbed ? server.url : '';
-
-                this.$nextTick(() => {
-                    this.video = document.getElementById('videoPlayer');
-
-                    if (!this.video || this.isEmbed) return;
-
-                    const source = this.video.querySelector('source');
-                    if (source && server.url) {
-                        source.src = server.url;
-                        this.video.load();
-                    }
-
-                    this.video.addEventListener('play', () => this.playing = true);
-                    this.video.addEventListener('pause', () => this.playing = false);
-
-                    this.video.addEventListener('timeupdate', () => {
-                        this.checkSkipSegments();
-                        this.saveWatchHistory();
-                    });
-
-                    this.video.addEventListener('ended', () => {
-                        if (this.config.autoNext && window.PLAYER_NEXT_URL) {
-                            window.location.href = window.PLAYER_NEXT_URL;
-                        }
-                    });
-
-                    if (this.config.autoPlay) {
-                        this.video.play().catch(() => {});
-                    }
-                });
-            },
-
-            togglePlay() {
-                if (!this.video || this.isEmbed) return;
-
-                if (this.video.paused) {
-                    this.video.play();
-                } else {
-                    this.video.pause();
-                }
-            },
-
-            skip(seconds) {
-                if (!this.video || this.isEmbed) return;
-                this.video.currentTime = Math.max(0, this.video.currentTime + seconds);
-            },
-
-            toggleLight() {
-                this.config.lightMode = !this.config.lightMode;
-                document.body.classList.toggle('bg-white', this.config.lightMode);
-                document.body.classList.toggle('text-black', this.config.lightMode);
-                this.saveConfig();
-            },
-
-            toggleAutoPlay() {
-                this.config.autoPlay = !this.config.autoPlay;
-                this.saveConfig();
-            },
-
-            toggleAutoNext() {
-                this.config.autoNext = !this.config.autoNext;
-                this.saveConfig();
-            },
-
-            toggleAutoSkip() {
-                this.config.autoSkip = !this.config.autoSkip;
-                this.saveConfig();
-            },
-
-            switchServer(index) {
-                if (!window.PLAYER_SERVERS || !window.PLAYER_SERVERS[index]) return;
-                this.currentServerIndex = index;
-                this.setupPlayer(window.PLAYER_SERVERS[index]);
-            },
-
-            toggleList() {
-                this.listOpen = !this.listOpen;
-                this.reportOpen = false;
-            },
-
-            toggleReport() {
-                this.reportOpen = !this.reportOpen;
-                this.listOpen = false;
-            },
-
-            updateList(category) {
-                if (!window.PLAYER_IS_AUTH) {
-                    window.location.href = window.PLAYER_LOGIN_URL;
-                    return;
-                }
-
-                fetch('/favorites/toggle', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    },
-                    body: JSON.stringify({
-                        anime_id: window.PLAYER_ANIME_ID,
-                        category: category
-                    })
-                })
-                .then(r => r.json())
-                .then(() => {
-                    this.favoriteCategory = category;
-                    this.listOpen = false;
-                })
-                .catch(() => {});
-            },
-
-            submitReport() {
-                if (!window.PLAYER_IS_AUTH) {
-                    window.location.href = window.PLAYER_LOGIN_URL;
-                    return;
-                }
-
-                this.submitting = true;
-
-                fetch('/reports', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    },
-                    body: JSON.stringify({
-                        episode_id: window.PLAYER_EPISODE_ID,
-                        issue_type: this.reportType,
-                        description: this.reportDesc
-                    })
-                })
-                .then(r => r.json())
-                .then(() => {
-                    this.reportOpen = false;
-                    this.reportDesc = '';
-                })
-                .catch(() => {})
-                .finally(() => {
-                    this.submitting = false;
-                });
-            },
-
-            checkSkipSegments() {
-                if (!this.video || this.isEmbed) return;
-
-                const current = this.video.currentTime;
-                const skip = window.PLAYER_SKIP_TIMES || {};
-
-                this.showSkipIntro = false;
-                this.showSkipOutro = false;
-
-                if (skip?.intro_start !== null && skip?.intro_end !== null) {
-                    if (current >= skip.intro_start && current <= skip.intro_end) {
-                        this.showSkipIntro = true;
-
-                        if (this.config.autoSkip) {
-                            this.skipIntro();
-                        }
-                    }
-                }
-
-                if (skip?.outro_start !== null && skip?.outro_end !== null) {
-                    if (current >= skip.outro_start && current <= skip.outro_end) {
-                        this.showSkipOutro = true;
-
-                        if (this.config.autoSkip) {
-                            this.skipOutro();
-                        }
-                    }
-                }
-            },
-
-            skipIntro() {
-                const skip = window.PLAYER_SKIP_TIMES || {};
-                if (!this.video || skip.intro_end == null) return;
-                this.video.currentTime = skip.intro_end;
-                this.showSkipIntro = false;
-            },
-
-            skipOutro() {
-                const skip = window.PLAYER_SKIP_TIMES || {};
-                if (!this.video || skip.outro_end == null) return;
-                this.video.currentTime = skip.outro_end;
-                this.showSkipOutro = false;
-            },
-
-            saveWatchHistory() {
-                if (!window.PLAYER_IS_AUTH || !this.video || this.isEmbed) return;
-
-                clearTimeout(this._historyTimer);
-                this._historyTimer = setTimeout(() => {
-                    fetch('/watch-history', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        },
-                        body: JSON.stringify({
-                            episode_id: window.PLAYER_EPISODE_ID,
-                            progress: Math.floor(this.video.currentTime),
-                            completed: this.video.duration ? (this.video.currentTime >= this.video.duration - 10) : false
-                        })
-                    }).catch(() => {});
-                }, 1500);
-            }
-        }
+    /* Control buttons */
+    .ctrl-btn {
+        @apply inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md
+               bg-gray-800/60 hover:bg-gray-700 text-gray-300 hover:text-white
+               text-xs font-medium transition border border-transparent
+               whitespace-nowrap;
     }
-</script>
+    .ctrl-btn.active {
+        @apply bg-indigo-600/30 border-indigo-500/50 text-white;
+    }
+
+    /* Keyboard hint */
+    .kbd {
+        @apply px-1.5 py-0.5 text-[10px] font-mono bg-gray-800 border border-gray-700 rounded text-gray-300;
+    }
+
+    /* Theater mode */
+    body.theater-mode header,
+    body.theater-mode footer,
+    body.theater-mode aside { display: none !important; }
+    body.theater-mode main { padding: 0 !important; max-width: none !important; }
+</style>
 @endpush

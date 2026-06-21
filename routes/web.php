@@ -143,6 +143,10 @@ Route::get('/{page}', [StaticController::class, 'show'])
     ->name('static.page');
 
 
+Route::post('/contact', [App\Http\Controllers\ContactController::class, 'send'])
+    ->name('contact.send');
+
+    
 /*
 |--------------------------------------------------------------------------
 | ADMIN

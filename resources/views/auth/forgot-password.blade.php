@@ -1,67 +1,56 @@
-<x-guest-layout>
-    <div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: #0b0e16;">
+<x-auth.card
+    subtitle="Reset your password"
+    info="🔑 Forgot your password? Enter your email and we'll send you a reset link."
+    :status="session('status')"
+>
 
-        <div class="card" style="background: #111827; border-color: #1f2937; max-width: 28rem; width: 100%;">
-            <div class="card-body p-4">
+    {{ route('auth.password.email') }}
+        @csrf
 
-                <div class="text-center mb-4">
-                    <h3 class="fw-bold" style="color: #fff;">
-                        Ani<span style="color: #6366f1;">Stream</span>
-                    </h3>
-                    <p class="small mt-2" style="color: #9ca3af;">
-                        Reset your password
-                    </p>
-                </div>
+        {{-- EMAIL --}}
+        <div>
+            <x-input-label
+                for="email"
+                value="Email"
+                class="block text-sm font-medium text-gray-300 mb-1"
+            />
 
-                <div class="mb-3 text-center" style="color: #9ca3af; font-size: 0.875rem;">
-                    Forgot your password? Enter your email and we'll send you a reset link.
-                </div>
+            <x-text-input
+                id="email"
+                name="email"
+                type="email"
+                :value="old('email')"
+                required
+                autofocus
+                autocomplete="email"
+                placeholder="you@example.com"
+            />
 
-                <x-auth-session-status
-                    class="mb-3 text-center"
-                    :status="session('status')"
-                />
-
-                <form method="POST" action="{{ route('auth.password.email') }}">
-                    @csrf
-
-                    <div class="mb-3">
-                        <x-input-label for="email" value="Email" class="form-label" style="color: #d1d5db;" />
-
-                        <x-text-input
-                            id="email"
-                            name="email"
-                            type="email"
-                            :value="old('email')"
-                            required
-                            autofocus
-                            class="form-control"
-                            style="background: #1f2937; border-color: #374151; color: #fff;"
-                        />
-
-                        <x-input-error
-                            :messages="$errors->get('email')"
-                            style="color: #f87171;"
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="btn w-100 fw-semibold"
-                        style="background: #4f46e5; border-color: #4f46e5; color: #fff;">
-                        Send Reset Link
-                    </button>
-
-                    <div class="text-center mt-4" style="color: #9ca3af; font-size: 0.875rem;">
-                        Remember your password?
-                        <a href="{{ route('auth.login') }}"
-                           style="color: #818cf8; text-decoration: none;">
-                            Login
-                        </a>
-                    </div>
-
-                </form>
-            </div>
+            <x-input-error
+                :messages="$errors->get('email')"
+                class="mt-1 text-xs text-red-400"
+            />
         </div>
-    </div>
-</x-guest-layout>
+
+        {{-- SUBMIT --}}
+        <button
+            type="submit"
+            class="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
+                   py-2.5 font-semibold text-white transition
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500
+                   focus:ring-offset-2 focus:ring-offset-[#111827]"
+        >
+            Send Reset Link
+        </button>
+
+        {{-- BACK LINK --}}
+        <div class="text-center text-sm text-gray-400 pt-2">
+            Remember your password?
+            {{ route('auth.login') }} hover:text-indigo-300 hover:underline transition">
+                Login
+            </a>
+        </div>
+
+    </form>
+
+</x-auth.card>

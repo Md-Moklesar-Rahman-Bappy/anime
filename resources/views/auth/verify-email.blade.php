@@ -1,53 +1,51 @@
-<x-guest-layout>
-    <div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: #0b0e16;">
+<x-auth.card
+    subtitle="Verify your email"
+    info="Thanks for signing up! Please verify your email by clicking the link we sent to your inbox."
+    :status="session('status') == 'verification-link-sent' ? 'A new verification link has been sent to your email.' : null"
+>
 
-        <div class="card" style="background: #111827; border-color: #1f2937; max-width: 28rem; width: 100%;">
-            <div class="card-body p-4">
+    {{-- ENVELOPE ICON --}}
+    <x-slot:icon>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15A2.25 2.25 0 012.25 17.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+    </x-slot:icon>
 
-                <div class="text-center mb-4">
-                    <h3 class="fw-bold" style="color: #fff;">
-                        Ani<span style="color: #6366f1;">Stream</span>
-                    </h3>
-                    <p class="small mt-2" style="color: #9ca3af;">
-                        Verify your email
-                    </p>
-                </div>
+    {{-- ACTIONS --}}
+    <div class="space-y-3">
 
-                <div class="mb-3 text-center" style="color: #9ca3af; font-size: 0.875rem;">
-                    Thanks for signing up! Please verify your email by clicking the link we sent.
-                </div>
+        {{-- Resend verification --}}
+        {{ route('auth.verification.send') }}
+            @csrf
+            <button
+                type="submit"
+                class="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
+                       py-2.5 font-semibold text-white transition
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500
+                       focus:ring-offset-2 focus:ring-offset-[#111827]"
+            >
+                Resend Verification Email
+            </button>
+        </form>
 
-                @if (session('status') == 'verification-link-sent')
-                    <div class="mb-3 text-center" style="color: #22c55e; font-size: 0.875rem;">
-                        A new verification link has been sent to your email.
-                    </div>
-                @endif
+        {{-- Logout --}}
+        {{ route('auth.logout') }}
+            @csrf
+            <button
+                type="submit"
+                class="w-full text-center text-sm text-gray-400 hover:text-white transition py-2"
+            >
+                Log Out
+            </button>
+        </form>
 
-                <div class="d-flex flex-column gap-3 mt-3">
-
-                    <form method="POST" action="{{ route('auth.verification.send') }}">
-                        @csrf
-                        <button
-                            type="submit"
-                            class="btn w-100 fw-semibold"
-                            style="background: #4f46e5; border-color: #4f46e5; color: #fff;">
-                            Resend Verification Email
-                        </button>
-                    </form>
-
-                    <form method="POST" action="{{ route('auth.logout') }}">
-                        @csrf
-                        <button
-                            type="submit"
-                            class="btn btn-link w-100 text-decoration-none"
-                            style="color: #9ca3af; font-size: 0.875rem;">
-                            Log Out
-                        </button>
-                    </form>
-
-                </div>
-
-            </div>
-        </div>
     </div>
-</x-guest-layout>
+
+    {{-- HELP FOOTER --}}
+    <x-slot:footer>
+        📬 Didn't receive the email? Check your spam folder or click "Resend" above.
+    </x-slot:footer>
+
+</x-auth.card>

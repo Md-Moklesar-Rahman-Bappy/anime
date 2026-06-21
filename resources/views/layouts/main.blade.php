@@ -6,56 +6,169 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', config('app.name', 'AniKoto'))</title>
+    {{-- ─────── DYNAMIC TITLE ─────── --}}
+    <title>@yield('title', 'Watch Anime Online Free') · {{ config('app.name', 'AniKoto') }}</title>
 
-    {{-- ✅ FAVICON (cached properly) --}}
-    <link rel="icon" href="{{ config('app.favicon', asset('favicon.ico')) }}">
+    {{-- ─────── SEO META ─────── --}}
+    <meta name="description"
+          content="@yield('description', 'Watch and read your favorite anime and manga free on AniKoto. HD streaming, daily updates, no ads.')">
 
-    {{-- ✅ FONT --}}
-    https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap
+    <meta name="keywords"
+          content="@yield('keywords', 'anime, manga, watch anime, anime online, free anime, AniKoto')">
 
-    {{-- ✅ ICONS --}}
+    <meta name="robots" content="index, follow">
+
+    {{-- Open Graph --}}
+    <meta property="og:type" content="@yield('og:type', 'website')">
+    <meta property="og:title" content="@yield('og:title', config('app.name', 'AniKoto'))">
+    <meta property="og:description" content="@yield('og:description', 'Watch & read anime/manga free.')">
+    <meta property="og:image" content="@yield('og:image', asset('og-default.jpg'))">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:site_name" content="{{ config('app.name', 'AniKoto') }}">
+
+    {{-- Twitter Card --}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@yield('og:title', config('app.name', 'AniKoto'))">
+    <meta name="twitter:description" content="@yield('og:description', 'Watch & read anime/manga free.')">
+    <meta name="twitter:image" content="@yield('og:image', asset('og-default.jpg'))">
+
+    {{-- Canonical --}}
+    {{ url()->current() }}
+
+    {{-- ─────── FAVICON (cached from settings) ─────── --}}
+    @php
+        $faviconPath = Cache::remember('setting_favicon', 1800, fn() =>
+            \App\Models\Setting::where('key', 'favicon')->value('value'));
+
+        $faviconUrl = $faviconPath && \Illuminate\Support\Str::startsWith($faviconPath, 'http')
+            ? $faviconPath
+            : ($faviconPath ? Storage::url($faviconPath) : asset('favicon.ico'));
+    @endphp
+    {{ $faviconUrl }}
+    {{ $faviconUrl }}
+
+    {{-- ─────── FONTS ─────── --}}
+    https://fonts.googleapis.com
+    .gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    {{-- ─────── ICONS ─────── --}}
+    https://cdnjs.cloudflare.com
     <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    {{-- ✅ VIDEO PLAYER CSS --}}
-    <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
-
-    {{-- ✅ TAILWIND (VITE) --}}
+    {{-- ─────── VITE (Tailwind + JS + Plyr CSS bundled) ─────── --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    {{-- Page-specific head --}}
     @stack('styles')
+    @stack('head')
 </head>
 
-<body class="bg-[#0a0a0f] text-gray-200 font-sans antialiased">
+<body class="bg-[#0a0a0f] text-gray-200 font-sans antialiased flex flex-col min-h-screen">
 
-<div class="min-h-screen flex flex-col">
-
-    {{-- ✅ HEADER --}}
+    {{-- ─────── HEADER ─────── --}}
     @include('layouts.partials.header')
 
-    {{-- ✅ MAIN --}}
+    {{-- ─────── MAIN ─────── --}}
     <main class="flex-grow">
-
         <div class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
             @yield('content')
         </div>
-
     </main>
 
-    {{-- ✅ FOOTER --}}
+    {{-- ─────── FOOTER ─────── --}}
     @include('layouts.partials.footer')
 
-</div>
+    {{-- ─────── SCROLL-TO-TOP ─────── --}}
+    <button
+        x-data="{ show: false }"
+        @scroll.window="show = window.scrollY > 400"
+        x-show="show"
+        x-cloak
+        x-transition
+        @click="window.scrollTo({ top: 0, behavior: 'smooth' })"
+        aria-label="Scroll to top"
+        class="fixed bottom-6 right-6 z-40 w-11 h-11 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl flex items-center justify-center transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
+    >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
 
-{{-- ✅ MODALS --}}
-@stack('modals')
+    {{-- ─────── TOAST CENTER ─────── --}}
+    <div
+        x-data="toastCenter()"
+        x-init="init()"
+        x-cloak
+        class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 max-w-sm w-full"
+    >
+        <template x-for="t in toasts" :key="t.id">
+            <div
+                x-show="t.show"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-2"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-2"
+                class="rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm flex items-start gap-2"
+                :class="colorFor(t.type)"
+            >
+                <span class="font-bold" x-text="iconFor(t.type)"></span>
 
-{{-- ✅ SCRIPTS --}}
-@stack('scripts')
+                <div class="flex-1 text-sm">
+                    <p x-text="t.message"></p>
 
-{{-- ✅ VIDEO PLAYER --}}
-<script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
+                    <div class="mt-2 flex gap-3" x-show="t.actionLabel || t.dismissLabel">
+                        <button type="button" x-show="t.actionLabel"
+                                @click="runAction(t.id)"
+                                class="text-xs font-semibold underline hover:no-underline"
+                                x-text="t.actionLabel"></button>
+
+                        <button type="button" x-show="t.dismissLabel"
+                                @click="dismiss(t.id)"
+                                class="text-xs opacity-70 hover:opacity-100"
+                                x-text="t.dismissLabel"></button>
+                    </div>
+                </div>
+
+                <button type="button" @click="dismiss(t.id)"
+                        class="opacity-60 hover:opacity-100 text-sm"
+                        aria-label="Close">
+                    ✕
+                </button>
+            </div>
+        </template>
+    </div>
+
+    {{-- ─────── FLASH MESSAGES → TOAST ─────── --}}
+    @if(session('success'))
+        <div x-data x-init="$dispatch('toast', { message: @js(session('success')), type: 'success' })"></div>
+    @endif
+
+    @if(session('error'))
+        <div x-data x-init="$dispatch('toast', { message: @js(session('error')), type: 'error' })"></div>
+    @endif
+
+    @if(session('info'))
+        <div x-data x-init="$dispatch('toast', { message: @js(session('info')), type: 'info' })"></div>
+    @endif
+
+    @if(session('warning'))
+        <div x-data x-init="$dispatch('toast', { message: @js(session('warning')), type: 'warning' })"></div>
+    @endif
+
+    {{-- ─────── MODALS ─────── --}}
+    @stack('modals')
+
+    {{-- ─────── SCRIPTS ─────── --}}
+    @stack('scripts')
+
+    {{-- ─────── ANALYTICS (PROD ONLY) ─────── --}}
+    @production
+        @stack('analytics')
+    @endproduction
 
 </body>
 </html>
