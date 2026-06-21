@@ -1,62 +1,133 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="container-fluid px-4">
 
-    <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="max-w-6xl mx-auto">
+
+    {{-- HEADER --}}
+    <div class="flex items-center justify-between mb-6">
+
         <div>
-            <h1 class="h4 fw-semibold text-white">Chapters: {{ $manga->title }}</h1>
-            <a href="{{ route('admin.manga.index') }}" class="small" style="color:#6b7280">← Back to Manga</a>
+            <h1 class="text-xl font-semibold text-white">
+                Chapters: {{ $manga->title }}
+            </h1>
+
+             }}" class="text-sm text-gray-500 hover:text-white">
+                ← Back to Manga
+            </a>
         </div>
-        <a href="{{ route('admin.manga.chapters.create', $manga) }}"
-           class="btn btn-sm" style="background:#059669;color:#fff">Add Chapter</a>
+
+         }}" 
+           class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm">
+            Add Chapter
+        </a>
+
     </div>
 
-    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
-        <div class="table-responsive">
-            <table class="table table-dark table-borderless mb-0 align-middle">
-                <thead>
-                    <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
-                        <th class="p-3 text-start">#</th>
-                        <th class="p-3 text-start">Title</th>
-                        <th class="p-3 text-start">Pages</th>
-                        <th class="p-3 text-start">Created</th>
-                        <th class="p-3 text-start">Actions</th>
+    {{-- TABLE --}}
+    <div class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+
+        <div class="overflow-x-auto">
+
+            <table class="w-full text-sm">
+
+                {{-- THEAD --}}
+                <thead class="bg-gray-800 text-gray-400 border-b border-gray-700">
+                    <tr>
+                        <th class="p-4 text-left">#</th>
+                        <th class="p-4 text-left">Title</th>
+                        <th class="p-4 text-left">Pages</th>
+                        <th class="p-4 text-left">Created</th>
+                        <th class="p-4 text-left">Actions</th>
                     </tr>
                 </thead>
+
+                {{-- TBODY --}}
                 <tbody>
-                    @forelse($chapters as $chapter)
-                    <tr style="border-bottom:1px solid #374151">
-                        <td class="p-3 fw-semibold" style="color:#818cf8">Ch. {{ rtrim(rtrim($chapter->number, '0'), '.') }}</td>
-                        <td class="p-3" style="color:#d1d5db">{{ $chapter->title ?? 'Untitled Chapter' }}</td>
-                        <td class="p-3" style="color:#9ca3af">{{ $chapter->pages_count }}</td>
-                        <td class="p-3 small" style="color:#6b7280">{{ $chapter->created_at->format('Y-m-d') }}</td>
-                        <td class="p-3">
-                            <div class="d-flex gap-3 small">
-                                <a href="{{ route('admin.manga.chapters.edit', [$manga, $chapter]) }}" style="color:#60a5fa">Edit</a>
-                                <form action="{{ route('admin.manga.chapters.destroy', [$manga, $chapter]) }}"
-                                      method="POST" onsubmit="return confirm('Delete this chapter and all its pages?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-sm border-0 p-0" style="color:#f87171">Delete</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="p-5 text-center" style="color:#6b7280">
-                            <p class="h5" style="color:#d1d5db">No chapters yet</p>
-                            <p class="small mt-1">Create your first chapter</p>
-                        </td>
-                    </tr>
-                    @endforelse
+
+                @forelse($chapters as $chapter)
+
+                <tr class="border-b border-gray-700">
+
+                    {{-- NUMBER --}}
+                    <td class="p-4 text-indigo-400 font-semibold">
+                        Ch. {{ rtrim(rtrim($chapter->number, '0'), '.') }}
+                    </td>
+
+                    {{-- TITLE --}}
+                    <td class="p-4 text-gray-300">
+                        {{ $chapter->title ?? 'Untitled Chapter' }}
+                    </td>
+
+                    {{-- PAGES --}}
+                    <td class="p-4 text-gray-400">
+                        {{ $chapter->pages_count }}
+                    </td>
+
+                    {{-- DATE --}}
+                    <td class="p-4 text-gray-500 text-xs">
+                        {{ $chapter->created_at->format('Y-m-d') }}
+                    </td>
+
+                    {{-- ACTIONS --}}
+                    <td class="p-4">
+
+                        <div class="flex items-center gap-4 text-sm">
+
+                             }}" 
+                               class="text-blue-400 hover:text-blue-300">
+                                Edit
+                            </a>
+
+                             }}"
+                                  method="POST"
+                                  onsubmit="return confirm('Delete this chapter and all its pages?')">
+                                @csrf
+                                @method('DELETE')
+
+                                <button type="submit"
+                                        class="text-red-400 hover:text-red-300">
+                                    Delete
+                                </button>
+                            </form>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                @empty
+
+                <tr>
+                    <td colspan="5" class="p-10 text-center text-gray-500">
+
+                        <p class="text-white font-medium mb-1">
+                            No chapters yet
+                        </p>
+
+                        <p class="text-sm">
+                            Create your first chapter
+                        </p>
+
+                    </td>
+                </tr>
+
+                @endforelse
+
                 </tbody>
+
             </table>
+
         </div>
-        <div class="p-3" style="border-top:1px solid #374151">
+
+        {{-- PAGINATION --}}
+        <div class="p-4 border-t border-gray-700">
             {{ $chapters->links() }}
         </div>
+
     </div>
 
 </div>
+
 @endsection

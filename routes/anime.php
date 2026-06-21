@@ -13,34 +13,67 @@ use App\Http\Controllers\WatchController;
 | Anime Routes
 |--------------------------------------------------------------------------
 | RULES:
-| - Specific routes MUST come first
-| - Generic /anime/{slug} MUST be LAST
+| - Specific routes FIRST
+| - Catch-all LAST
 */
 
-// Watch page
+/*
+|--------------------------------------------------------------------------
+| WATCH
+|--------------------------------------------------------------------------
+*/
+
 Route::get('/watch/{slug}', [WatchController::class, 'index'])
     ->name('watch')
-    ->where('slug', '[a-zA-Z0-9\-\_]+');
+    ->where('slug', '[A-Za-z0-9\-_]+');
 
-// Genre / Listing / Search
+/*
+|--------------------------------------------------------------------------
+| GENRES
+|--------------------------------------------------------------------------
+*/
 Route::get('/genre/{slug}', [GenreController::class, 'show'])
     ->name('genre')
-    ->where('slug', '[a-zA-Z0-9\-\_]+');
+    ->where('slug', '[A-Za-z0-9\-_]+');
 
-Route::get('/az-list/{letter?}', [ListController::class, 'azList'])->name('az-list');
-Route::get('/filter', [ListController::class, 'filter'])->name('filter');
-Route::get('/search/ajax', [ListController::class, 'searchAjax'])->name('search.ajax');
+/*
+|--------------------------------------------------------------------------
+| LIST / FILTER / SEARCH
+|--------------------------------------------------------------------------
+*/
+Route::get('/az-list/{letter?}', [ListController::class, 'azList'])
+    ->name('az-list');
 
-// Categories
+Route::get('/filter', [ListController::class, 'filter'])
+    ->name('filter');
+
+Route::get('/search/ajax', [ListController::class, 'searchAjax'])
+    ->name('search.ajax')
+    ->middleware('throttle:search');
+
+/*
+|--------------------------------------------------------------------------
+| CATEGORY PAGES
+|--------------------------------------------------------------------------
+*/
 Route::get('/newest', [ListController::class, 'newest'])->name('newest');
 Route::get('/updated', [ListController::class, 'updated'])->name('updated');
 Route::get('/ongoing', [ListController::class, 'ongoing'])->name('ongoing');
 Route::get('/trending', [ListController::class, 'trending'])->name('trending');
 
-// Random
-Route::get('/random', [RandomController::class, 'index'])->name('random');
+/*
+|--------------------------------------------------------------------------
+| RANDOM
+|--------------------------------------------------------------------------
+*/
+Route::get('/random', [RandomController::class, 'index'])
+    ->name('random');
 
-// IMPORTANT: catch-all MUST be last
+/*
+|--------------------------------------------------------------------------
+| ANIME DETAIL (IMPORTANT → LAST)
+|--------------------------------------------------------------------------
+*/
 Route::get('/anime/{slug}', [AnimeController::class, 'show'])
     ->name('anime.detail')
-    ->where('slug', '[a-zA-Z0-9\-\_]+');
+    ->where('slug', '[A-Za-z0-9\-_]+');

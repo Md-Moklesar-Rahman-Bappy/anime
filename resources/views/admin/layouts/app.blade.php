@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>Admin - {{ config('app.name', 'AniWaves') }}</title>
+    <title>Admin - {{ config('app.name', 'AniKoto') }}</title>
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    {{-- Font --}}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Icons -->
+    {{-- Icons --}}
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
+    {{-- Favicon --}}
     @php
-        $faviconPath = Cache::remember('setting_favicon', 1800, fn() => \App\Models\Setting::where('key', 'favicon')->value('value'));
-        $faviconUrl = $faviconPath && Str::startsWith($faviconPath, 'http')
+        $faviconPath = Cache::remember('setting_favicon', 1800, fn() =>
+            \App\Models\Setting::where('key', 'favicon')->value('value'));
+
+        $faviconUrl = $faviconPath && \Illuminate\Support\Str::startsWith($faviconPath, 'http')
             ? $faviconPath
             : ($faviconPath ? Storage::url($faviconPath) : asset('favicon.ico'));
     @endphp
@@ -26,89 +30,81 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body style="background:#0b0e16;color:#fff;font-family:Inter,sans-serif;">
+<body class="bg-[#0b0e16] text-gray-200 font-sans antialiased">
 
-<div class="d-flex" style="height:100vh;">
+<div class="flex h-screen">
 
-    <!-- Sidebar -->
-    <aside style="width:16rem;background:#111827;border-right:1px solid #374151;padding:1rem;display:flex;flex-direction:column;flex-shrink:0;"
+    {{-- SIDEBAR --}}
+    <aside class="w-64 bg-gray-900 border-r border-gray-700 p-4 flex flex-col"
            x-data="{ panel: localStorage.getItem('admin_panel') || 'anime' }"
            x-init="$watch('panel', val => localStorage.setItem('admin_panel', val))">
 
-        <!-- Logo -->
-        <a href="{{ route('admin.dashboard') }}" class="d-flex align-items-center mb-4 text-decoration-none">
-            <x-application-logo style="width:2rem;height:2rem;color:#6366f1;"/>
-            <span class="ms-2 fw-bold text-white">Admin</span>
+        {{-- LOGO --}}
+         }}" class="flex items-center gap-2 mb-6 text-indigo-500 font-bold text-lg">
+            🎬 Admin
         </a>
 
-        <!-- Toggle -->
-        <div class="d-flex mb-3" style="background:#1f2937;border-radius:0.5rem;padding:0.25rem;font-size:0.75rem;">
+        {{-- SWITCH --}}
+        <div class="flex bg-gray-800 rounded-lg p-1 text-xs mb-4">
             <button @click="panel='anime'"
-                :style="panel==='anime' ? 'background:#4f46e5;color:#fff' : 'color:#9ca3af'"
-                class="flex-fill py-1" style="border-radius:0.25rem;border:none;">
+                :class="panel==='anime' ? 'bg-indigo-600 text-white' : 'text-gray-400'"
+                class="flex-1 py-1 rounded">
                 Anime
             </button>
-
             <button @click="panel='manga'"
-                :style="panel==='manga' ? 'background:#059669;color:#fff' : 'color:#9ca3af'"
-                class="flex-fill py-1" style="border-radius:0.25rem;border:none;">
+                :class="panel==='manga' ? 'bg-emerald-600 text-white' : 'text-gray-400'"
+                class="flex-1 py-1 rounded">
                 Manga
             </button>
         </div>
 
-        <!-- Anime Menu -->
-        <nav x-show="panel==='anime'" class="flex-grow-1">
-            <div class="d-flex flex-column gap-1">
+        {{-- ANIME NAV --}}
+        <nav x-show="panel==='anime'" class="space-y-1 flex-1">
 
-                <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Dashboard</a>
-                <a href="{{ route('admin.anime.index') }}" class="nav-link {{ request()->routeIs('admin.anime.*') ? 'active' : '' }}">Anime</a>
-                <a href="{{ route('admin.featured.index') }}" class="nav-link {{ request()->routeIs('admin.featured.*') ? 'active' : '' }}">Featured</a>
-                <a href="{{ route('admin.genres.index') }}" class="nav-link {{ request()->routeIs('admin.genres.*') ? 'active' : '' }}">Genres</a>
-                <a href="{{ route('admin.jikan.search') }}" class="nav-link {{ request()->routeIs('admin.jikan.*') ? 'active' : '' }}">MAL Import</a>
+             }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Dashboard</a>
 
-            </div>
+             }}" class="nav-link {{ request()->routeIs('admin.anime.*') ? 'active' : '' }}">Anime</a>
 
-            <hr style="border-color:#374151;">
+             }}" class="nav-link {{ request()->routeIs('admin.featured.*') ? 'active' : '' }}">Featured</a>
 
-            <div class="d-flex flex-column gap-1">
-                <a href="{{ route('admin.users.index') }}" class="nav-link">Users</a>
-                <a href="{{ route('admin.comments.index') }}" class="nav-link">Comments</a>
-                <a href="{{ route('admin.reports.index') }}" class="nav-link">Reports</a>
-                <a href="{{ route('admin.settings.index') }}" class="nav-link">Settings</a>
-            </div>
+             }}" class="nav-link {{ request()->routeIs('admin.genres.*') ? 'active' : '' }}">Genres</a>
 
-        </nav>
+             }}" class="nav-link">MAL Import</a>
 
-        <!-- Manga Menu -->
-        <nav x-show="panel==='manga'" x-cloak class="flex-grow-1">
-            <div class="d-flex flex-column gap-1">
+            <hr class="border-gray-700 my-3">
 
-                <a href="{{ route('admin.manga.dashboard') }}" class="nav-link">Dashboard</a>
-                <a href="{{ route('admin.manga.index') }}" class="nav-link">Manga</a>
-                <a href="{{ route('admin.manga.genres.index') }}" class="nav-link">Genres</a>
-
-            </div>
-
-            <hr style="border-color:#374151;">
-
-            <div class="d-flex flex-column gap-1">
-                <a href="{{ route('admin.comments.index') }}" class="nav-link">Comments</a>
-                <a href="{{ route('admin.users.index') }}" class="nav-link">Users</a>
-                <a href="{{ route('admin.settings.index') }}" class="nav-link">Settings</a>
-            </div>
+             }}" class="nav-link">Users</a>
+             }}" class="nav-link">Comments</a>
+             }}" class="nav-link">Reports</a>
+             }}" class="nav-link">Settings</a>
 
         </nav>
 
-        <a href="{{ route('home') }}" class="mt-3 text-decoration-none" style="font-size:0.875rem;color:#6b7280;">
+        {{-- MANGA NAV --}}
+        <nav x-show="panel==='manga'" x-cloak class="space-y-1 flex-1">
+
+             }}" class="nav-link">Dashboard</a>
+             }}" class="nav-link">Manga</a>
+             }}" class="nav-link">Genres</a>
+
+            <hr class="border-gray-700 my-3">
+
+             }}" class="nav-link">Comments</a>
+             }}" class="nav-link">Users</a>
+             }}" class="nav-link">Settings</a>
+
+        </nav>
+
+         }}" class="mt-4 text-sm text-gray-500 hover:text-white">
             ← Back to site
         </a>
 
     </aside>
 
-    <!-- Content -->
-    <main class="flex-grow-1 overflow-auto p-4">
+    {{-- MAIN CONTENT --}}
+    <main class="flex-1 overflow-auto p-6">
 
-        <!-- Alerts -->
+        {{-- ALERTS --}}
         @if(session('success'))
             <div class="alert-success">{{ session('success') }}</div>
         @endif
@@ -123,47 +119,24 @@
 
 </div>
 
-<!-- Styles -->
+{{-- Tailwind helpers --}}
 <style>
 .nav-link {
-    display: block;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    color: #9ca3af;
-    text-decoration: none;
-    transition: background 0.15s, color 0.15s;
-}
-.nav-link:hover {
-    background: #1f2937;
-    color: #fff;
+    @apply block px-3 py-2 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition;
 }
 .nav-link.active {
-    background: #4f46e5;
-    color: #fff;
+    @apply bg-indigo-600 text-white;
 }
+
 .alert-success {
-    margin-bottom: 1rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    background: rgba(34, 197, 94, 0.1);
-    color: #4ade80;
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    @apply mb-4 px-4 py-2 rounded bg-green-500/10 text-green-400 border border-green-500/20;
 }
 .alert-error {
-    margin-bottom: 1rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    background: rgba(239, 68, 68, 0.1);
-    color: #f87171;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    @apply mb-4 px-4 py-2 rounded bg-red-500/10 text-red-400 border border-red-500/20;
 }
 </style>
 
 @stack('scripts')
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

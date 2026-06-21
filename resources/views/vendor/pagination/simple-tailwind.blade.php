@@ -1,9 +1,9 @@
 @if ($paginator->hasPages())
-<nav class="flex justify-center mt-6">
+<nav class="flex justify-center mt-8">
 
-    <div class="flex items-center gap-2 text-sm">
+    <div class="flex items-center gap-3 text-sm">
 
-        <!-- Previous -->
+        {{-- Previous --}}
         @if ($paginator->onFirstPage())
             <span class="pagination-disabled">
                 ← Previous
@@ -16,7 +16,7 @@
             </a>
         @endif
 
-        <!-- Next -->
+        {{-- Next --}}
         @if ($paginator->hasMorePages())
             <a href="{{ $paginator->nextPageUrl() }}"
                rel="next"
@@ -33,13 +33,3 @@
 
 </nav>
 @endif
-
-<style>
-.pagination-btn {
-    @apply px-4 py-2 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
-}
-
-.pagination-disabled {
-    @apply px-4 py-2 bg-[#111827] border border-gray-800 text-gray-600 rounded-lg cursor-not-allowed;
-}
-</style>

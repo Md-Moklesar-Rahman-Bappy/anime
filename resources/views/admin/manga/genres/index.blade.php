@@ -1,66 +1,141 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="container" style="max-width:800px">
 
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h4 fw-semibold text-white">Manga Genres</h1>
+<div class="max-w-4xl mx-auto">
+
+    {{-- HEADER --}}
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-xl font-semibold text-white">
+            Manga Genres
+        </h1>
     </div>
 
-    <div class="card p-3 mb-3" style="background:#111827;border:1px solid #374151;border-radius:1rem">
-        <form action="{{ route('admin.manga.genres.store') }}" method="POST" class="d-flex gap-2">
+    {{-- CREATE FORM --}}
+    <div class="bg-gray-900 border border-gray-700 rounded-xl p-4 mb-6">
+
+        <form action="{{ route('admin.manga.genres.store') }}" method="POST"
+              class="flex gap-3">
             @csrf
-            <input type="text" name="name" placeholder="New genre..."
-                class="form-control" style="background:#1f2937;border:1px solid #4b5563;color:#fff;flex:1" required>
-            <button type="submit" class="btn" style="background:#059669;color:#fff">Add</button>
+
+            <input type="text"
+                   name="name"
+                   placeholder="New genre..."
+                   required
+                   class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-indigo-500">
+
+            <button type="submit"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+                Add
+            </button>
         </form>
+
     </div>
 
-    <div class="card" style="background:#111827;border:1px solid #374151;border-radius:1rem;overflow:hidden">
-        <div class="table-responsive">
-            <table class="table table-dark table-borderless mb-0 align-middle">
-                <thead>
-                    <tr style="background:#0f172a;color:#9ca3af;border-bottom:1px solid #374151">
-                        <th class="p-3 text-start">Name</th>
-                        <th class="p-3 text-start">Slug</th>
-                        <th class="p-3 text-start">Actions</th>
+    {{-- TABLE --}}
+    <div class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+
+        <div class="overflow-x-auto">
+
+            <table class="w-full text-sm">
+
+                {{-- THEAD --}}
+                <thead class="bg-gray-800 text-gray-400 border-b border-gray-700">
+                    <tr>
+                        <th class="p-4 text-left">Name</th>
+                        <th class="p-4 text-left">Slug</th>
+                        <th class="p-4 text-left">Actions</th>
                     </tr>
                 </thead>
+
+                {{-- TBODY --}}
                 <tbody>
+
                 @forelse($genres as $genre)
-                    <tr style="border-bottom:1px solid #374151">
-                        <td class="p-3">
-                            <form action="{{ route('admin.manga.genres.update', $genre) }}" method="POST" class="d-flex gap-2">
-                                @csrf @method('PUT')
-                                <input type="text" name="name" value="{{ $genre->name }}"
-                                    class="form-control form-control-sm" style="background:#1f2937;border:1px solid #4b5563;color:#fff" required>
-                                <button type="submit" class="btn btn-sm border-0" style="color:#60a5fa">Save</button>
-                            </form>
-                        </td>
-                        <td class="p-3" style="color:#9ca3af">{{ $genre->slug }}</td>
-                        <td class="p-3">
-                            <form action="{{ route('admin.manga.genres.destroy', $genre) }}" method="POST"
-                                  onsubmit="return confirm('Delete this genre?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm border-0" style="color:#f87171">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
+
+                <tr class="border-b border-gray-700">
+
+                    {{-- EDIT --}}
+                    <td class="p-4">
+
+                        <form action="{{ route('admin.manga.genres.update', $genre) }}"
+                              method="POST"
+                              class="flex gap-2">
+                            @csrf
+                            @method('PUT')
+
+                            <input type="text"
+                                   name="name"
+                                   value="{{ $genre->name }}"
+                                   required
+                                   class="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white w-full text-sm">
+
+                            <button type="submit"
+                                    class="text-blue-400 hover:text-blue-300 text-sm">
+                                Save
+                            </button>
+
+                        </form>
+
+                    </td>
+
+                    {{-- SLUG --}}
+                    <td class="p-4 text-gray-400">
+                        {{ $genre->slug }}
+                    </td>
+
+                    {{-- DELETE --}}
+                    <td class="p-4">
+
+                        <form action="{{ route('admin.manga.genres.destroy', $genre) }}"
+                              method="POST"
+                              onsubmit="return confirm('Delete this genre?')">
+
+                            @csrf
+                            @method('DELETE')
+
+                            <button type="submit"
+                                    class="text-red-400 hover:text-red-300 text-sm">
+                                Delete
+                            </button>
+
+                        </form>
+
+                    </td>
+
+                </tr>
+
                 @empty
-                    <tr>
-                        <td colspan="3" class="p-5 text-center" style="color:#6b7280">
-                            <p class="h5" style="color:#d1d5db">No manga genres yet</p>
-                            <p class="small mt-1">Add your first genre</p>
-                        </td>
-                    </tr>
+
+                <tr>
+                    <td colspan="3" class="p-8 text-center text-gray-500">
+
+                        <p class="text-white font-medium mb-1">
+                            No manga genres yet
+                        </p>
+
+                        <p class="text-sm">
+                            Add your first genre
+                        </p>
+
+                    </td>
+                </tr>
+
                 @endforelse
+
                 </tbody>
+
             </table>
+
         </div>
-        <div class="p-3" style="border-top:1px solid #374151">
+
+        {{-- PAGINATION --}}
+        <div class="p-4 border-t border-gray-700">
             {{ $genres->links() }}
         </div>
+
     </div>
+
 </div>
 
 @endsection

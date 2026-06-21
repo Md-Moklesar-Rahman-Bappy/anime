@@ -1,219 +1,175 @@
-[x-cloak] { display: none !important; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* =========================
+   BASE
+========================= */
+[x-cloak] {
+    display: none !important;
+}
+
+body {
+    @apply font-sans antialiased bg-[#0a0a0f] text-gray-200;
+}
+
+/* =========================
+   PLYR THEME CONFIG
+========================= */
 :root {
     --plyr-color-main: #7c3aed;
     --plyr-video-background: #000;
-    --plyr-video-controls-background: linear-gradient(transparent, rgba(0,0,0,.85));
-    --plyr-menu-background: #1f2937;
+    --plyr-video-controls-background: linear-gradient(transparent, rgba(0, 0, 0, .85));
+    --plyr-menu-background: #111827;
     --plyr-menu-color: #fff;
     --plyr-menu-border-color: #374151;
     --plyr-range-fill-background: #7c3aed;
-    --plyr-tooltip-background: #1f2937;
+    --plyr-tooltip-background: #111827;
     --plyr-tooltip-color: #fff;
-    --plyr-control-spacing: 10px;
-    --plyr-control-radius: 6px;
 }
 
+/* =========================
+   PLYR BUTTON
+========================= */
 .plyr--video .plyr__control--overlaid {
-    background: rgba(124, 58, 237, 0.9);
-    padding: 20px;
+    @apply transition;
+    background: rgba(124, 58, 237, 0.85);
+    padding: 18px;
     border-radius: 50%;
 }
+
 .plyr--video .plyr__control--overlaid:hover {
     background: #7c3aed;
+    transform: scale(1.08);
 }
-.plyr--video .plyr__control--overlaid svg {
-    width: 22px;
-    height: 22px;
-}
+
+/* =========================
+   CONTROLS
+========================= */
 .plyr--video .plyr__controls {
     padding: 8px 12px;
 }
+
 .plyr__progress__buffer {
-    background: rgba(255,255,255,0.15);
-}
-.plyr--full-ui input[type=range] {
-    color: #7c3aed;
+    background: rgba(255, 255, 255, 0.15);
 }
 
+/* =========================
+   PLAYER CONTROL BAR
+========================= */
 .player-control-bar {
-    background: #111827;
-    border-top: 1px solid #1f2937;
-    padding: 6px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 4px;
-    overflow: visible;
-}
-.player-control-bar .ctrl-group {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-}
-.player-control-bar .ctrl-btn {
-    background: none;
-    border: none;
-    color: #9ca3af;
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.15s;
-    white-space: nowrap;
-    font-family: inherit;
-}
-.player-control-bar .ctrl-btn:hover {
-    color: #fff;
-    background: rgba(255,255,255,0.08);
-}
-.player-control-bar .ctrl-btn.active {
-    color: #7c3aed;
-}
-.player-control-bar .ctrl-btn.active i {
-    color: #7c3aed;
-}
-.player-control-bar .ctrl-btn i {
-    font-size: 14px;
-    width: 16px;
-    text-align: center;
-}
-.player-control-bar .ctrl-btn .label {
-    font-size: 11px;
-    font-weight: 500;
+    @apply bg-gray-900 border-t border-gray-800 px-3 py-2 flex items-center justify-between flex-wrap gap-2;
 }
 
+.ctrl-group {
+    @apply flex items-center gap-1;
+}
+
+.ctrl-btn {
+    @apply text-gray-400 px-2 py-1 rounded text-xs flex items-center gap-1 transition duration-150;
+}
+
+.ctrl-btn:hover {
+    @apply text-white bg-white/10;
+}
+
+.ctrl-btn.active {
+    @apply text-purple-500;
+}
+
+/* =========================
+   SERVER SELECT
+========================= */
 .server-select {
-    background: #1f2937;
-    border: 1px solid #374151;
-    color: #d1d5db;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 12px;
-    cursor: pointer;
-    outline: none;
+    @apply bg-gray-800 border border-gray-700 text-gray-300 text-xs px-2 py-1 rounded transition duration-150;
 }
-.server-select:hover {
-    border-color: #7c3aed;
-}
+
 .server-select:focus {
-    border-color: #7c3aed;
-    box-shadow: 0 0 0 2px rgba(124,58,237,0.3);
+    @apply border-purple-500 ring-2 ring-purple-500/30 outline-none;
 }
 
+/* =========================
+   DROPDOWN
+========================= */
 .player-dropdown {
-    position: absolute;
-    bottom: 100%;
-    right: 0;
-    margin-bottom: 6px;
-    background: #1f2937;
-    border: 1px solid #374151;
-    border-radius: 8px;
-    padding: 6px;
-    min-width: 200px;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
-    z-index: 9999;
-}
-.player-dropdown .dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 13px;
-    color: #d1d5db;
-    cursor: pointer;
-    transition: all 0.15s;
-    background: none;
-    border: none;
-    width: 100%;
-    text-align: left;
-    font-family: inherit;
-}
-.player-dropdown .dropdown-item:hover {
-    background: rgba(255,255,255,0.08);
-    color: #fff;
-}
-.player-dropdown .dropdown-item.active {
-    color: #7c3aed;
-}
-.player-dropdown .dropdown-item .check {
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    @apply absolute bottom-full right-0 mb-2 bg-gray-900 border border-gray-700 rounded-lg p-2 min-w-[180px] shadow-xl z-50 transition;
 }
 
+.dropdown-item {
+    @apply px-3 py-2 text-sm text-gray-300 rounded flex items-center gap-2 cursor-pointer transition duration-150;
+}
+
+.dropdown-item:hover {
+    @apply bg-white/10 text-white;
+}
+
+.dropdown-item.active {
+    @apply text-purple-500;
+}
+
+/* =========================
+   MODAL
+========================= */
 .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 16px;
-}
-.modal-box {
-    background: #1f2937;
-    border: 1px solid #374151;
-    border-radius: 12px;
-    padding: 24px;
-    width: 100%;
-    max-width: 440px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-}
-.modal-box h3 {
-    font-size: 16px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 16px;
-}
-.modal-box .close-btn {
-    float: right;
-    background: none;
-    border: none;
-    color: #6b7280;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-}
-.modal-box .close-btn:hover {
-    color: #fff;
+    @apply fixed inset-0 bg-black/70 flex items-center justify-center z-40 p-4;
 }
 
+.modal-box {
+    @apply bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl;
+}
+
+/* =========================
+   PLAYER WRAPPER
+========================= */
 .plyr-wrapper {
     position: relative;
     background: #000;
 }
-.plyr-wrapper.light {
-    background: #f3f4f6;
-}
+
+/* =========================
+   SKIP BUTTON
+========================= */
 .skip-overlay {
-    position: absolute;
-    bottom: 70px;
-    left: 16px;
-    z-index: 20;
-    display: flex;
-    gap: 8px;
+    @apply absolute bottom-16 left-3 flex gap-2 z-20;
 }
+
 .skip-overlay button {
-    background: rgba(124, 58, 237, 0.85);
-    color: #fff;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: background 0.15s;
+    @apply bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition duration-150;
 }
-.skip-overlay button:hover {
-    background: #7c3aed;
+
+/* =========================
+   PAGINATION (FINAL FIX)
+========================= */
+.pagination-btn {
+    @apply px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition;
+}
+
+.pagination-active {
+    @apply px-3 py-2 bg-indigo-600 text-white rounded-lg;
+}
+
+.pagination-disabled {
+    @apply px-3 py-2 bg-gray-900 border border-gray-700 text-gray-600 rounded-lg cursor-not-allowed;
+}
+
+/* =========================
+   NAVBAR + LINKS
+========================= */
+.nav-link {
+    @apply px-3 py-2 rounded text-gray-300 hover:text-white hover:bg-white/5 transition;
+}
+
+.mobile-link {
+    @apply px-3 py-2 text-gray-300 hover:text-white hover:bg-white/5 rounded;
+}
+
+.btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition;
+}
+
+/* =========================
+   SEARCH INPUT
+========================= */
+.search-input {
+    @apply bg-gray-900 border border-gray-700 text-sm px-3 py-2 rounded w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white;
 }

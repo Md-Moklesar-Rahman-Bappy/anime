@@ -1,20 +1,20 @@
 @if ($paginator->hasPages())
-<nav class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+<nav class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
 
-    <!-- Info -->
-    <div class="text-sm text-gray-500">
+    {{-- INFO --}}
+    <div class="text-sm text-gray-400">
         Showing
-        <span class="text-gray-300 font-medium">{{ $paginator->firstItem() }}</span>
+        <span class="text-white font-medium">{{ $paginator->firstItem() }}</span>
         to
-        <span class="text-gray-300 font-medium">{{ $paginator->lastItem() }}</span>
+        <span class="text-white font-medium">{{ $paginator->lastItem() }}</span>
         of
-        <span class="text-gray-300 font-medium">{{ $paginator->total() }}</span>
+        <span class="text-white font-medium">{{ $paginator->total() }}</span>
     </div>
 
-    <!-- Pagination -->
+    {{-- PAGINATION --}}
     <ul class="flex items-center gap-1 text-sm">
 
-        <!-- Previous -->
+        {{-- Previous --}}
         @if ($paginator->onFirstPage())
             <li>
                 <span class="pagination-disabled">‹</span>
@@ -27,19 +27,19 @@
             </li>
         @endif
 
-        <!-- Pages -->
+        {{-- Pages --}}
         @foreach ($elements as $element)
 
-            <!-- Dots -->
+            {{-- Dots --}}
             @if (is_string($element))
                 <li>
-                    <span class="px-2 text-gray-600">
+                    <span class="px-2 text-gray-500">
                         {{ $element }}
                     </span>
                 </li>
             @endif
 
-            <!-- Numbers -->
+            {{-- Page numbers --}}
             @if (is_array($element))
                 @foreach ($element as $page => $url)
 
@@ -62,7 +62,7 @@
 
         @endforeach
 
-        <!-- Next -->
+        {{-- Next --}}
         @if ($paginator->hasMorePages())
             <li>
                 <a href="{{ $paginator->nextPageUrl() }}" class="pagination-btn">
@@ -79,17 +79,3 @@
 
 </nav>
 @endif
-
-<style>
-.pagination-btn {
-    @apply px-3 py-1.5 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
-}
-
-.pagination-active {
-    @apply px-3 py-1.5 bg-indigo-600 text-white rounded-lg border border-indigo-500;
-}
-
-.pagination-disabled {
-    @apply px-3 py-1.5 bg-[#111827] border border-gray-800 text-gray-600 rounded-lg cursor-not-allowed;
-}
-</style>

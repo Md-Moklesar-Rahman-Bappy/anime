@@ -14,31 +14,69 @@ use App\Http\Controllers\MangaReaderController;
 |--------------------------------------------------------------------------
 */
 
-// Homepage
-Route::get('/manga', [MangaListController::class, 'index'])->name('manga.index');
+/*
+|--------------------------------------------------------------------------
+| MAIN
+|--------------------------------------------------------------------------
+*/
 
-// Specific routes
+Route::get('/manga', [MangaListController::class, 'index'])
+    ->name('manga.index');
+
+/*
+|--------------------------------------------------------------------------
+| GENRES
+|--------------------------------------------------------------------------
+*/
 Route::get('/manga/genre/{slug}', [MangaGenreController::class, 'show'])
     ->name('manga.genre')
-    ->where('slug', '[a-zA-Z0-9\-\_]+');
+    ->where('slug', '[A-Za-z0-9\-_]+');
 
-Route::get('/manga/az-list/{letter?}', [MangaListController::class, 'azList'])->name('manga.az-list');
-Route::get('/manga/filter', [MangaListController::class, 'filter'])->name('manga.filter');
+/*
+|--------------------------------------------------------------------------
+| LIST / FILTER
+|--------------------------------------------------------------------------
+*/
+Route::get('/manga/az-list/{letter?}', [MangaListController::class, 'azList'])
+    ->name('manga.az-list');
 
+Route::get('/manga/filter', [MangaListController::class, 'filter'])
+    ->name('manga.filter')
+    ->middleware('throttle:search');
+
+/*
+|--------------------------------------------------------------------------
+| CATEGORY
+|--------------------------------------------------------------------------
+*/
 Route::get('/manga/newest', [MangaListController::class, 'newest'])->name('manga.newest');
 Route::get('/manga/updated', [MangaListController::class, 'updated'])->name('manga.updated');
 Route::get('/manga/ongoing', [MangaListController::class, 'ongoing'])->name('manga.ongoing');
 Route::get('/manga/trending', [MangaListController::class, 'trending'])->name('manga.trending');
 Route::get('/manga/completed', [MangaListController::class, 'completed'])->name('manga.completed');
 
-Route::get('/manga/random', [MangaRandomController::class, 'index'])->name('manga.random');
+/*
+|--------------------------------------------------------------------------
+| RANDOM
+|--------------------------------------------------------------------------
+*/
+Route::get('/manga/random', [MangaRandomController::class, 'index'])
+    ->name('manga.random');
 
-// ✅ FIXED ROUTE (IMPORTANT)
+/*
+|--------------------------------------------------------------------------
+| READER (IMPORTANT)
+|--------------------------------------------------------------------------
+*/
+Route::get('/manga/read/{slug}/{chapter?}', MangaReaderController::class)
+    ->name('manga.read')
+    ->where('slug', '[A-Za-z0-9\-_]+');
+
+/*
+|--------------------------------------------------------------------------
+| DETAIL (MUST BE LAST)
+|--------------------------------------------------------------------------
+*/
 Route::get('/manga/{slug}', MangaController::class)
     ->name('manga.detail')
-    ->where('slug', '[a-zA-Z0-9\-\_]+');
-
-// Reader
-Route::get('/read/{slug}', MangaReaderController::class)
-    ->name('manga.read')
-    ->where('slug', '[a-zA-Z0-9\-\_]+');
+    ->where('slug', '[A-Za-z0-9\-_]+');

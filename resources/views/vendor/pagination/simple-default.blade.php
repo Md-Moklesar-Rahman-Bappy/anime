@@ -1,45 +1,44 @@
 @if ($paginator->hasPages())
-<nav class="flex justify-center mt-6">
+<nav class="flex justify-center mt-8">
 
-    <div class="flex items-center gap-2 text-sm">
+    <ul class="flex items-center gap-1 text-sm">
 
-        <!-- Previous -->
+        {{-- Previous --}}
         @if ($paginator->onFirstPage())
-            <span class="pagination-disabled">
-                ← Previous
-            </span>
+            <span class="pagination-disabled">‹</span>
         @else
-            <a href="{{ $paginator->previousPageUrl() }}"
-               rel="prev"
-               class="pagination-btn">
-                ← Previous
-            </a>
+            <a href="{{ $paginator->previousPageUrl() }}" class="pagination-btn">‹</a>
         @endif
 
-        <!-- Next -->
+        {{-- Pages --}}
+        @foreach ($elements as $element)
+
+            @if (is_string($element))
+                <span class="px-2 text-gray-500">{{ $element }}</span>
+            @endif
+
+            @if (is_array($element))
+                @foreach ($element as $page => $url)
+
+                    @if ($page == $paginator->currentPage())
+                        <span class="pagination-active">{{ $page }}</span>
+                    @else
+                        <a href="{{ $url }}" class="pagination-btn">{{ $page }}</a>
+                    @endif
+
+                @endforeach
+            @endif
+
+        @endforeach
+
+        {{-- Next --}}
         @if ($paginator->hasMorePages())
-            <a href="{{ $paginator->nextPageUrl() }}"
-               rel="next"
-               class="pagination-btn">
-                Next →
-            </a>
+            <a href="{{ $paginator->nextPageUrl() }}" class="pagination-btn">›</a>
         @else
-            <span class="pagination-disabled">
-                Next →
-            </span>
+            <span class="pagination-disabled">›</span>
         @endif
 
-    </div>
+    </ul>
 
 </nav>
 @endif
-
-<style>
-.pagination-btn {
-    @apply px-4 py-2 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
-}
-
-.pagination-disabled {
-    @apply px-4 py-2 bg-[#111827] border border-gray-800 text-gray-600 rounded-lg cursor-not-allowed;
-}
-</style>

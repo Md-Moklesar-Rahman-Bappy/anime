@@ -1,9 +1,9 @@
 @if ($paginator->hasPages())
-<nav class="flex justify-center mt-6">
+<nav class="flex justify-center mt-8">
 
     <ul class="flex items-center gap-1 text-sm">
 
-        <!-- Previous -->
+        {{-- Previous --}}
         @if ($paginator->onFirstPage())
             <li>
                 <span class="pagination-disabled">‹</span>
@@ -18,10 +18,10 @@
             </li>
         @endif
 
-        <!-- Elements -->
+        {{-- Pages --}}
         @foreach ($elements as $element)
 
-            <!-- Dots -->
+            {{-- Dots --}}
             @if (is_string($element))
                 <li>
                     <span class="px-2 text-gray-500">
@@ -30,7 +30,7 @@
                 </li>
             @endif
 
-            <!-- Pages -->
+            {{-- Page numbers --}}
             @if (is_array($element))
                 @foreach ($element as $page => $url)
 
@@ -53,7 +53,7 @@
 
         @endforeach
 
-        <!-- Next -->
+        {{-- Next --}}
         @if ($paginator->hasMorePages())
             <li>
                 <a href="{{ $paginator->nextPageUrl() }}"
@@ -72,17 +72,3 @@
 
 </nav>
 @endif
-
-<style>
-.pagination-btn {
-    @apply px-3 py-1.5 bg-[#111827] border border-gray-800 rounded-lg text-gray-300 hover:text-white hover:bg-[#1f2937] transition;
-}
-
-.pagination-active {
-    @apply px-3 py-1.5 bg-indigo-600 text-white rounded-lg border border-indigo-500;
-}
-
-.pagination-disabled {
-    @apply px-3 py-1.5 bg-[#111827] border border-gray-800 text-gray-600 rounded-lg cursor-not-allowed;
-}
-</style>

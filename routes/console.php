@@ -10,23 +10,9 @@ use Illuminate\Foundation\Inspiring;
 |--------------------------------------------------------------------------
 */
 
-// Default inspire command
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
-
-
-/*
-|--------------------------------------------------------------------------
-| Scheduled Tasks
-|--------------------------------------------------------------------------
-| IMPORTANT: Make sure you run:
-| php artisan schedule:work  (local)
-| or a cron job (production)
-*/
-
-// Inspire (example)
-Schedule::command('inspire')->hourly();
 
 
 /*
@@ -35,61 +21,67 @@ Schedule::command('inspire')->hourly();
 |--------------------------------------------------------------------------
 */
 
-// Clear cache daily
-Schedule::command('cache:clear')->dailyAt('03:00');
+Schedule::command('cache:clear')
+    ->dailyAt('04:00')
+    ->withoutOverlapping();
 
-// Clear route cache weekly
-Schedule::command('route:clear')->weekly();
+Schedule::command('route:clear')
+    ->weekly()
+    ->withoutOverlapping();
 
-// Clear view cache
-Schedule::command('view:clear')->daily();
+Schedule::command('view:clear')
+    ->daily()
+    ->withoutOverlapping();
 
-// Prune sessions safely
-Schedule::command('session:prune')->daily();
+Schedule::command('session:prune')
+    ->daily()
+    ->withoutOverlapping();
 
-// Clear expired password resets
-Schedule::command('auth:clear-resets')->daily();
+Schedule::command('auth:clear-resets')
+    ->daily()
+    ->withoutOverlapping();
+
+
+/*
+|--------------------------------------------------------------------------
+| Platform Tasks
+|--------------------------------------------------------------------------
+*/
+
+Schedule::call(function () {
+    // app(ViewCounterService::class)->flushBuffered(...);
+})
+    ->name('views.aggregate') // ✅ REQUIRED
+    ->everyThirtyMinutes()
+    ->withoutOverlapping();
+
+Schedule::call(function () {
+    // app(FeaturedService::class)->autoFill();
+})
+    ->name('featured.refresh') // ✅ REQUIRED
+    ->daily()
+    ->withoutOverlapping();
 
 
 /*
 |--------------------------------------------------------------------------
-| Anime / Manga Platform Tasks (🔥 IMPORTANT)
+| Scrapers
 |--------------------------------------------------------------------------
 */
 
-// Update trending stats
 Schedule::call(function () {
-    \Log::info('Updating trending anime...');
-    // Example:
-    // App\Models\Anime::updateTrending();
-})->hourly();
+    // dispatch(new AutoAnimeImportJob());
+})
+    ->name('anime.scraper') // ✅ REQUIRED
+    ->hourly()
+    ->withoutOverlapping();
 
-// Update view counts aggregation
 Schedule::call(function () {
-    \Log::info('Aggregating views...');
-})->everyThirtyMinutes();
-
-// Refresh featured anime (auto-fill)
-Schedule::call(function () {
-    \Log::info('Refreshing featured anime...');
-})->daily();
-
-/*
-|--------------------------------------------------------------------------
-| Scraper Jobs (🔥 CORE FEATURE)
-|--------------------------------------------------------------------------
-*/
-
-// Auto scraper (Jikan / API import)
-Schedule::call(function () {
-    \Log::info('Running auto anime scraper...');
-    // App\Services\AnimeScraper::run();
-})->hourly();
-
-// Manga scraper
-Schedule::call(function () {
-    \Log::info('Running manga scraper...');
-})->everyTwoHours();
+    // dispatch(new MangaScraperJob());
+})
+    ->name('manga.scraper') // ✅ REQUIRED
+    ->everyTwoHours()
+    ->withoutOverlapping();
 
 
 /*
@@ -98,30 +90,37 @@ Schedule::call(function () {
 |--------------------------------------------------------------------------
 */
 
-// Delete old reports (older than 30 days)
 Schedule::call(function () {
-    \Log::info('Cleaning old reports...');
     \App\Models\Report::where('created_at', '<', now()->subDays(30))->delete();
-})->daily();
+})
+    ->name('reports.cleanup') // ✅ REQUIRED
+    ->daily()
+    ->withoutOverlapping();
 
-// Remove temporary uploads
 Schedule::call(function () {
-    \Log::info('Cleaning temp uploads...');
-})->daily();
+    // Storage::disk('temp')->delete(...);
+})
+    ->name('uploads.cleanup') // ✅ REQUIRED
+    ->daily()
+    ->withoutOverlapping();
 
 
 /*
 |--------------------------------------------------------------------------
-| Watch History & Optimization
+| Optimization Tasks
 |--------------------------------------------------------------------------
 */
 
-// Compress watch history
 Schedule::call(function () {
-    \Log::info('Optimizing watch history...');
-})->daily();
+    // app(WatchHistoryService::class)->optimize();
+})
+    ->name('watch.optimize') // ✅ REQUIRED
+    ->daily()
+    ->withoutOverlapping();
 
-// Recalculate rankings
 Schedule::call(function () {
-    \Log::info('Recalculating rankings...');
-})->everySixHours();
+    // app(RankingService::class)->recalculate();
+})
+    ->name('ranking.recalculate') // ✅ REQUIRED
+    ->everySixHours()
+    ->withoutOverlapping();

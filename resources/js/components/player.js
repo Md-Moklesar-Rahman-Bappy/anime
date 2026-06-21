@@ -1,20 +1,8 @@
 import Plyr from 'plyr';
+import Hls from 'hls.js';
 
 const STORAGE_KEY = 'aniwaves_player_config';
-
-function loadConfig() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return { ...defaultConfig(), ...JSON.parse(raw) };
-    } catch (e) {}
-    return defaultConfig();
-}
-
-function saveConfig(config) {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    } catch (e) {}
-}
+const PROGRESS_PREFIX = 'aniwaves_progress_';
 
 function defaultConfig() {
     return {
@@ -23,102 +11,220 @@ function defaultConfig() {
         autoSkip: false,
         skipSeconds: 10,
         isLight: false,
+        rememberProgress: true,
     };
+}
+
+function loadConfig() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+
+        if (raw) {
+            return {
+                ...defaultConfig(),
+                ...JSON.parse(raw),
+            };
+        }
+    } catch (_) {}
+
+    return defaultConfig();
+}
+
+function saveConfig(config) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    } catch (_) {}
+}
+
+function csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
+async function parseJsonResponse(response) {
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        throw new Error(data?.message || 'Request failed.');
+    }
+
+    return data;
 }
 
 export function player() {
     return {
         config: loadConfig(),
+
         player: null,
+        hls: null,
+
         servers: [],
         languages: [],
         currentLanguage: null,
         currentServers: [],
         currentIndex: 0,
+
         isEmbed: false,
         embedUrl: null,
+
         isFavorited: false,
         favoriteCategory: null,
-        isYoutube: false,
+
         playing: false,
+
         listOpen: false,
         reportOpen: false,
         reportType: 'broken',
         reportDesc: '',
         submitting: false,
+
         showSkipIntro: false,
         showSkipOutro: false,
         skipTimes: null,
 
         _keyboardHandler: null,
+        _progressTimer: null,
         _loadId: 0,
 
+        /*
+        |--------------------------------------------------------------------------
+        | INIT
+        |--------------------------------------------------------------------------
+        */
         init() {
-            this.servers = window.PLAYER_SERVERS || [];
-            this.languages = window.PLAYER_LANGUAGES || [];
-            this.currentLanguage = this.languages[0] || null;
-            this.currentServers = this.servers.filter(s => s.language === this.currentLanguage);
-            this.currentIndex = 0;
-            this.isYoutube = window.PLAYER_IS_YOUTUBE || false;
-            this.isFavorited = window.PLAYER_IS_FAVORITED || false;
+            this.servers = Array.isArray(window.PLAYER_SERVERS)
+                ? window.PLAYER_SERVERS
+                : [];
+
+            this.languages = Array.isArray(window.PLAYER_LANGUAGES)
+                ? window.PLAYER_LANGUAGES
+                : [];
+
+            this.isFavorited = Boolean(window.PLAYER_IS_FAVORITED);
             this.favoriteCategory = window.PLAYER_FAV_CATEGORY || null;
             this.skipTimes = window.PLAYER_SKIP_TIMES || null;
 
-            const initServer = this.currentServers[0] || this.servers[0] || null;
-            if (initServer && initServer.type === 'embed') {
+            const initialServer =
+                window.PLAYER_INITIAL_SERVER ||
+                this.servers[0] ||
+                null;
+
+            this.currentLanguage =
+                initialServer?.language ||
+                this.languages[0] ||
+                this.servers[0]?.language ||
+                null;
+
+            this.currentServers = this.currentLanguage
+                ? this.servers.filter((server) => server.language === this.currentLanguage)
+                : this.servers;
+
+            this.currentIndex = Math.max(
+                0,
+                this.currentServers.findIndex((server) => {
+                    return initialServer && server.server_id === initialServer.server_id;
+                })
+            );
+
+            const selectedServer =
+                this.currentServers[this.currentIndex] ||
+                initialServer ||
+                null;
+
+            if (selectedServer && this.isEmbedType(selectedServer.type)) {
                 this.isEmbed = true;
-                this.embedUrl = initServer.url;
+                this.embedUrl = this.embedUrlFor(selectedServer);
             }
 
             this.$nextTick(() => {
-                this.initPlyr();
+                if (!this.isEmbed) {
+                    this.initPlyr();
+
+                    if (selectedServer) {
+                        this.loadServer(this.currentIndex);
+                    }
+                }
+
                 this.setupKeyboard();
                 this.applyTheme();
             });
         },
 
+        /*
+        |--------------------------------------------------------------------------
+        | DESTROY
+        |--------------------------------------------------------------------------
+        */
         destroy() {
             this._loadId++;
-            if (this._keyboardHandler) {
-                document.removeEventListener('keydown', this._keyboardHandler);
-                this._keyboardHandler = null;
-            }
-            if (this.player) {
-                this.player.destroy();
-                this.player = null;
-            }
+
+            this.destroyProgressTimer();
+            this.destroyKeyboard();
+            this.destroyHls();
+            this.destroyPlyr();
         },
 
+        /*
+        |--------------------------------------------------------------------------
+        | PLYR
+        |--------------------------------------------------------------------------
+        */
         initPlyr() {
             if (this.isEmbed) return;
+
             const video = this.$el.querySelector('video');
+
             if (!video) return;
 
+            if (this.player) {
+                this.destroyPlyr();
+            }
+
             this.player = new Plyr(video, {
-                controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'volume', 'fullscreen'],
-                keyboard: { focused: true, global: false },
-                tooltips: { controls: false, seek: true },
+                controls: [
+                    'play-large',
+                    'play',
+                    'progress',
+                    'current-time',
+                    'duration',
+                    'mute',
+                    'volume',
+                    'settings',
+                    'fullscreen',
+                ],
+                settings: ['speed'],
+                keyboard: {
+                    focused: true,
+                    global: false,
+                },
+                tooltips: {
+                    controls: false,
+                    seek: true,
+                },
                 seekTime: this.config.skipSeconds,
-                muted: false,
-                autoplay: this.config.autoPlay,
+                autoplay: false,
             });
 
             this.player.on('ready', () => {
+                this.restoreProgress();
+
                 if (this.config.autoPlay) {
-                    this.player.play();
+                    this.player.play().catch(() => {});
                 }
             });
 
             this.player.on('play', () => {
                 this.playing = true;
+                this.startProgressTimer();
             });
 
             this.player.on('pause', () => {
                 this.playing = false;
+                this.saveProgress();
             });
 
             this.player.on('ended', () => {
                 this.playing = false;
+                this.clearProgress();
                 this.handleEnded();
             });
 
@@ -127,46 +233,209 @@ export function player() {
             });
         },
 
+        destroyPlyr() {
+            if (this.player) {
+                this.player.destroy();
+                this.player = null;
+            }
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | SERVER SWITCHING
+        |--------------------------------------------------------------------------
+        */
+        switchLanguage(language) {
+            this.currentLanguage = language;
+            this.currentServers = this.servers.filter((server) => server.language === language);
+            this.currentIndex = 0;
+
+            if (this.currentServers.length > 0) {
+                this.loadServer(0);
+            }
+        },
+
+        switchServer(index) {
+            this.currentIndex = index;
+            this.loadServer(index);
+        },
+
+        loadServer(index) {
+            this._loadId++;
+
+            const loadId = this._loadId;
+            const server = this.currentServers[index];
+
+            if (!server || !server.url) return;
+
+            this.saveProgress();
+
+            if (this.isEmbedType(server.type)) {
+                this.destroyHls();
+                this.destroyPlyr();
+
+                this.isEmbed = true;
+                this.embedUrl = this.embedUrlFor(server);
+
+                return;
+            }
+
+            if (this.isEmbed) {
+                this.isEmbed = false;
+                this.embedUrl = null;
+
+                this.$nextTick(() => {
+                    if (loadId !== this._loadId) return;
+
+                    this.initPlyr();
+                    this.loadHtml5Source(server);
+                });
+
+                return;
+            }
+
+            this.loadHtml5Source(server);
+        },
+
+        loadHtml5Source(server) {
+            const video = this.$el.querySelector('video');
+
+            if (!video) return;
+
+            this.destroyHls();
+
+            if (!this.player) {
+                this.initPlyr();
+            }
+
+            if (server.type === 'm3u8') {
+                this.loadHlsSource(video, server.url);
+                return;
+            }
+
+            const mimeType = this.getMimeType(server.type);
+
+            if (this.player) {
+                this.player.source = {
+                    type: 'video',
+                    sources: [
+                        {
+                            src: server.url,
+                            type: mimeType,
+                        },
+                    ],
+                };
+            }
+
+            if (this.config.autoPlay && this.player) {
+                this.player.play().catch(() => {});
+            }
+        },
+
+        loadHlsSource(video, url) {
+            if (Hls.isSupported()) {
+                this.hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                });
+
+                this.hls.loadSource(url);
+                this.hls.attachMedia(video);
+
+                this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    if (this.config.autoPlay && this.player) {
+                        this.player.play().catch(() => {});
+                    }
+                });
+
+                this.hls.on(Hls.Events.ERROR, (_, data) => {
+                    if (data?.fatal) {
+                        console.error('HLS fatal error:', data);
+                    }
+                });
+
+                return;
+            }
+
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+
+                video.addEventListener(
+                    'loadedmetadata',
+                    () => {
+                        if (this.config.autoPlay && this.player) {
+                            this.player.play().catch(() => {});
+                        }
+                    },
+                    { once: true }
+                );
+            }
+        },
+
+        destroyHls() {
+            if (this.hls) {
+                this.hls.destroy();
+                this.hls = null;
+            }
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | EMBED / YOUTUBE
+        |--------------------------------------------------------------------------
+        */
+        isEmbedType(type) {
+            return ['embed', 'youtube'].includes(type);
+        },
+
+        embedUrlFor(server) {
+            if (server.type === 'youtube') {
+                const id = this.extractYoutubeId(server.url);
+
+                return id
+                    ? `https://www.youtube.com/embed/${id}?autoplay=${this.config.autoPlay ? 1 : 0}&rel=0`
+                    : server.url;
+            }
+
+            return server.url;
+        },
+
         extractYoutubeId(url) {
             const patterns = [
-                /youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
-                /youtu\.be\/([a-zA-Z0-9_-]+)/,
-                /youtube\.com\/embed\/([a-zA-Z0-9_-]+)/,
+                /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+                /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+                /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+                /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
             ];
-            for (const p of patterns) {
-                const m = url.match(p);
-                if (m) return m[1];
+
+            for (const pattern of patterns) {
+                const match = String(url).match(pattern);
+
+                if (match) {
+                    return match[1];
+                }
             }
+
             return null;
         },
 
-        checkSkip() {
-            if (!this.config.autoSkip || !this.skipTimes || !this.player) return;
-            const t = this.player.currentTime;
-            const st = this.skipTimes;
-
-            if (st.intro_start && st.intro_end && t >= st.intro_start && t < st.intro_end) {
-                this.player.currentTime = st.intro_end;
-            }
-            if (st.outro_start && st.outro_end && t >= st.outro_start && t < st.outro_end) {
-                this.player.currentTime = st.outro_end;
-            }
-
-            this.showSkipIntro = !!(st.intro_start && st.intro_end && t >= st.intro_start - 3 && t < st.intro_end);
-            this.showSkipOutro = !!(st.outro_start && st.outro_end && t >= st.outro_start - 3 && t < st.outro_end);
-        },
-
-        skipIntro() {
-            if (this.skipTimes?.intro_end) {
-                this.player.currentTime = this.skipTimes.intro_end;
-                this.showSkipIntro = false;
+        /*
+        |--------------------------------------------------------------------------
+        | PLAYER ACTIONS
+        |--------------------------------------------------------------------------
+        */
+        togglePlay() {
+            if (this.player) {
+                this.player.togglePlay();
             }
         },
 
-        skipOutro() {
-            if (this.skipTimes?.outro_end) {
-                this.player.currentTime = this.skipTimes.outro_end;
-                this.showSkipOutro = false;
+        skip(seconds) {
+            if (this.player) {
+                this.player.currentTime = Math.max(
+                    0,
+                    this.player.currentTime + seconds
+                );
             }
         },
 
@@ -176,18 +445,71 @@ export function player() {
             }
         },
 
-        togglePlay() {
-            if (this.player) {
-                this.player.togglePlay();
+        /*
+        |--------------------------------------------------------------------------
+        | SKIP INTRO / OUTRO
+        |--------------------------------------------------------------------------
+        */
+        checkSkip() {
+            if (!this.skipTimes || !this.player) return;
+
+            const time = this.player.currentTime;
+            const skip = this.skipTimes;
+
+            this.showSkipIntro = Boolean(
+                skip.intro_start &&
+                skip.intro_end &&
+                time >= skip.intro_start - 3 &&
+                time < skip.intro_end
+            );
+
+            this.showSkipOutro = Boolean(
+                skip.outro_start &&
+                skip.outro_end &&
+                time >= skip.outro_start - 3 &&
+                time < skip.outro_end
+            );
+
+            if (!this.config.autoSkip) return;
+
+            if (
+                skip.intro_start &&
+                skip.intro_end &&
+                time >= skip.intro_start &&
+                time < skip.intro_end
+            ) {
+                this.player.currentTime = skip.intro_end;
+            }
+
+            if (
+                skip.outro_start &&
+                skip.outro_end &&
+                time >= skip.outro_start &&
+                time < skip.outro_end
+            ) {
+                this.player.currentTime = skip.outro_end;
             }
         },
 
-        skip(seconds) {
-            if (this.player) {
-                this.player.currentTime += seconds;
+        skipIntro() {
+            if (this.player && this.skipTimes?.intro_end) {
+                this.player.currentTime = this.skipTimes.intro_end;
+                this.showSkipIntro = false;
             }
         },
 
+        skipOutro() {
+            if (this.player && this.skipTimes?.outro_end) {
+                this.player.currentTime = this.skipTimes.outro_end;
+                this.showSkipOutro = false;
+            }
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | CONFIG
+        |--------------------------------------------------------------------------
+        */
         toggleAutoPlay() {
             this.config.autoPlay = !this.config.autoPlay;
             saveConfig(this.config);
@@ -211,30 +533,56 @@ export function player() {
 
         applyTheme() {
             const wrapper = this.$el.querySelector('.plyr-wrapper');
+
             if (wrapper) {
                 wrapper.classList.toggle('light', this.config.isLight);
             }
         },
 
+        /*
+        |--------------------------------------------------------------------------
+        | KEYBOARD
+        |--------------------------------------------------------------------------
+        */
         setupKeyboard() {
-            this._keyboardHandler = (e) => {
-                if (!this.player) return;
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            this.destroyKeyboard();
 
-                switch (e.key.toLowerCase()) {
+            this._keyboardHandler = (event) => {
+                if (
+                    ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)
+                ) {
+                    return;
+                }
+
+                switch (event.key.toLowerCase()) {
+                    case ' ':
+                        event.preventDefault();
+                        this.togglePlay();
+                        break;
+
+                    case 'arrowleft':
                     case 'j':
-                        e.preventDefault();
+                        event.preventDefault();
                         this.skip(-this.config.skipSeconds);
                         break;
+
+                    case 'arrowright':
                     case 'l':
-                        e.preventDefault();
+                        event.preventDefault();
                         this.skip(this.config.skipSeconds);
                         break;
+
+                    case 'f':
+                        event.preventDefault();
+                        this.player?.fullscreen?.toggle();
+                        break;
+
                     case 'n':
                         if (window.PLAYER_NEXT_URL) {
                             window.location.href = window.PLAYER_NEXT_URL;
                         }
                         break;
+
                     case 'b':
                         if (window.PLAYER_PREV_URL) {
                             window.location.href = window.PLAYER_PREV_URL;
@@ -242,106 +590,88 @@ export function player() {
                         break;
                 }
             };
+
             document.addEventListener('keydown', this._keyboardHandler);
         },
 
-        switchLanguage(lang) {
-            this.currentLanguage = lang;
-            this.currentServers = this.servers.filter(s => s.language === lang);
-            this.currentIndex = 0;
-            if (this.currentServers.length > 0) {
-                this.loadServer(0);
-            }
-        },
-
-        switchServer(index) {
-            this.currentIndex = index;
-            this.loadServer(index);
-        },
-
-        loadServer(index) {
-            this._loadId++;
-            const loadId = this._loadId;
-            const server = this.currentServers[index];
-            if (!server) return;
-
-            if (server.type === 'youtube') {
-                if (this.isEmbed) {
-                    this.destroyPlyr();
-                    this.isEmbed = false;
-                    this.embedUrl = null;
-                    this.$nextTick(() => {
-                        if (loadId !== this._loadId) return;
-                        this.initPlyr();
-                        this.loadYoutubeSource(server);
-                    });
-                    return;
-                }
-                this.loadYoutubeSource(server);
-                return;
-            }
-
-            if (server.type === 'embed') {
-                this.destroyPlyr();
-                this.isEmbed = true;
-                this.embedUrl = server.url;
-                return;
-            }
-
-            if (this.isEmbed) {
-                this.isEmbed = false;
-                this.embedUrl = null;
-                this.$nextTick(() => {
-                    if (loadId !== this._loadId) return;
-                    this.initPlyr();
-                    this.loadSource(server);
-                });
-                return;
-            }
-
-            this.loadSource(server);
-        },
-
-        loadSource(server) {
-            if (!this.player) return;
-            const mimeType = this.getMimeType(server.type);
-            this.player.source = {
-                type: 'video',
-                sources: [{ src: server.url, type: mimeType }],
-            };
-        },
-
-        loadYoutubeSource(server) {
-            const ytId = this.extractYoutubeId(server.url);
-            if (ytId && this.player) {
-                this.player.source = {
-                    type: 'video',
-                    sources: [{ src: ytId, provider: 'youtube' }],
-                };
-            }
-        },
-
-        getMimeType(type) {
-            const map = {
-                'mp4': 'video/mp4',
-                'webm': 'video/webm',
-                'm3u8': 'application/x-mpegURL',
-            };
-            return map[type] || '';
-        },
-
-        destroyPlyr() {
+        destroyKeyboard() {
             if (this._keyboardHandler) {
                 document.removeEventListener('keydown', this._keyboardHandler);
                 this._keyboardHandler = null;
             }
-            if (this.player) {
-                this.player.destroy();
-                this.player = null;
-            }
-            this.setupKeyboard();
         },
 
+        /*
+        |--------------------------------------------------------------------------
+        | PROGRESS
+        |--------------------------------------------------------------------------
+        */
+        progressKey() {
+            const episodeId = window.PLAYER_EPISODE_ID || 'unknown';
+
+            return `${PROGRESS_PREFIX}${episodeId}`;
+        },
+
+        startProgressTimer() {
+            this.destroyProgressTimer();
+
+            this._progressTimer = setInterval(() => {
+                this.saveProgress();
+            }, 5000);
+        },
+
+        destroyProgressTimer() {
+            if (this._progressTimer) {
+                clearInterval(this._progressTimer);
+                this._progressTimer = null;
+            }
+        },
+
+        saveProgress() {
+            if (!this.config.rememberProgress || !this.player) return;
+
+            try {
+                localStorage.setItem(
+                    this.progressKey(),
+                    JSON.stringify({
+                        time: this.player.currentTime,
+                        duration: this.player.duration || 0,
+                    })
+                );
+            } catch (_) {}
+        },
+
+        restoreProgress() {
+            if (!this.config.rememberProgress || !this.player) return;
+
+            try {
+                const raw = localStorage.getItem(this.progressKey());
+
+                if (!raw) return;
+
+                const data = JSON.parse(raw);
+
+                if (
+                    data?.time &&
+                    data?.duration &&
+                    data.time < data.duration - 20
+                ) {
+                    this.player.currentTime = data.time;
+                }
+            } catch (_) {}
+        },
+
+        clearProgress() {
+            try {
+                localStorage.removeItem(this.progressKey());
+            } catch (_) {}
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | FAVORITES
+        |--------------------------------------------------------------------------
+        */
         async updateList(category) {
             if (!window.PLAYER_IS_AUTH) {
                 window.location.href = window.PLAYER_LOGIN_URL;
@@ -349,37 +679,52 @@ export function player() {
             }
 
             try {
-                const res = await fetch('/favorites/list', {
+                const response = await fetch('/favorites/list', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                        'X-CSRF-TOKEN': csrfToken(),
+                        'Accept': 'application/json',
                     },
                     body: JSON.stringify({
                         anime_id: window.PLAYER_ANIME_ID,
-                        category: category,
+                        category,
                     }),
                 });
-                const data = await res.json();
+
+                const data = await parseJsonResponse(response);
+
                 if (data.status === 'ok') {
-                    this.isFavorited = !!category;
+                    this.isFavorited = Boolean(category);
                     this.favoriteCategory = category || null;
                 }
-            } catch (e) {
-                console.error('Failed to update list:', e);
+            } catch (error) {
+                console.error('Failed to update list:', error);
             }
+
             this.listOpen = false;
         },
 
+        /*
+        |--------------------------------------------------------------------------
+        | REPORT
+        |--------------------------------------------------------------------------
+        */
         async submitReport() {
+            if (!window.PLAYER_IS_AUTH) {
+                window.location.href = window.PLAYER_LOGIN_URL;
+                return;
+            }
+
             this.submitting = true;
 
             try {
-                const res = await fetch('/reports/submit', {
+                const response = await fetch('/reports', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                        'X-CSRF-TOKEN': csrfToken(),
+                        'Accept': 'application/json',
                     },
                     body: JSON.stringify({
                         episode_id: window.PLAYER_EPISODE_ID,
@@ -387,18 +732,26 @@ export function player() {
                         description: this.reportDesc,
                     }),
                 });
-                const data = await res.json();
+
+                const data = await parseJsonResponse(response);
+
                 if (data.status === 'ok') {
                     this.reportOpen = false;
                     this.reportDesc = '';
                     this.reportType = 'broken';
                 }
-            } catch (e) {
-                console.error('Failed to submit report:', e);
+            } catch (error) {
+                console.error('Failed to submit report:', error);
             }
+
             this.submitting = false;
         },
 
+        /*
+        |--------------------------------------------------------------------------
+        | UI TOGGLES
+        |--------------------------------------------------------------------------
+        */
         toggleList() {
             this.listOpen = !this.listOpen;
             this.reportOpen = false;
@@ -409,6 +762,26 @@ export function player() {
             this.listOpen = false;
         },
 
+        /*
+        |--------------------------------------------------------------------------
+        | HELPERS
+        |--------------------------------------------------------------------------
+        */
+        getMimeType(type) {
+            const map = {
+                mp4: 'video/mp4',
+                webm: 'video/webm',
+                m3u8: 'application/x-mpegURL',
+            };
+
+            return map[type] || 'video/mp4';
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | STATIC DATA
+        |--------------------------------------------------------------------------
+        */
         categories: [
             { value: 'watching', label: 'Watching' },
             { value: 'completed', label: 'Completed' },
