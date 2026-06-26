@@ -50,13 +50,18 @@ if (!empty($user['role_id'])) {
     }
 }
 
+// Fallback: if user.role is 'admin' but no role_id, give level 2 access
+if ($GLOBALS['_role_level'] < 1 && ($user['role'] ?? '') === 'admin') {
+    $GLOBALS['_role_level'] = 2;
+}
+
 $required_level = 1;
 $user_level = $GLOBALS['_role_level'];
 if ($user_level < $required_level) {
     http_response_code(403);
     require_once __DIR__ . '/layout.php';
-    echo '<div class="admin-error"><i class="fas fa-shield-alt"></i><h2>Access Denied</h2><p>You do not have permission to access the admin panel.</p><a href="' . BASE_URL . '" class="btn btn-primary">Back to Site</a></div>';
-    require_once __DIR__ . '/../includes/footer.php';
+    echo '<div class="admin-error" style="text-align:center;padding:60px 20px;"><i class="fas fa-shield-alt" style="font-size:3rem;color:var(--danger);margin-bottom:16px;"></i><h2>Access Denied</h2><p>You do not have permission to access the admin panel.</p><a href="' . BASE_URL . '" class="btn btn-primary">Back to Site</a></div>';
+    require_once __DIR__ . '/footer.php';
     exit;
 }
 

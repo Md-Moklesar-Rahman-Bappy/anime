@@ -50,6 +50,66 @@ if ($action === 'set_webhook') {
     }
     redirect(BASE_URL . '/admin/telegram.php');
 
+} elseif ($action === 'run_poll') {
+    $poll_script = __DIR__ . '/../telegram/poll.php';
+    $output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg($poll_script) . ' 2>&1', $output, $exit_code);
+    $output_text = implode("\n", $output);
+    log_activity('Manual poll run', 'telegram', 0, ['output' => $output_text, 'exit_code' => $exit_code]);
+    $_SESSION['admin_success'] = 'Poll executed. Output: ' . htmlspecialchars($output_text);
+    redirect(BASE_URL . '/admin/telegram.php');
+
+} elseif ($action === 'sync_channel') {
+    $updates = $bot->getUpdates(0, 50, ['channel_post']);
+    $found = 0;
+    $max_offset = 0;
+    foreach ($updates['result'] ?? [] as $update) {
+        $uid = $update['update_id'];
+        if ($uid > $max_offset) $max_offset = $uid;
+        $channel_post = $update['channel_post'] ?? [];
+        if (!$channel_post) continue;
+        $channel_chat_id = $channel_post['chat']['id'] ?? '';
+        $channel_username = $channel_post['chat']['username'] ?? '';
+
+        $video_data = $channel_post['video'] ?? $channel_post['document'] ?? null;
+        $file_id = $video_data['file_id'] ?? null;
+        if (!$video_data || !$file_id) continue;
+
+        $file_name = $video_data['file_name'] ?? ($file_id . '.mp4');
+        try {
+            $existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
+            if (!$existing) {
+                DB::insert(
+                    "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    [
+                        $file_id,
+                        $video_data['file_unique_id'] ?? '',
+                        $video_data['file_size'] ?? 0,
+                        $file_name,
+                        $video_data['duration'] ?? null,
+                        $video_data['mime_type'] ?? '',
+                        $video_data['width'] ?? null,
+                        $video_data['height'] ?? null,
+                        $video_data['thumbnail']['file_id'] ?? '',
+                        $channel_post['caption'] ?? '',
+                        $channel_chat_id,
+                        'channel',
+                        $channel_username ? "@$channel_username" : 'channel',
+                    ]
+                );
+                $found++;
+            }
+        } catch (Exception $e) {}
+    }
+    if ($max_offset > 0) {
+        $bot->getUpdates($max_offset + 1, 1);
+    }
+    log_activity('Sync channel', 'telegram', 0, ['found' => $found]);
+    $_SESSION['admin_success'] = "Channel sync complete. Found {$found} new video(s).";
+    redirect(BASE_URL . '/admin/telegram.php');
+
 } elseif ($action === 'test') {
     $test_chat = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at DESC LIMIT 1");
     if ($test_chat) {
@@ -101,7 +161,9 @@ $sub_count = DB::fetch("SELECT COUNT(*) as cnt FROM telegram_subscribers WHERE a
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <a href="telegram.php?action=set_webhook" class="btn btn-primary"><i class="fas fa-plug"></i> Set Webhook</a>
             <a href="telegram.php?action=delete_webhook" class="btn btn-danger"><i class="fas fa-unlink"></i> Remove Webhook</a>
-            <a href="telegram.php?action=test" class="btn btn-info"><i class="fas fa-paper-plane"></i> Send Test</a>
+            <a href="telegram.php?action=run_poll" class="btn btn-success" onclick="return confirm('Run poll now?')"><i class="fas fa-sync"></i> Run Poll Now</a>
+            <a href="telegram.php?action=sync_channel" class="btn btn-info"><i class="fas fa-cloud-download-alt"></i> Sync Channel Posts</a>
+            <a href="telegram.php?action=test" class="btn btn-secondary"><i class="fas fa-paper-plane"></i> Send Test</a>
         </div>
         <p style="color:var(--text-muted);font-size:0.85rem;margin-top:12px;">
             Webhook URL: <code><?= BASE_URL ?>/telegram/webhook.php</code>

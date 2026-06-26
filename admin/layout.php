@@ -15,6 +15,7 @@ $role_level = $GLOBALS['_role_level'] ?? 0;
     <link rel="stylesheet" href="<?= BASE_URL ?>/admin/css/admin.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>const BASE_URL = '<?= BASE_URL ?>';</script>
 </head>
 <body>
 <div class="admin-wrapper">
@@ -55,6 +56,9 @@ $role_level = $GLOBALS['_role_level'] ?? 0;
             </a>
             <a href="<?= BASE_URL ?>/admin/telegram.php" class="nav-item <?= $current_page === 'telegram.php' ? 'active' : '' ?>">
                 <i class="fab fa-telegram"></i><span>Telegram Bot</span>
+            </a>
+            <a href="<?= BASE_URL ?>/admin/telegram-videos.php" class="nav-item <?= $current_page === 'telegram-videos.php' ? 'active' : '' ?>">
+                <i class="fas fa-video"></i><span>Telegram Videos</span>
             </a>
             <div class="nav-section-label">System</div>
             <?php if (user_can('users.view')): ?>

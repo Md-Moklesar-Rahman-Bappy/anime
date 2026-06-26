@@ -36,7 +36,7 @@ class TelegramBot {
     public function setWebhook(string $url): bool {
         $result = $this->call('setWebhook', [
             'url' => $url,
-            'allowed_updates' => ['message', 'callback_query']
+            'allowed_updates' => ['message', 'callback_query', 'channel_post']
         ]);
         return $result !== null;
     }
@@ -89,8 +89,54 @@ class TelegramBot {
         return 'https://api.telegram.org/file/bot' . $this->token . '/' . $file_path;
     }
 
-    public function getUpdates(int $offset = 0, int $limit = 100): ?array {
-        return $this->call('getUpdates', ['offset' => $offset, 'limit' => $limit]);
+    public function getChat(string $chat_id): ?array {
+        return $this->call('getChat', ['chat_id' => $chat_id]);
+    }
+
+    public function getChatMember(string $chat_id, string $user_id): ?array {
+        return $this->call('getChatMember', ['chat_id' => $chat_id, 'user_id' => $user_id]);
+    }
+
+    public function getChatAdministrators(string $chat_id): ?array {
+        return $this->call('getChatAdministrators', ['chat_id' => $chat_id]);
+    }
+
+    public function copyMessage(int|string $from_chat_id, int $message_id, int|string $chat_id, array $extra = []): ?array {
+        $params = array_merge([
+            'from_chat_id' => $from_chat_id,
+            'message_id' => $message_id,
+            'chat_id' => $chat_id,
+        ], $extra);
+        return $this->call('copyMessage', $params);
+    }
+
+    public function forwardMessage(int|string $from_chat_id, int $message_id, int|string $chat_id): ?array {
+        return $this->call('forwardMessage', [
+            'from_chat_id' => $from_chat_id,
+            'message_id' => $message_id,
+            'chat_id' => $chat_id,
+        ]);
+    }
+
+    public function getVideoInfo(string $file_id): ?array {
+        $file = $this->getFile($file_id);
+        if (!$file || !isset($file['result']['file_path'])) return null;
+        $fp = $file['result']['file_path'];
+        return [
+            'file_id' => $file_id,
+            'file_unique_id' => $file['result']['file_unique_id'] ?? '',
+            'file_path' => $fp,
+            'file_size' => $file['result']['file_size'] ?? 0,
+            'stream_url' => $this->getFileUrl($fp),
+        ];
+    }
+
+    public function getUpdates(int $offset = 0, int $limit = 100, array $allowed_updates = []): ?array {
+        $params = ['offset' => $offset, 'limit' => $limit];
+        if (!empty($allowed_updates)) {
+            $params['allowed_updates'] = $allowed_updates;
+        }
+        return $this->call('getUpdates', $params);
     }
 
     public function parseWebhookInput(): ?array {
@@ -107,12 +153,13 @@ class TelegramBot {
         return $data['message']['chat']['id']
             ?? $data['callback_query']['message']['chat']['id']
             ?? $data['my_chat_member']['chat']['id']
+            ?? $data['channel_post']['chat']['id']
             ?? null;
     }
 
     public function getText(): ?string {
         $data = $this->parseWebhookInput();
-        return $data['message']['text'] ?? null;
+        return $data['message']['text'] ?? $data['channel_post']['text'] ?? $data['channel_post']['caption'] ?? null;
     }
 
     public function notifySubscribers(string $message, string $photo_url = ''): int {

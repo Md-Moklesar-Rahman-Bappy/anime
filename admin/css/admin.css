@@ -508,6 +508,33 @@ select.form-control { cursor: pointer; }
 .modal-title { font-size: 1rem; font-weight: 600; }
 .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
 
+/* Legacy modal classes (for telegram-videos.php) */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+.modal.show { display: flex; }
+.modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.modal-content .modal-close {
+    float: right;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
 /* Import preview */
 .preview-grid {
     display: grid;

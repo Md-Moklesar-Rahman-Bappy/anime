@@ -13,7 +13,12 @@ function redirect($path): void {
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
-    header('Location: ' . url($path));
+    // Avoid doubling BASE_URL if it's already part of the path
+    if (str_starts_with($path, BASE_URL)) {
+        header('Location: ' . $path);
+    } else {
+        header('Location: ' . url($path));
+    }
     exit;
 }
 

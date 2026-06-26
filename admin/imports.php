@@ -6,6 +6,25 @@ require_once __DIR__ . '/layout.php';
 
 $source = $_GET['source'] ?? 'jikan';
 
+// Ensure import_logs table exists
+try {
+    DB::query("CREATE TABLE IF NOT EXISTS `import_logs` (
+        `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        `source` VARCHAR(50) DEFAULT NULL,
+        `action` VARCHAR(50) DEFAULT NULL,
+        `mal_id` INT UNSIGNED DEFAULT NULL,
+        `anime_id` INT UNSIGNED DEFAULT NULL,
+        `payload` TEXT DEFAULT NULL,
+        `status` VARCHAR(50) DEFAULT 'pending',
+        `message` TEXT DEFAULT NULL,
+        `created_by` INT UNSIGNED DEFAULT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        KEY `import_logs_source_index` (`source`),
+        KEY `import_logs_status_index` (`status`),
+        KEY `import_logs_created_at_index` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+} catch (Exception $e) {}
+
 $import_log = DB::fetchAll("SELECT il.*, u.username FROM import_logs il LEFT JOIN users u ON u.id=il.created_by ORDER BY il.created_at DESC LIMIT 20");
 
 // Helper: safe Jikan API call with rate-limit retry
@@ -188,53 +207,21 @@ if ($action === 'preview' && !empty($_GET['mal_id'])) {
         echo '<div class="alert alert-danger">' . htmlspecialchars($details['error']) . '</div>';
     } elseif ($details) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_confirm'])) {
-            $slug = slugify($details['title']);
-            $existing = DB::fetch("SELECT id FROM anime WHERE slug = ? OR mal_id = ?", [$slug, $details['mal_id']]);
-            if ($existing) {
-                echo '<div class="alert alert-warning">This anime already exists. <a href="anime.php?action=edit&id=' . $existing['id'] . '">Edit it</a>.</div>';
-            } else {
-                $anime_id = DB::insert(
-                    "INSERT INTO anime (mal_id, title, title_japanese, slug, description, type, status, year, rating, age_rating, score, episodes_count, duration, source, studio, producers, licensors, thumbnail, banner) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    [
-                        $details['mal_id'], $details['title'], $details['title_japanese'],
-                        $slug, $details['description'], $details['type'], $details['status'],
-                        $details['year'], $details['rating'] ?: null, $details['age_rating'],
-                        $details['score'], (int)$details['episodes'], (int)$details['duration'],
-                        $details['source'], $details['studio'], $details['producers'],
-                        $details['licensors'], $details['image'], $details['banner']
-                    ]
-                );
-                // Import genres
-                $genre_ids = [];
-                foreach ($details['genres'] as $gname) {
-                    $gslug = slugify($gname);
-                    $genre = DB::fetch("SELECT id FROM genres WHERE slug = ?", [$gslug]);
-                    if (!$genre) {
-                        $gid = DB::insert("INSERT INTO genres (name, slug) VALUES (?,?)", [$gname, $gslug]);
-                    } else {
-                        $gid = $genre['id'];
-                    }
-                    $genre_ids[] = $gid;
-                }
-                foreach ($genre_ids as $gid) {
-                    DB::execute("INSERT IGNORE INTO anime_genre (anime_id, genre_id) VALUES (?,?)", [$anime_id, $gid]);
-                }
+            $result = import_or_update_anime($details, $source, true);
+            $anime_id = $result['anime_id'];
 
-                // Auto-import episodes
-                $ep_count = 0;
-                if ($source === 'jikan' && !empty($details['mal_id'])) {
-                    $ep_count = import_episodes_from_jikan($details['mal_id'], $anime_id, $source);
-                }
-
-                DB::insert("INSERT INTO import_logs (source, action, mal_id, anime_id, payload, status, created_by) VALUES (?,?,?,?,?,?,?)",
-                    [$source, 'import', $details['mal_id'], $anime_id, json_encode($details), 'approved', $GLOBALS['_user']['id'] ?? null]
-                );
-                log_activity('Imported anime from ' . $source, 'anime', $anime_id, ['title' => $details['title'], 'mal_id' => $details['mal_id']]);
+            if ($result['action'] === 'created') {
                 $msg = 'Anime "' . htmlspecialchars($details['title']) . '" imported successfully.';
-                if ($ep_count > 0) $msg .= " {$ep_count} episodes also imported.";
+                log_activity('Imported anime from ' . $source, 'anime', $anime_id, ['title' => $details['title'], 'mal_id' => $details['mal_id']]);
                 $_SESSION['admin_success'] = $msg;
-                redirect(BASE_URL . '/admin/anime.php?action=edit&id=' . $anime_id);
+            } elseif ($result['action'] === 'updated') {
+                $changed_keys = implode(', ', array_keys($result['changes']));
+                $_SESSION['admin_success'] = 'Anime "' . htmlspecialchars($details['title']) . '" updated (' . $changed_keys . ').';
+                log_activity('Updated anime from ' . $source, 'anime', $anime_id, ['title' => $details['title'], 'changes' => $result['changes']]);
+            } else {
+                $_SESSION['admin_info'] = 'Anime "' . htmlspecialchars($details['title']) . '" is already up to date.';
             }
+            redirect(BASE_URL . '/admin/anime.php?action=edit&id=' . $anime_id);
         }
 ?>
 <div class="card" style="margin-top:16px;">
@@ -299,54 +286,29 @@ if ($action === 'batch'):
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['batch_import'])) {
             $selected = $_POST['selected'] ?? [];
             $import_eps = isset($_POST['import_episodes']);
-            $imported_count = 0;
-            $ep_total = 0;
+            $created = 0;
+            $updated = 0;
+            $up_to_date = 0;
+            $errors = 0;
             foreach ($selected as $mal_id) {
                 $mal_id = (int)$mal_id;
                 if ($mal_id <= 0) continue;
-                // Check if already exists
-                $existing = DB::fetch("SELECT id FROM anime WHERE mal_id = ?", [$mal_id]);
-                if ($existing) continue;
-                // Fetch full details
                 $detail = api_detail($source, $mal_id);
-                if (empty($detail['mal_id'])) continue;
-                $slug = slugify($detail['title']);
-                $anime_id = DB::insert(
-                    "INSERT INTO anime (mal_id, title, title_japanese, slug, description, type, status, year, rating, age_rating, score, episodes_count, duration, source, studio, producers, licensors, thumbnail, banner) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    [
-                        $detail['mal_id'], $detail['title'], $detail['title_japanese'],
-                        $slug, $detail['description'], $detail['type'], $detail['status'],
-                        $detail['year'], $detail['rating'] ?: null, $detail['age_rating'],
-                        $detail['score'], max(0, (int)$detail['episodes']), (int)$detail['duration'],
-                        $detail['source'], $detail['studio'], $detail['producers'],
-                        $detail['licensors'], $detail['image'], $detail['banner']
-                    ]
-                );
-                // Genres
-                $genre_ids = [];
-                foreach ($detail['genres'] as $gname) {
-                    $gslug = slugify($gname);
-                    $genre = DB::fetch("SELECT id FROM genres WHERE slug = ?", [$gslug]);
-                    $genre_ids[] = $genre ? $genre['id'] : DB::insert("INSERT INTO genres (name, slug) VALUES (?,?)", [$gname, $gslug]);
-                }
-                foreach ($genre_ids as $gid) {
-                    DB::execute("INSERT IGNORE INTO anime_genre (anime_id, genre_id) VALUES (?,?)", [$anime_id, $gid]);
-                }
-                // Episodes
-                if ($import_eps && $detail['mal_id']) {
-                    $eps = import_episodes_from_jikan($detail['mal_id'], $anime_id, $source);
-                    $ep_total += $eps;
-                }
-                DB::insert("INSERT INTO import_logs (source, action, mal_id, anime_id, payload, status, created_by) VALUES (?,?,?,?,?,?,?)",
-                    [$source, 'batch_import', $detail['mal_id'], $anime_id, json_encode($detail), 'approved', $GLOBALS['_user']['id'] ?? null]
-                );
-                $imported_count++;
-                usleep(400000); // 0.4s between imports to respect rate limits
+                if (empty($detail['mal_id'])) { $errors++; continue; }
+                $result = import_or_update_anime($detail, $source, $import_eps);
+                if ($result['action'] === 'created') $created++;
+                elseif ($result['action'] === 'updated') $updated++;
+                else $up_to_date++;
+                usleep(400000);
             }
-            $msg = "Imported {$imported_count} anime.";
-            if ($import_eps) $msg .= " {$ep_total} total episodes imported.";
+            $parts = [];
+            if ($created) $parts[] = "{$created} imported";
+            if ($updated) $parts[] = "{$updated} updated";
+            if ($up_to_date) $parts[] = "{$up_to_date} already up to date";
+            if ($errors) $parts[] = "{$errors} failed";
+            $msg = 'Batch complete: ' . implode(', ', $parts) . '.';
             $_SESSION['admin_success'] = $msg;
-            log_activity('Batch import', 'import', null, ['source' => $source, 'category' => $category, 'count' => $imported_count]);
+            log_activity('Batch import', 'import', null, ['source' => $source, 'category' => $category, 'created' => $created, 'updated' => $updated]);
             redirect(BASE_URL . '/admin/imports.php?action=batch&source=' . $source . '&category=' . $category . '&limit=' . $limit);
         }
     ?>
@@ -358,19 +320,34 @@ if ($action === 'batch'):
             <span style="color:var(--text-muted);font-size:12px;"><?= count($items) ?> results</span>
             <button type="submit" class="btn btn-success" style="margin-left:auto;"><i class="fas fa-download"></i> Import Selected</button>
         </div>
-        <table><thead><tr><th style="width:32px;"></th><th></th><th>Title</th><th>Type</th><th>Score</th><th>Episodes</th><th>Status</th></tr></thead><tbody>
+        <table><thead><tr><th style="width:32px;"></th><th></th><th>Title</th><th>Type</th><th>Score</th><th>Episodes</th><th>Status</th><th>Local</th></tr></thead><tbody>
             <?php foreach ($items as $item):
                 $mid = $item['mal_id'] ?? $item['id'] ?? 0;
-                $exists = DB::fetch("SELECT id FROM anime WHERE mal_id = ?", [$mid]);
+                $local = DB::fetch("SELECT id, score, episodes_count, status, updated_at FROM anime WHERE mal_id = ?", [$mid]);
+                $exists = $local !== null;
+                // Quick check if update is needed
+                $needs_update = false;
+                if ($exists) {
+                    $api_score = $item['score'] ? (float)$item['score'] : null;
+                    $local_score = $local['score'] ? (float)$local['score'] : null;
+                    if ($api_score && $local_score !== null && $api_score !== $local_score) $needs_update = true;
+                    $api_eps = $item['episodes'] ? (int)$item['episodes'] : 0;
+                    $local_eps = (int)$local['episodes_count'];
+                    if ($api_eps > $local_eps) $needs_update = true;
+                }
+                $status_label = '';
+                if ($exists && !$needs_update) $status_label = '<span style="color:var(--success);font-size:11px;"><i class="fas fa-check-circle"></i> Up to date</span>';
+                elseif ($exists) $status_label = '<span style="color:var(--warning);font-size:11px;"><i class="fas fa-sync-alt"></i> Update avail.</span>';
             ?>
             <tr>
-                <td><input type="checkbox" name="selected[]" value="<?= $mid ?>" class="batch-check" <?= $exists ? 'disabled' : '' ?>></td>
+                <td><input type="checkbox" name="selected[]" value="<?= $mid ?>" class="batch-check" <?= $exists && !$needs_update ? 'disabled' : '' ?>></td>
                 <td><?php $img = $item['images']['jpg']['image_url'] ?? $item['images']['webp']['image_url'] ?? ''; if ($img): ?><img src="<?= htmlspecialchars($img) ?>" alt="" style="width:36px;height:50px;object-fit:cover;border-radius:4px;"><?php endif; ?></td>
-                <td><strong><?= htmlspecialchars($item['title']) ?></strong><?php if ($exists): ?><br><span style="color:var(--success);font-size:11px;"><i class="fas fa-check"></i> Already imported</span><?php endif; ?></td>
+                <td><strong><?= htmlspecialchars($item['title']) ?></strong></td>
                 <td><span class="badge badge-purple"><?= htmlspecialchars($item['type'] ?? '') ?></span></td>
                 <td><?= $item['score'] ?? '-' ?></td>
                 <td><?= $item['episodes'] ?? '?' ?></td>
                 <td><span class="badge <?= ($item['status'] ?? '') === 'Currently Airing' ? 'badge-green' : 'badge-gray' ?>"><?= htmlspecialchars($item['status'] ?? '') ?></span></td>
+                <td><?= $status_label ?: '<span style="color:var(--text-muted);font-size:11px;">New</span>' ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody></table>
@@ -452,6 +429,176 @@ endif;
 <?php
 
 // ---- API FUNCTIONS ----
+
+// Helper: insert or update anime from API detail data
+// Returns ['action' => 'created'|'updated'|'up_to_date', 'anime_id' => int, 'changes' => array]
+function import_or_update_anime(array $detail, string $source, bool $import_eps = true): array {
+    $existing = DB::fetch("SELECT * FROM anime WHERE mal_id = ?", [$detail['mal_id']]);
+    $slug = slugify($detail['title']);
+
+    if ($existing) {
+        // Compare fields to detect changes
+        $compare_fields = [
+            'title' => $detail['title'],
+            'title_japanese' => $detail['title_japanese'] ?? '',
+            'description' => $detail['description'] ?? '',
+            'type' => $detail['type'] ?? '',
+            'status' => $detail['status'] ?? '',
+            'year' => $detail['year'] ?? '',
+            'rating' => $detail['rating'] ?? '',
+            'score' => $detail['score'] ? (float)$detail['score'] : null,
+            'episodes_count' => max(0, (int)($detail['episodes'] ?? 0)),
+            'duration' => (int)($detail['duration'] ?? 0),
+            'source' => $detail['source'] ?? '',
+            'studio' => $detail['studio'] ?? '',
+            'producers' => $detail['producers'] ?? '',
+            'licensors' => $detail['licensors'] ?? '',
+            'thumbnail' => $detail['image'] ?? '',
+            'banner' => $detail['banner'] ?? '',
+        ];
+        $changes = [];
+        foreach ($compare_fields as $field => $new_val) {
+            $old_val = $existing[$field] ?? '';
+            $new_str = is_scalar($new_val) ? (string)$new_val : '';
+            $old_str = is_scalar($old_val) ? (string)$old_val : '';
+            if ($new_str !== $old_str && $new_str !== '') {
+                $changes[$field] = ['old' => $old_str, 'new' => $new_str];
+            }
+        }
+
+        if (empty($changes)) {
+            // Import episodes anyway if requested
+            if ($import_eps && !empty($detail['mal_id'])) {
+                import_episodes_from_jikan($detail['mal_id'], $existing['id'], $source);
+            }
+            return ['action' => 'up_to_date', 'anime_id' => $existing['id'], 'changes' => []];
+        }
+
+        // Update only changed fields
+        $updates = [];
+        $params = [];
+        foreach ($changes as $field => $vals) {
+            $updates[] = "`$field` = ?";
+            $params[] = $vals['new'];
+        }
+        $params[] = $existing['id'];
+        DB::execute("UPDATE anime SET " . implode(', ', $updates) . " WHERE id = ?", $params);
+
+        // Sync genres
+        if (!empty($detail['genres'])) {
+            $genre_ids = [];
+            foreach ($detail['genres'] as $gname) {
+                $gslug = slugify($gname);
+                $genre = DB::fetch("SELECT id FROM genres WHERE slug = ?", [$gslug]);
+                $genre_ids[] = $genre ? $genre['id'] : DB::insert("INSERT INTO genres (name, slug) VALUES (?,?)", [$gname, $gslug]);
+            }
+            DB::execute("DELETE FROM anime_genre WHERE anime_id = ?", [$existing['id']]);
+            foreach ($genre_ids as $gid) {
+                DB::execute("INSERT IGNORE INTO anime_genre (anime_id, genre_id) VALUES (?,?)", [$existing['id'], $gid]);
+            }
+        }
+
+        if ($import_eps && !empty($detail['mal_id'])) {
+            import_episodes_from_jikan($detail['mal_id'], $existing['id'], $source);
+        }
+
+        DB::insert("INSERT INTO import_logs (source, action, mal_id, anime_id, payload, status, created_by) VALUES (?,?,?,?,?,?,?)",
+            [$source, 'update', $detail['mal_id'], $existing['id'], json_encode(['changes' => $changes]), 'approved', $GLOBALS['_user']['id'] ?? null]
+        );
+        return ['action' => 'updated', 'anime_id' => $existing['id'], 'changes' => $changes];
+    }
+
+    // New anime — ensure slug is unique
+    $slug_exists = DB::fetch("SELECT id, mal_id, title FROM anime WHERE slug = ?", [$slug]);
+    if ($slug_exists) {
+        if (empty($slug_exists['mal_id']) && !empty($detail['mal_id'])) {
+            // Existing record has no mal_id — update it with the new data instead of inserting
+            $anime_id = $slug_exists['id'];
+            $updates = [];
+            $params = [];
+            foreach (['title', 'title_japanese', 'description', 'type', 'status', 'year', 'rating', 'score', 'episodes_count', 'duration', 'source', 'studio', 'producers', 'licensors', 'thumbnail', 'banner'] as $f) {
+                $val = $f === 'title' ? $detail['title']
+                     : ($f === 'title_japanese' ? ($detail['title_japanese'] ?? '')
+                     : ($f === 'description' ? ($detail['description'] ?? '')
+                     : ($f === 'type' ? ($detail['type'] ?? '')
+                     : ($f === 'status' ? ($detail['status'] ?? '')
+                     : ($f === 'year' ? ($detail['year'] ?? '')
+                     : ($f === 'rating' ? ($detail['rating'] ?? '')
+                     : ($f === 'score' ? ($detail['score'] ? (float)$detail['score'] : null)
+                     : ($f === 'episodes_count' ? max(0, (int)($detail['episodes'] ?? 0))
+                     : ($f === 'duration' ? (int)($detail['duration'] ?? 0)
+                     : ($f === 'source' ? ($detail['source'] ?? '')
+                     : ($f === 'studio' ? ($detail['studio'] ?? '')
+                     : ($f === 'producers' ? ($detail['producers'] ?? '')
+                     : ($f === 'licensors' ? ($detail['licensors'] ?? '')
+                     : ($f === 'thumbnail' ? ($detail['image'] ?? '')
+                     : ($f === 'banner' ? ($detail['banner'] ?? '')
+                     : '')))))))))))))));
+                $updates[] = "`$f` = ?";
+                $params[] = $val;
+            }
+            $updates[] = "`mal_id` = ?";
+            $params[] = $detail['mal_id'];
+            $params[] = $anime_id;
+            DB::execute("UPDATE anime SET " . implode(', ', $updates) . " WHERE id = ?", $params);
+            // Sync genres
+            $genre_ids = [];
+            foreach ($detail['genres'] as $gname) {
+                $gslug = slugify($gname);
+                $genre = DB::fetch("SELECT id FROM genres WHERE slug = ?", [$gslug]);
+                $genre_ids[] = $genre ? $genre['id'] : DB::insert("INSERT INTO genres (name, slug) VALUES (?,?)", [$gname, $gslug]);
+            }
+            DB::execute("DELETE FROM anime_genre WHERE anime_id = ?", [$anime_id]);
+            foreach ($genre_ids as $gid) {
+                DB::execute("INSERT IGNORE INTO anime_genre (anime_id, genre_id) VALUES (?,?)", [$anime_id, $gid]);
+            }
+            // Episodes
+            if ($import_eps && !empty($detail['mal_id'])) {
+                import_episodes_from_jikan($detail['mal_id'], $anime_id, $source);
+            }
+            DB::insert("INSERT INTO import_logs (source, action, mal_id, anime_id, payload, status, created_by) VALUES (?,?,?,?,?,?,?)",
+                [$source, 'claim', $detail['mal_id'], $anime_id, json_encode($detail), 'approved', $GLOBALS['_user']['id'] ?? null]
+            );
+            return ['action' => 'updated', 'anime_id' => $anime_id, 'changes' => ['slug' => ['old' => 'orphan', 'new' => 'claimed by mal_id']]];
+        } else {
+            // Actual slug collision — append mal_id
+            $slug = $slug . '-' . $detail['mal_id'];
+        }
+    }
+
+    $anime_id = DB::insert(
+        "INSERT INTO anime (mal_id, title, title_japanese, slug, description, type, status, year, rating, age_rating, score, episodes_count, duration, source, studio, producers, licensors, thumbnail, banner) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            $detail['mal_id'], $detail['title'], $detail['title_japanese'] ?? '',
+            $slug, $detail['description'] ?? '', $detail['type'] ?? '', $detail['status'] ?? '',
+            $detail['year'] ?? '', $detail['rating'] ?: null, $detail['rating'] ?? '',
+            $detail['score'] ? (float)$detail['score'] : null, max(0, (int)($detail['episodes'] ?? 0)), (int)($detail['duration'] ?? 0),
+            $detail['source'] ?? '', $detail['studio'] ?? '', $detail['producers'] ?? '',
+            $detail['licensors'] ?? '', $detail['image'] ?? '', $detail['banner'] ?? ''
+        ]
+    );
+
+    // Genres
+    $genre_ids = [];
+    foreach ($detail['genres'] as $gname) {
+        $gslug = slugify($gname);
+        $genre = DB::fetch("SELECT id FROM genres WHERE slug = ?", [$gslug]);
+        $genre_ids[] = $genre ? $genre['id'] : DB::insert("INSERT INTO genres (name, slug) VALUES (?,?)", [$gname, $gslug]);
+    }
+    foreach ($genre_ids as $gid) {
+        DB::execute("INSERT IGNORE INTO anime_genre (anime_id, genre_id) VALUES (?,?)", [$anime_id, $gid]);
+    }
+
+    // Episodes
+    if ($import_eps && !empty($detail['mal_id'])) {
+        import_episodes_from_jikan($detail['mal_id'], $anime_id, $source);
+    }
+
+    DB::insert("INSERT INTO import_logs (source, action, mal_id, anime_id, payload, status, created_by) VALUES (?,?,?,?,?,?,?)",
+        [$source, 'import', $detail['mal_id'], $anime_id, json_encode($detail), 'approved', $GLOBALS['_user']['id'] ?? null]
+    );
+    return ['action' => 'created', 'anime_id' => $anime_id, 'changes' => []];
+}
 
 function api_search($source, $query, $page = 1) {
     if ($source === 'jikan') {

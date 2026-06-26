@@ -17,7 +17,7 @@ if (file_exists($offset_file)) {
     $offset = (int)file_get_contents($offset_file);
 }
 
-$updates = $bot->getUpdates($offset);
+$updates = $bot->getUpdates($offset, 100, ['message', 'callback_query', 'channel_post']);
 if (!$updates || empty($updates['result'])) {
     echo "No new updates.\n";
     exit;

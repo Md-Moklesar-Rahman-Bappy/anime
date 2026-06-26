@@ -130,11 +130,22 @@ if ($action === 'create' && user_can('episodes.create')) {
             </div>
 
             <div class="source-panel" data-panel="telegram">
-                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px;">Paste a direct Telegram file stream URL or CDN link.</p>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px;">Use a direct Telegram proxy URL, import from the bot library, or resolve a t.me link below.</p>
                 <div class="form-row" style="grid-template-columns:2fr 1fr auto;">
-                    <div class="form-group"><label>Telegram URL</label><input type="url" name="source_url_telegram[]" class="form-control" placeholder="https://..."></div>
+                    <div class="form-group"><label>Telegram Proxy URL</label><input type="url" name="source_url_telegram[]" class="form-control" placeholder="<?= BASE_URL ?>/telegram-proxy.php?fid=..."></div>
                     <div class="form-group"><label>Label</label><input type="text" name="source_label_telegram[]" class="form-control" value="Telegram"></div>
                     <div class="form-group"><label>Language</label><select name="source_lang_telegram[]" class="form-control"><option value="sub">Sub</option><option value="dub">Dub</option></select></div>
+                </div>
+                <div style="margin-top:8px;">
+                    <a href="telegram-videos.php" class="btn btn-sm btn-outline" target="_blank"><i class="fas fa-video"></i> Import from Telegram Videos</a>
+                </div>
+                <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-color);">
+                    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:6px;">Resolve a t.me link to auto-fill the URL:</p>
+                    <div style="display:flex;gap:6px;">
+                        <input type="url" class="telegram-link-resolve form-control" placeholder="https://t.me/channelname/123" style="flex:1;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="resolveTelegramLink(this)"><i class="fas fa-cloud-download-alt"></i> Get</button>
+                    </div>
+                    <div class="telegram-resolve-result" style="margin-top:4px;font-size:0.8rem;"></div>
                 </div>
                 <input type="hidden" name="source_quality_telegram[]" value="HD">
                 <input type="hidden" name="source_iframe_telegram[]" value="">
@@ -265,6 +276,19 @@ if ($action === 'create' && user_can('episodes.create')) {
                     <div class="form-group"><label>Quality</label><select name="source_quality_<?=$st?>[]" class="form-control"><option value="HD" <?=($src['quality']??'')==='HD'?'selected':''?>>HD</option><option value="Full HD" <?=($src['quality']??'')==='Full HD'?'selected':''?>>Full HD</option><option value="4K" <?=($src['quality']??'')==='4K'?'selected':''?>>4K</option><option value="SD" <?=($src['quality']??'')==='SD'?'selected':''?>>SD</option></select></div>
                     <div class="form-group"><label>Lang</label><select name="source_lang_<?=$st?>[]" class="form-control"><option value="sub" <?=($src['language']??'')==='sub'?'selected':''?>>Sub</option><option value="dub" <?=($src['language']??'')==='dub'?'selected':''?>>Dub</option></select></div>
                 </div>
+                <?php if ($st === 'telegram'): ?>
+                <div style="margin-bottom:8px;">
+                    <a href="telegram-videos.php" class="btn btn-sm btn-outline" target="_blank"><i class="fas fa-video"></i> Import from Telegram Videos</a>
+                </div>
+                <div style="margin-bottom:8px;padding:8px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">Resolve a t.me link:</p>
+                    <div style="display:flex;gap:6px;">
+                        <input type="url" class="telegram-link-resolve form-control" placeholder="https://t.me/channelname/123" style="flex:1;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="resolveTelegramLink(this)"><i class="fas fa-cloud-download-alt"></i> Get</button>
+                    </div>
+                    <div class="telegram-resolve-result" style="margin-top:4px;font-size:0.8rem;"></div>
+                </div>
+                <?php endif; ?>
                 <?php if ($st === 'external'): ?>
                 <div class="form-group"><label>Iframe Embed Code</label><textarea name="source_iframe_<?=$st?>[]" class="form-control" rows="2"><?= htmlspecialchars($src['iframe_code'] ?? '') ?></textarea></div>
                 <?php else: ?>
@@ -393,4 +417,35 @@ function handle_video_upload($file, $episode_id) {
     }
 }
 
-require_once __DIR__ . '/footer.php';
+?>
+<script>
+function resolveTelegramLink(btn) {
+    var container = btn.closest('.source-panel');
+    var input = container.querySelector('.telegram-link-resolve');
+    var result = container.querySelector('.telegram-resolve-result');
+    var urlInput = container.querySelector('input[name^="source_url_telegram"]');
+    var url = input.value.trim();
+    if (!url) { result.innerHTML = '<span style="color:var(--danger)">Enter a t.me URL</span>'; return; }
+    result.innerHTML = '<span style="color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Resolving...</span>';
+    fetch(BASE_URL + '/ajax/telegram-resolve.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'url=' + encodeURIComponent(url)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) {
+            result.innerHTML = '<span style="color:var(--danger)">' + data.error + '</span>';
+        } else if (data.pending) {
+            result.innerHTML = '<span style="color:var(--warning)">' + data.message + '</span>';
+        } else {
+            if (urlInput) urlInput.value = data.proxy_url;
+            result.innerHTML = '<span style="color:var(--success)">✅ ' + data.file_name + ' (' + (data.duration || '?') + 's)</span>';
+        }
+    })
+    .catch(function(err) {
+        result.innerHTML = '<span style="color:var(--danger)">Error: ' + err.message + '</span>';
+    });
+}
+</script>
+<?php require_once __DIR__ . '/footer.php';
