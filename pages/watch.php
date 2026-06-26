@@ -44,6 +44,14 @@ if ($episode && !isset($_SESSION["viewed_ep_{$episode['id']}"])) {
 
 $ep_title = $episode ? ($episode['title'] ?: "Episode {$episode_number}") : 'No episodes yet';
 $pageTitle = $anime['title'] . ' - Episode ' . $episode_number . ' - ' . SITE_NAME;
+
+// OG meta
+$ogTitle = $pageTitle;
+$ogDesc = truncate(strip_tags($anime['description'] ?? ''), 200);
+$ogImage = $anime['thumbnail'] ?: $anime['banner'];
+$ogType = 'video.episode';
+$pageDesc = "Watch {$anime['title']} Episode {$episode_number} online.";
+
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Get user progress

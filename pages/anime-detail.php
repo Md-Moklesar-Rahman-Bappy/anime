@@ -6,6 +6,13 @@ if (!$anime): http_response_code(404); echo '<h1>Anime not found</h1>'; return; 
 // Update view count
 DB::execute("UPDATE anime SET views = views + 1 WHERE id = ?", [$anime['id']]);
 
+// OG meta
+$ogTitle = $anime['title'];
+$ogDesc = truncate(strip_tags($anime['description'] ?? ''), 200);
+$ogImage = $anime['thumbnail'] ?: $anime['banner'];
+$ogType = 'video.tv_show';
+$pageDesc = $ogDesc;
+
 $anime_genres = DB::fetchAll(
     "SELECT g.* FROM genres g JOIN anime_genre ag ON g.id = ag.genre_id WHERE ag.anime_id = ?", [$anime['id']]
 );
