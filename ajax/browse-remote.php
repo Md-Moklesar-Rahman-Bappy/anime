@@ -12,7 +12,7 @@ if (!$url) {
 }
 
 // Allowed base domains
-$allowed = ['ftp5.circleftp.net', '172.16.50.14'];
+$allowed = ['ftp5.circleftp.net', '172.16.50.14', '172.16.50.9'];
 $parsed = parse_url($url);
 if (!$parsed || !in_array($parsed['host'] ?? '', $allowed)) {
     http_response_code(403);
@@ -22,15 +22,38 @@ if (!$parsed || !in_array($parsed['host'] ?? '', $allowed)) {
 
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-$html = curl_exec($ch);
+curl_setopt($ch, CURLOPT_NOBODY, true);
+curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+$is_html = $http_code === 200 && $content_type && strpos($content_type, 'text/html') !== false;
+
+curl_setopt($ch, CURLOPT_NOBODY, false);
+curl_setopt($ch, CURLOPT_HTTPGET, true);
+if ($is_html) {
+    curl_setopt($ch, CURLOPT_RANGE, '0-2097152');
+}
+$html = curl_exec($ch);
+$curl_error = curl_error($ch);
 curl_close($ch);
-if (!$html || $http_code !== 200) {
+
+if ($curl_error) {
+    http_response_code(502);
+    echo json_encode(['error' => 'Connection error: ' . $curl_error]);
+    exit;
+}
+if (!$html && $http_code !== 200) {
     http_response_code(502);
     echo json_encode(['error' => 'Failed to fetch URL (HTTP ' . $http_code . ')']);
+    exit;
+}
+// If URL points to a media file, redirect to attach flow
+// For now, show the parent directory or an error
+if (!$is_html) {
+    echo json_encode(['entries' => [], 'url' => $url, 'is_h5ai' => false, 'note' => 'Not a directory (media file?)']);
     exit;
 }
 
