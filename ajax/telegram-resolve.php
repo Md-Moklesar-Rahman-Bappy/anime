@@ -77,8 +77,8 @@ if ($existing) {
     $saved_video = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$existing['id']]);
 } else {
     DB::insert(
-        "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username, message_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             $file_id,
             $video_data['file_unique_id'] ?? '',
@@ -93,10 +93,45 @@ if ($existing) {
             $channel,
             'admin',
             'admin',
+            $msg_id,
         ]
     );
     $new_id = DB::lastInsertId();
     $saved_video = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$new_id]);
+
+    // Eagerly cache file_path
+    $file_info = $bot->getFile($file_id);
+    $file_path = $file_info['result']['file_path'] ?? null;
+    if ($file_path) {
+        DB::execute("UPDATE telegram_videos SET file_path = ? WHERE id = ?", [$file_path, $new_id]);
+        $cache_dir = __DIR__ . '/../telegram-cache';
+        $local_path = $cache_dir . '/' . $file_id . '.mp4';
+        if (!is_dir($cache_dir)) @mkdir($cache_dir, 0777, true);
+        if (!file_exists($local_path)) {
+            $dl_url = $bot->getFileUrl($file_path);
+            $ctx = stream_context_create(['http' => ['timeout' => 300]]);
+            $remote = @fopen($dl_url, 'rb', false, $ctx);
+            if ($remote) {
+                $local = @fopen($local_path, 'wb');
+                if ($local) {
+                    stream_set_blocking($remote, false);
+                    $first = fread($remote, 8192);
+                    if ($first !== false && strlen($first) > 0) {
+                        fwrite($local, $first);
+                        register_shutdown_function(function() use ($remote, $local) {
+                            while (!feof($remote)) {
+                                $c = fread($remote, 65536);
+                                if ($c === false || strlen($c) === 0) break;
+                                fwrite($local, $c);
+                            }
+                            fclose($local);
+                            fclose($remote);
+                        });
+                    } else { fclose($local); fclose($remote); }
+                } else { fclose($remote); }
+            }
+        }
+    }
 }
 
 echo json_encode([
@@ -105,6 +140,7 @@ echo json_encode([
     'file_id' => $saved_video['file_id'],
     'file_name' => $saved_video['file_name'],
     'proxy_url' => BASE_URL . '/telegram-proxy.php?fid=' . urlencode($saved_video['file_id']),
+    'telegram_url' => 'https://t.me/' . $channel . '/' . $msg_id,
     'duration' => $saved_video['duration'],
     'width' => $saved_video['width'],
     'height' => $saved_video['height'],

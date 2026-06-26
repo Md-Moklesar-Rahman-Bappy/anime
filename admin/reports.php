@@ -29,34 +29,48 @@ $reports = DB::fetchAll(
 );
 ?>
 <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-    <?php foreach (['pending', 'resolved', 'dismissed'] as $s): ?>
-    <a href="reports.php?status=<?= $s ?>" class="btn btn-sm <?= $status_filter === $s ? 'btn-primary' : 'btn-outline' ?>"><?= ucfirst($s) ?></a>
+    <?php foreach (['pending' => '🟡 Pending', 'resolved' => '✅ Resolved', 'dismissed' => '❌ Dismissed'] as $s => $label): ?>
+    <a href="reports.php?status=<?= $s ?>" class="btn btn-sm <?= $status_filter === $s ? 'btn-primary' : 'btn-outline' ?>"><?= $label ?></a>
     <?php endforeach; ?>
 </div>
 <div class="card">
     <div class="card-header"><h3 class="card-title"><?= ucfirst($status_filter) ?> Reports (<?= count($reports) ?>)</h3></div>
     <?php if (count($reports) > 0): ?>
-    <table><thead><tr><th>ID</th><th>Anime</th><th>Episode</th><th>Type</th><th>Reported by</th><th>Description</th><th>Date</th><th>Actions</th></tr></thead><tbody>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Anime</th><th>Episode</th><th>Type</th><th>Reported by</th><th>Description</th><th>Date</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
         <?php foreach ($reports as $r): ?>
         <tr>
-            <td>#<?= $r['id'] ?></td>
-            <td><a href="<?= BASE_URL ?>/admin/anime.php?action=edit&id=<?= $r['anime_id'] ?>"><?= htmlspecialchars($r['anime_title'] ?: '-') ?></a></td>
-            <td>Ep <?= $r['ep_num'] ?: '-' ?></td>
-            <td><span class="badge badge-orange"><?= htmlspecialchars(str_replace('_', ' ', $r['type'])) ?></span></td>
-            <td><?= htmlspecialchars($r['reporter'] ?: 'Guest') ?></td>
-            <td style="max-width:200px;font-size:0.8rem;color:var(--text-muted);"><?= htmlspecialchars(truncate($r['description'] ?? '', 80)) ?></td>
-            <td style="font-size:0.78rem;color:var(--text-muted);"><?= time_ago($r['created_at']) ?></td>
-            <td class="table-cell-actions">
+            <td style="font-weight:700;color:var(--text-muted);">#<?= $r['id'] ?></td>
+            <td><a href="<?= BASE_URL ?>/admin/anime.php?action=edit&id=<?= $r['anime_id'] ?>" class="table-link"><?= htmlspecialchars($r['anime_title'] ?: '-') ?></a></td>
+            <td><span class="badge badge-blue">Ep <?= $r['ep_num'] ?: '-' ?></span></td>
+            <td>
+                <?php
+                $type_colors = [
+                    'broken_video' => '#ef4444', 'wrong_episode' => '#f59e0b',
+                    'subtitle_issue' => '#8b5cf6', 'audio_issue' => '#ec4899',
+                    'wrong_source' => '#f97316', 'other' => '#6b7280'
+                ];
+                $tc = $type_colors[$r['type']] ?? '#6b7280';
+                ?>
+                <span class="badge" style="background:<?= $tc ?>"><?= htmlspecialchars(str_replace('_', ' ', $r['type'])) ?></span>
+            </td>
+            <td><span style="color:var(--text-muted);font-size:0.85rem;"><?= htmlspecialchars($r['reporter'] ?: 'Guest') ?></span></td>
+            <td style="max-width:220px;font-size:0.82rem;color:var(--text-muted);line-height:1.4;"><?= htmlspecialchars(truncate($r['description'] ?? '', 120)) ?></td>
+            <td style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;"><?= time_ago($r['created_at']) ?></td>
+            <td class="table-cell-actions" style="white-space:nowrap;">
                 <?php if ($r['status'] === 'pending'): ?>
-                <form method="post" style="display:inline">
+                <form method="post" style="display:inline" onsubmit="return confirm('Mark as resolved?')">
                     <input type="hidden" name="id" value="<?= $r['id'] ?>">
                     <input type="hidden" name="status" value="resolved">
-                    <button type="submit" name="action" value="update_status" class="btn btn-sm btn-success"><i class="fas fa-check"></i></button>
+                    <button type="submit" name="action" value="update_status" class="btn btn-sm btn-success" title="Resolve"><i class="fas fa-check"></i></button>
                 </form>
-                <form method="post" style="display:inline">
+                <form method="post" style="display:inline" onsubmit="return confirm('Dismiss this report?')">
                     <input type="hidden" name="id" value="<?= $r['id'] ?>">
                     <input type="hidden" name="status" value="dismissed">
-                    <button type="submit" name="action" value="update_status" class="btn btn-sm btn-danger"><i class="fas fa-times"></i></button>
+                    <button type="submit" name="action" value="update_status" class="btn btn-sm btn-danger" title="Dismiss"><i class="fas fa-times"></i></button>
                 </form>
                 <?php else: ?>
                 <span class="badge <?= $r['status']==='resolved'?'badge-green':'badge-gray' ?>"><?= ucfirst($r['status']) ?></span>
@@ -64,7 +78,8 @@ $reports = DB::fetchAll(
             </td>
         </tr>
         <?php endforeach; ?>
-    </tbody></table>
+        </tbody>
+    </table>
     <?php else: ?>
     <div class="empty-state"><i class="fas fa-check-circle"></i><p>No <?= $status_filter ?> reports.</p></div>
     <?php endif; ?>

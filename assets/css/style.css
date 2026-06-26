@@ -1169,6 +1169,29 @@ textarea.form-input { resize: vertical; min-height: 80px; }
     font-size: 15px;
 }
 
+/* ---------- Player Overlays ---------- */
+.player-loading {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; background: #0a0a0f; z-index: 10;
+    font-size: 14px; color: #888;
+}
+.player-loading i { font-size: 2rem; }
+.player-error {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; background: rgba(0,0,0,0.85); z-index: 10;
+    font-size: 14px; color: #ef4444; padding: 20px; text-align: center;
+}
+.player-error i { font-size: 2rem; }
+
+.telegram-fallback {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px; background: #0a0a0f; z-index: 10;
+    padding: 40px; text-align: center;
+}
+.telegram-fallback i.fa-telegram-plane { font-size: 4rem; color: #26a3d6; }
+.telegram-fallback h3 { color: #fff; font-size: 1.3rem; margin: 0; }
+.telegram-fallback p { color: #888; font-size: 0.9rem; max-width: 400px; line-height: 1.5; }
+
 /* ---------- Footer ---------- */
 .site-footer {
     background: var(--bg-secondary);

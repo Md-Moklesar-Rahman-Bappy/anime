@@ -124,6 +124,8 @@ if ($user_id) {
                 <?php else: ?>
                 <div class="empty-state"><i class="fas fa-film"></i><p>No episodes available yet. Check back soon!</p></div>
                 <?php endif; ?>
+            <div class="player-loading" id="playerLoading" style="display:none"><i class="fas fa-spinner fa-spin"></i><span>Loading video...</span></div>
+            <div class="player-error" id="playerError" style="display:none"><i class="fas fa-exclamation-triangle"></i><span></span></div>
             </div>
             <!-- Server selector -->
             <?php if ($episode && count($sources) > 0): ?>
@@ -262,186 +264,268 @@ if ($user_id) {
 </div>
 
 <script>
-// ---- Plyr + HLS Setup ----
-document.addEventListener('DOMContentLoaded', function() {
-    const playerEl = document.getElementById('player');
-    if (!playerEl) return;
+// ---- Player state ----
+let player = null;
+let hlsInstance = null;
+let skipInterval = null;
+const epId = <?= $episode['id'] ?? 0 ?>;
+const skipTimes = <?= json_encode($skip_times) ?>;
 
-    // Detect HLS sources and use hls.js
-    const sources = playerEl.querySelectorAll('source[data-hls]');
-    let hls = null;
+function showLoading(msg) {
+    const el = document.getElementById('playerLoading');
+    if (!el) return;
+    el.querySelector('span').textContent = msg || 'Loading video...';
+    el.style.display = 'flex';
+}
 
-    if (sources.length > 0 && Hls.isSupported()) {
-        const hlsUrl = sources[0].getAttribute('src');
-        hls = new Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-        });
-        hls.loadSource(hlsUrl);
-        hls.attachMedia(playerEl);
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            player.play();
-        });
+function hideLoading() {
+    const el = document.getElementById('playerLoading');
+    if (el) el.style.display = 'none';
+}
+
+function showError(msg) {
+    hideLoading();
+    const el = document.getElementById('playerError');
+    if (!el) return;
+    el.querySelector('span').textContent = msg || 'Failed to load video. Try another server.';
+    el.style.display = 'flex';
+}
+
+function hideError() {
+    const el = document.getElementById('playerError');
+    if (el) el.style.display = 'none';
+}
+
+function showSkipNotification(type) {
+    const label = type === 'intro' ? 'Intro' : 'Outro';
+    const el = document.createElement('div');
+    el.className = 'skip-notification';
+    el.textContent = 'Skipped ' + label;
+    document.getElementById('playerContainer')?.appendChild(el);
+    setTimeout(function() { el.remove(); }, 2000);
+}
+
+function checkSkip() {
+    if (!player || !player.playing) return;
+    const ct = player.currentTime;
+    for (const s of skipTimes) {
+        if (ct >= s.start && ct < s.end) {
+            player.currentTime = parseFloat(s.end);
+            showSkipNotification(s.type);
+            break;
+        }
+    }
+}
+
+function setupSkipDetection() {
+    if (!skipTimes.length) return;
+    if (skipInterval) clearInterval(skipInterval);
+    player.on('playing', function() {
+        skipInterval = setInterval(checkSkip, 500);
+    });
+    player.on('pause', function() { if (skipInterval) clearInterval(skipInterval); });
+    player.on('ended', function() { if (skipInterval) clearInterval(skipInterval); });
+}
+
+function setupProgressTracking() {
+    if (!epId) return;
+    player.on('timeupdate', function() {
+        const dur = player.duration;
+        if (dur <= 0) return;
+        const pct = Math.round((player.currentTime / dur) * 100);
+        if (pct % 5 === 0 || pct >= 90) {
+            fetch(BASE_URL + '/ajax/watch-progress', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'episode_id=' + epId + '&progress=' + pct
+            });
+        }
+    });
+}
+
+function setupAutoNext() {
+    player.on('ended', function() {
+        const nextLink = document.querySelector('.ep-info-right .btn-primary[href*="ep="]');
+        if (nextLink) {
+            setTimeout(function() { window.location.href = nextLink.href; }, 3000);
+        }
+    });
+}
+
+function showTelegramFallback(url) {
+    hideLoading();
+    if (player) player.destroy();
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+    const container = document.getElementById('playerContainer');
+    container.innerHTML = '<div class="player-loading" id="playerLoading" style="display:none"><i class="fas fa-spinner fa-spin"></i><span>Loading video...</span></div>'
+        + '<div class="player-error" id="playerError" style="display:none"><i class="fas fa-exclamation-triangle"></i><span></span></div>'
+        + '<div class="telegram-fallback"><i class="fab fa-telegram-plane"></i><h3>Watch on Telegram</h3>'
+        + '<p>This video is too large for direct streaming. Open it in Telegram to watch.</p>'
+        + '<a href="' + url + '" target="_blank" class="btn btn-primary" rel="noopener"><i class="fab fa-telegram"></i> Open in Telegram</a></div>';
+    player = null;
+}
+
+function createPlayer(videoEl) {
+    // Check for t.me links — show Telegram fallback
+    const sources = videoEl.querySelectorAll('source');
+    for (const s of sources) {
+        const src = s.getAttribute('src') || '';
+        if (src.indexOf('t.me/') !== -1) {
+            showTelegramFallback(src);
+            return;
+        }
     }
 
-    const player = new Plyr(playerEl, {
-        controls: [
-            'play-large', 'play', 'progress', 'current-time', 'duration',
-            'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
-        ],
+    if (player) player.destroy();
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+    hideError();
+    showLoading('Loading video...');
+
+    // Check HLS
+    const hlsSources = videoEl.querySelectorAll('source[data-hls]');
+    let hasHls = false;
+    if (hlsSources.length > 0 && typeof Hls !== 'undefined' && Hls.isSupported()) {
+        hasHls = true;
+        hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true });
+        hlsInstance.loadSource(hlsSources[0].getAttribute('src'));
+        hlsInstance.attachMedia(videoEl);
+    }
+
+    player = new Plyr(videoEl, {
+        controls: ['play-large','play','progress','current-time','duration','mute','volume','captions','settings','pip','airplay','fullscreen'],
         settings: ['captions', 'quality', 'speed', 'loop'],
         keyboard: { focused: true, global: true },
         tooltips: { controls: true, seek: true },
         seekTime: 10,
-        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
-        quality: {
-            default: 576,
-            options: [4320, 2880, 2160, 1440, 1080, 720, 576, 480, 360, 240],
-        },
+        speed: { selected: 1, options: [0.5,0.75,1,1.25,1.5,1.75,2] },
         resetOnEnd: true,
         disableContextMenu: true,
-        ratio: '16:9',
     });
 
-    // Save progress every 15 seconds
-    const epId = <?= $episode['id'] ?? 0 ?>;
-    if (epId) {
-        player.on('timeupdate', function() {
-            const duration = player.duration;
-            if (duration > 0) {
-                const pct = Math.round((player.currentTime / duration) * 100);
-                if (pct % 5 === 0 || pct >= 90) {
-                    saveProgress(epId, pct);
-                }
-            }
-        });
-
-        // Restore progress
+    player.on('ready', function() {
+        hideLoading();
         <?php if ($progress > 0 && $progress < 90): ?>
-        player.on('ready', function() {
-            const dur = player.duration;
-            if (dur > 0) {
-                player.currentTime = (<?= $progress ?> / 100) * dur;
-            }
-        });
+        const dur = player.duration;
+        if (dur > 0) player.currentTime = (<?= $progress ?> / 100) * dur;
         <?php endif; ?>
-    }
-
-    // ---- Skip intro/outro buttons ----
-    const skipTimes = <?= json_encode($skip_times) ?>;
-    let skipInterval = null;
-
-    function checkSkip() {
-        if (!player || !player.playing) return;
-        const ct = player.currentTime;
-        for (const s of skipTimes) {
-            if (ct >= s.start && ct < s.end) {
-                player.currentTime = parseFloat(s.end);
-                showSkipNotification(s.type);
-                break;
-            }
-        }
-    }
-
-    function showSkipNotification(type) {
-        const label = type === 'intro' ? 'Intro' : 'Outro';
-        const el = document.createElement('div');
-        el.className = 'skip-notification';
-        el.textContent = `Skipped ${label}`;
-        document.getElementById('playerContainer')?.appendChild(el);
-        setTimeout(() => el.remove(), 2000);
-    }
-
-    if (skipTimes.length > 0) {
-        player.on('playing', function() {
-            skipInterval = setInterval(checkSkip, 500);
-        });
-        player.on('pause', function() {
-            if (skipInterval) clearInterval(skipInterval);
-        });
-        player.on('ended', function() {
-            if (skipInterval) clearInterval(skipInterval);
-        });
-    }
-
-    // Auto-next episode
-    player.on('ended', function() {
-        const nextLink = document.querySelector('.ep-info-right .btn-primary[href*="ep="]');
-        if (nextLink) {
-            setTimeout(() => { window.location.href = nextLink.href; }, 3000);
-        }
     });
 
-    // ---- Quality selector refresh for HLS ----
-    if (hls) {
-        hls.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {
-            const levels = hls.levels;
-            if (levels && levels[data.level]) {
-                player.quality = levels[data.level].height;
-            }
+    player.on('error', function() { showError('Failed to load video. Try another server.'); });
+
+    if (hasHls && hlsInstance) {
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+            hideLoading();
+            player.play();
+        });
+        hlsInstance.on(Hls.Events.ERROR, function(event, data) {
+            if (data.fatal) { showError('Video source error. Try another server.'); }
+        });
+        hlsInstance.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {
+            const lvls = hlsInstance.levels;
+            if (lvls && lvls[data.level]) player.quality = lvls[data.level].height;
         });
     }
+
+    // Timer-based fallback: if still loading after 15s, show hint
+    setTimeout(function() {
+        const loadingEl = document.getElementById('playerLoading');
+        if (loadingEl && loadingEl.style.display !== 'none') {
+            loadingEl.querySelector('span').textContent = 'Still loading... This may take a moment.';
+        }
+    }, 15000);
+
+    setupProgressTracking();
+    setupSkipDetection();
+    setupAutoNext();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const playerEl = document.getElementById('player');
+    if (playerEl) createPlayer(playerEl);
 });
 
 // ---- Server switching ----
 document.querySelectorAll('.server-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
-        document.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.server-btn').forEach(function(b) { b.classList.remove('active'); });
         this.classList.add('active');
 
         const url = this.dataset.url;
         const type = this.dataset.type;
         const isHls = this.dataset.hls === '1';
         const iframeCode = this.dataset.iframe;
-        const playerEl = document.getElementById('player');
         const container = document.getElementById('playerContainer');
 
-        if (type === 'youtube' && url) {
-            // For YouTube, destroy Plyr and load iframe
-            const playerEl = document.getElementById('player');
-            if (playerEl) {
-                const plyrInst = playerEl.plyr;
-                if (plyrInst) plyrInst.destroy();
-            }
-            container.innerHTML = `<div class="iframe-player"><iframe width="100%" height="100%" src="${url}" frameborder="0" allowfullscreen></iframe></div>`;
+        hideError();
+        showLoading('Switching server...');
+
+        if (type === 'youtube') {
+            if (player) player.destroy();
+            if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+            container.innerHTML = '<div class="player-loading" id="playerLoading" style="display:flex"><i class="fas fa-spinner fa-spin"></i><span>Loading YouTube...</span></div>'
+                + '<div class="player-error" id="playerError" style="display:none"><i class="fas fa-exclamation-triangle"></i><span></span></div>'
+                + '<div class="iframe-player"><iframe width="100%" height="100%" src="' + url + '" frameborder="0" allowfullscreen></iframe></div>';
+            player = null;
+            hideLoading();
         } else if (iframeCode) {
-            container.innerHTML = `<div class="iframe-player">${iframeCode}</div>`;
+            if (player) player.destroy();
+            if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+            container.innerHTML = '<div class="player-loading" id="playerLoading" style="display:flex"><i class="fas fa-spinner fa-spin"></i><span>Loading...</span></div>'
+                + '<div class="player-error" id="playerError" style="display:none"><i class="fas fa-exclamation-triangle"></i><span></span></div>'
+                + '<div class="iframe-player">' + iframeCode + '</div>';
+            player = null;
+            hideLoading();
+        } else if (url && url.indexOf('t.me/') !== -1) {
+            showTelegramFallback(url);
         } else if (url) {
-            // Re-create video element
-            container.innerHTML = `<video id="player" playsinline controls></video>`;
-            const newPlayer = document.getElementById('player');
-            if (isHls && Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(url);
-                hls.attachMedia(newPlayer);
-            } else {
-                newPlayer.innerHTML = `<source src="${url}">`;
+            if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+            let pe = document.getElementById('player');
+
+            if (!pe) {
+                container.innerHTML = '<div class="player-loading" id="playerLoading" style="display:flex"><i class="fas fa-spinner fa-spin"></i><span>Loading video...</span></div>'
+                    + '<div class="player-error" id="playerError" style="display:none"><i class="fas fa-exclamation-triangle"></i><span></span></div>'
+                    + '<video id="player" playsinline controls></video>';
+                pe = document.getElementById('player');
             }
-            new Plyr(newPlayer, {
-                controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
-                keyboard: { focused: true, global: true },
-                seekTime: 10,
-                speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
-            });
+
+            if (isHls && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(url);
+                hlsInstance.attachMedia(pe);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+                    hideLoading();
+                    if (player) player.play();
+                });
+                hlsInstance.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) showError('Video source error. Try another server.');
+                });
+                if (!player) createPlayer(pe);
+                else hideLoading();
+            } else if (player) {
+                player.source = { type: 'video', sources: [{ src: url }] };
+                hideLoading();
+            } else {
+                pe.innerHTML = '<source src="' + url + '">';
+                createPlayer(pe);
+            }
         }
     });
 });
 
-// Language tabs
+// ---- Language tabs ----
 document.querySelectorAll('.server-lang-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
-        document.querySelectorAll('.server-lang-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.server-lang-btn').forEach(function(b) { b.classList.remove('active'); });
         this.classList.add('active');
         const lang = this.dataset.lang;
         document.querySelectorAll('.server-btn').forEach(function(s) {
             s.style.display = s.dataset.lang === lang ? 'flex' : 'none';
         });
-        // Activate first visible
         const visible = document.querySelector('.server-btn:not([style*="display: none"])');
         if (visible) visible.click();
     });
 });
-// Init language filter
 (function() {
     const firstLang = document.querySelector('.server-lang-btn.active')?.dataset.lang;
     if (firstLang) {
@@ -459,13 +543,14 @@ function postComment(episodeId, animeId) {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'action=post&episode_id=' + episodeId + '&anime_id=' + animeId + '&body=' + encodeURIComponent(body.value)
-    }).then(r => r.json()).then(data => {
+    }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.status === 'ok') {
             const list = document.getElementById('commentsList');
             const div = document.createElement('div');
             div.className = 'comment-item';
             div.dataset.id = data.id;
-            div.innerHTML = `<img src="${data.avatar}" alt="" class="comment-avatar"><div class="comment-body"><div class="comment-header"><strong>${data.username}</strong><span class="comment-time">${data.created_at}</span><button onclick="deleteComment(${data.id})" class="comment-delete"><i class="fas fa-times"></i></button></div><p>${data.body}</p></div>`;
+            const avatar = data.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(data.username) + '&background=6c5ce7&color=fff&size=40';
+            div.innerHTML = '<img src="' + avatar + '" alt="" class="comment-avatar"><div class="comment-body"><div class="comment-header"><strong>' + data.username + '</strong><span class="comment-time">' + data.created_at + '</span><button onclick="deleteComment(' + data.id + ')" class="comment-delete"><i class="fas fa-times"></i></button></div><p>' + data.body + '</p></div>';
             list.prepend(div);
             body.value = '';
         } else {
@@ -480,32 +565,31 @@ function deleteComment(id) {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'action=delete&id=' + id
-    }).then(r => r.json()).then(data => {
+    }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.status === 'deleted') {
-            document.querySelector(`.comment-item[data-id="${id}"]`)?.remove();
+            var el = document.querySelector('.comment-item[data-id="' + id + '"]');
+            if (el) el.remove();
         }
     });
 }
 
-// Poll for new comments every 10s
 <?php if ($episode): ?>
 setInterval(function() {
     fetch(BASE_URL + '/ajax/comment?action=list&episode_id=<?= $episode['id'] ?>')
-    .then(r => r.json()).then(comments => {
+    .then(function(r) { return r.json(); }).then(function(comments) {
         const list = document.getElementById('commentsList');
         if (!list) return;
-        // Only update if there are new comments
         const existing = list.querySelectorAll('.comment-item');
         if (comments.length > existing.length) {
             const existingIds = new Set();
-            existing.forEach(e => existingIds.add(parseInt(e.dataset.id)));
+            existing.forEach(function(e) { existingIds.add(parseInt(e.dataset.id)); });
             for (const c of comments) {
                 if (!existingIds.has(c.id)) {
                     const div = document.createElement('div');
                     div.className = 'comment-item';
                     div.dataset.id = c.id;
                     const avatar = c.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.username) + '&background=6c5ce7&color=fff&size=40';
-                    div.innerHTML = `<img src="${avatar}" alt="" class="comment-avatar"><div class="comment-body"><div class="comment-header"><strong>${c.username}</strong><span class="comment-time">Just now</span></div><p>${c.body}</p></div>`;
+                    div.innerHTML = '<img src="' + avatar + '" alt="" class="comment-avatar"><div class="comment-body"><div class="comment-header"><strong>' + c.username + '</strong><span class="comment-time">Just now</span></div><p>' + c.body + '</p></div>';
                     list.prepend(div);
                 }
             }
@@ -527,12 +611,11 @@ function toggleFavorite(animeId) {
     }
 
     if (next === null) {
-        // Remove
         fetch(BASE_URL + '/ajax/favorite', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: 'action=remove&anime_id=' + animeId
-        }).then(r => r.json()).then(data => {
+        }).then(function(r) { return r.json(); }).then(function(data) {
             if (data.status === 'removed') {
                 btn.className = 'btn btn-sm btn-outline';
                 label.textContent = 'Add to List';
@@ -543,10 +626,10 @@ function toggleFavorite(animeId) {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: 'action=toggle&anime_id=' + animeId + '&list_type=' + next
-        }).then(r => r.json()).then(data => {
+        }).then(function(r) { return r.json(); }).then(function(data) {
             if (data.status) {
                 btn.className = 'btn btn-sm btn-primary';
-                label.textContent = next.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                label.textContent = next.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
             }
         });
     }
@@ -562,29 +645,16 @@ function openReportModal(episodeId, animeId) {
 function submitReport(e) {
     e.preventDefault();
     const fd = new FormData(document.getElementById('reportForm'));
-    fd.append('episode_id', document.getElementById('reportEpisodeId').value);
-    fd.append('anime_id', document.getElementById('reportAnimeId').value);
-    const params = new URLSearchParams(fd);
     fetch(BASE_URL + '/ajax/report', {
         method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: params.toString()
-    }).then(r => r.json()).then(data => {
+        body: fd
+    }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.status === 'ok') {
             alert(data.message);
             closeModal('reportModal');
         } else {
             alert(data.error || 'Error submitting report');
         }
-    });
-}
-
-// ---- Progress saving ----
-function saveProgress(episodeId, progress) {
-    fetch(BASE_URL + '/ajax/watch-progress', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'episode_id=' + episodeId + '&progress=' + progress
     });
 }
 </script>

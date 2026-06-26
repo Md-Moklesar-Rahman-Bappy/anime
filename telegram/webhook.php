@@ -44,15 +44,53 @@ function save_video_from_message(array $msg_data, string $source_chat_id, string
     try {
         $existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
         if ($existing) return (int)$existing['id'];
-        DB::insert(
-            "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        $new_id = DB::insert(
+            "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username, message_id)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [$file_id, $video_data['file_unique_id'] ?? '', $video_data['file_size'] ?? 0, $file_name,
              $video_data['duration'] ?? null, $video_data['mime_type'] ?? '', $video_data['width'] ?? null,
              $video_data['height'] ?? null, $video_data['thumbnail']['file_id'] ?? '', $msg_data['caption'] ?? '',
-             $source_chat_id, $from_id, $from_username]
+             $source_chat_id, $from_id, $from_username, $msg_data['message_id'] ?? null]
         );
-        return (int)DB::lastInsertId();
+        if (!$new_id) return false;
+
+        // Eagerly cache file_path from Telegram API
+        $bot = TelegramBot::getInstance();
+        $file_info = $bot->getFile($file_id);
+        $file_path = $file_info['result']['file_path'] ?? null;
+        if ($file_path) {
+            DB::execute("UPDATE telegram_videos SET file_path = ? WHERE id = ?", [$file_path, $new_id]);
+
+            // Start local download in background
+            $cache_dir = __DIR__ . '/../telegram-cache';
+            $local_path = $cache_dir . '/' . $file_id . '.mp4';
+            if (!is_dir($cache_dir)) @mkdir($cache_dir, 0777, true);
+            if (!file_exists($local_path)) {
+                $dl_url = $bot->getFileUrl($file_path);
+                $ctx = stream_context_create(['http' => ['timeout' => 300]]);
+                $remote = @fopen($dl_url, 'rb', false, $ctx);
+                if ($remote) {
+                    $local = @fopen($local_path, 'wb');
+                    if ($local) {
+                        stream_set_blocking($remote, false);
+                        $first = fread($remote, 8192);
+                        if ($first !== false && strlen($first) > 0) {
+                            fwrite($local, $first);
+                            register_shutdown_function(function() use ($remote, $local) {
+                                while (!feof($remote)) {
+                                    $c = fread($remote, 65536);
+                                    if ($c === false || strlen($c) === 0) break;
+                                    fwrite($local, $c);
+                                }
+                                fclose($local);
+                                fclose($remote);
+                            });
+                        } else { fclose($local); fclose($remote); }
+                    } else { fclose($remote); }
+                }
+            }
+        }
+        return $new_id;
     } catch (Exception $e) { return false; }
 }
 
@@ -134,6 +172,17 @@ function match_anime_episode_from_caption(string $caption): ?array {
     return null;
 }
 
+function tme_url_from_video(array $vid): string {
+    if ($vid['chat_id'] && $vid['message_id']) {
+        $chat = ltrim($vid['chat_id'], '-');
+        if (str_starts_with($vid['chat_id'], '-100')) {
+            return 'https://t.me/c/' . $chat . '/' . $vid['message_id'];
+        }
+        return 'https://t.me/c/' . $chat . '/' . $vid['message_id'];
+    }
+    return '';
+}
+
 function find_admin_chat(): ?string {
     $admin = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
     return $admin ? $admin['chat_id'] : null;
@@ -146,16 +195,16 @@ function notify_admin_about_video(TelegramBot $bot, int $video_id, string $capti
     $vid = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$video_id]);
     if (!$vid) return;
 
-    $proxy = BASE_URL . '/telegram-proxy.php?fid=' . urlencode($vid['file_id']);
     $name = $vid['file_name'] ?: 'video.mp4';
     $dur = $vid['duration'] ? gmdate('i:s', $vid['duration']) : '?';
     $size = $vid['file_size'] ? round($vid['file_size'] / 1024 / 1024, 1) . ' MB' : '?';
+    $tme_link = tme_url_from_video($vid);
 
     $msg = "📹 <b>New Channel Video</b>\n\n"
          . "File: <code>{$name}</code>\n"
          . "Size: {$size}  Duration: {$dur}s\n"
          . "Caption: " . htmlspecialchars($caption ?: '(none)') . "\n"
-         . "Stream: {$proxy}\n";
+         . ($tme_link ? "🔗 <a href=\"{$tme_link}\">Open in Telegram</a>\n" : "");
 
     $keyboard = [];
 
@@ -192,17 +241,18 @@ function attach_video_to_episode(int $video_id, int $episode_id, TelegramBot $bo
         $bot->call('answerCallbackQuery', ['callback_query_id' => $callback_query_id, 'text' => 'Cannot attach — already assigned or missing.', 'show_alert' => true]);
         return;
     }
-    $proxy_url = BASE_URL . '/telegram-proxy.php?fid=' . urlencode($vid['file_id']);
+    $tme_link = tme_url_from_video($vid);
+    $source_url = $tme_link ?: (BASE_URL . '/telegram-proxy.php?fid=' . urlencode($vid['file_id']));
     DB::insert(
         "INSERT INTO episode_sources (episode_id, language, source_type, label, url, quality) VALUES (?,?,?,?,?,?)",
-        [$episode_id, 'sub', 'telegram', 'Telegram', $proxy_url, 'HD']
+        [$episode_id, 'sub', 'telegram', 'Telegram', $source_url, 'HD']
     );
     DB::execute("UPDATE telegram_videos SET assigned_to_episode_id = ? WHERE id = ?", [$episode_id, $video_id]);
     log_activity('Auto-attached Telegram video', 'episode_source', $episode_id, ['video_id' => $video_id, 'anime' => $ep['anime_title'], 'ep' => $ep['number']]);
     $bot->call('answerCallbackQuery', ['callback_query_id' => $callback_query_id, 'text' => "✅ Attached to {$ep['anime_title']} #{$ep['number']}!"]);
     $bot->call('editMessageText', [
         'chat_id' => $chat_id, 'message_id' => $msg_id,
-        'text' => "✅ <b>Attached!</b>\n{$ep['anime_title']} — Episode #{$ep['number']}\nStream: {$proxy_url}",
+        'text' => "✅ <b>Attached!</b>\n{$ep['anime_title']} — Episode #{$ep['number']}\n" . ($tme_link ? "🔗 <a href=\"{$tme_link}\">Open in Telegram</a>" : ""),
         'parse_mode' => 'HTML',
         'reply_markup' => ['inline_keyboard' => []]
     ]);
@@ -258,13 +308,15 @@ if ($channel_post) {
     if (!$video_id) exit;
 
     $caption = $channel_post['caption'] ?? '';
+    $msg_id = $channel_post['message_id'] ?? 0;
+    $tme_link = $channel_username ? "https://t.me/{$channel_username}/{$msg_id}" : '';
     if ($caption) {
         $match = match_anime_episode_from_caption($caption);
         if ($match && $match['confidence'] >= 0.8 && $match['episode_id']) {
-            $proxy_url = BASE_URL . '/telegram-proxy.php?fid=' . urlencode(($channel_post['video']['file_id'] ?? $channel_post['document']['file_id'] ?? ''));
+            $source_url = $tme_link ?: (BASE_URL . '/telegram-proxy.php?fid=' . urlencode($channel_post['video']['file_id'] ?? $channel_post['document']['file_id'] ?? ''));
             DB::insert(
                 "INSERT INTO episode_sources (episode_id, language, source_type, label, url, quality) VALUES (?,?,?,?,?,?)",
-                [$match['episode_id'], 'sub', 'telegram', 'Telegram', $proxy_url, 'HD']
+                [$match['episode_id'], 'sub', 'telegram', 'Telegram', $source_url, 'HD']
             );
             DB::execute("UPDATE telegram_videos SET assigned_to_episode_id = ? WHERE id = ?", [$match['episode_id'], $video_id]);
             log_activity('Auto-attached channel post', 'episode_source', $match['episode_id'], ['video_id' => $video_id, 'anime' => $match['anime_title'], 'ep' => $match['episode_number']]);

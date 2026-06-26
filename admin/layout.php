@@ -60,6 +60,9 @@ $role_level = $GLOBALS['_role_level'] ?? 0;
             <a href="<?= BASE_URL ?>/admin/telegram-videos.php" class="nav-item <?= $current_page === 'telegram-videos.php' ? 'active' : '' ?>">
                 <i class="fas fa-video"></i><span>Telegram Videos</span>
             </a>
+            <a href="<?= BASE_URL ?>/admin/remote-sources.php" class="nav-item <?= $current_page === 'remote-sources.php' ? 'active' : '' ?>">
+                <i class="fas fa-globe"></i><span>Remote Sources</span>
+            </a>
             <div class="nav-section-label">System</div>
             <?php if (user_can('users.view')): ?>
             <a href="<?= BASE_URL ?>/admin/users.php" class="nav-item <?= $current_page === 'users.php' ? 'active' : '' ?>">

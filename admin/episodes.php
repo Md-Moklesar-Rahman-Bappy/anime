@@ -439,8 +439,8 @@ function resolveTelegramLink(btn) {
         } else if (data.pending) {
             result.innerHTML = '<span style="color:var(--warning)">' + data.message + '</span>';
         } else {
-            if (urlInput) urlInput.value = data.proxy_url;
-            result.innerHTML = '<span style="color:var(--success)">✅ ' + data.file_name + ' (' + (data.duration || '?') + 's)</span>';
+            if (urlInput) urlInput.value = data.telegram_url;
+            result.innerHTML = '<span style="color:var(--success)">✅ ' + data.file_name + ' (' + (data.duration || '?') + 's) — Telegram link</span>';
         }
     })
     .catch(function(err) {

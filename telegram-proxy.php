@@ -1,7 +1,4 @@
 <?php
-// Proxies Telegram video files to hide bot token
-// Usage: telegram-proxy.php?file_id=xxx  or  telegram-proxy.php?fid=xxx
-
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/includes/TelegramBot.php';
@@ -14,32 +11,102 @@ if (empty($file_id)) {
     exit;
 }
 
-// Try DB cache first
-$cached = DB::fetch("SELECT file_path FROM telegram_videos WHERE file_id = ? OR file_unique_id = ?", [$file_id, $file_id]);
-if ($cached && $cached['file_path']) {
-    $bot = TelegramBot::getInstance();
-    $url = $bot->getFileUrl($cached['file_path']);
-    header('Location: ' . $url);
+$cache_dir = __DIR__ . '/telegram-cache';
+$local_path = $cache_dir . '/' . $file_id . '.mp4';
+
+// 1) Serve from local cache if exists
+if (file_exists($local_path)) {
+    $size = filesize($local_path);
+    $fp = fopen($local_path, 'rb');
+    if (!$fp) { http_response_code(500); exit; }
+    $mime = mime_content_type($local_path) ?: 'video/mp4';
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . $size);
+    header('Accept-Ranges: bytes');
+    header('Cache-Control: public, max-age=86400');
+    // Range support
+    if (isset($_SERVER['HTTP_RANGE'])) {
+        preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $m);
+        $start = (int)$m[1];
+        $end = $m[2] !== '' ? (int)$m[2] : $size - 1;
+        fseek($fp, $start);
+        http_response_code(206);
+        header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
+        header('Content-Length: ' . ($end - $start + 1));
+    }
+    fpassthru($fp);
+    fclose($fp);
     exit;
 }
 
-// Fallback: fetch from API
+// 2) Try Telegram API — get file_path and cache locally
 $bot = TelegramBot::getInstance();
-$info = $bot->getVideoInfo($file_id);
-if (!$info) {
+$file = $bot->getFile($file_id);
+$file_path = $file['result']['file_path'] ?? null;
+
+if ($file_path) {
+    $dl_url = $bot->getFileUrl($file_path);
+
+    // Cache file_path in DB for future redirects
+    if ($file['result']['file_unique_id'] ?? null) {
+        DB::execute(
+            "UPDATE telegram_videos SET file_path = ? WHERE file_id = ? OR file_unique_id = ?",
+            [$file_path, $file_id, $file['result']['file_unique_id']]
+        );
+    }
+
+    // Download to local cache in the background + redirect for immediate playback
+    if (!is_dir($cache_dir)) mkdir($cache_dir, 0777, true);
+    $ctx = stream_context_create(['http' => ['timeout' => 300]]);
+    $remote = @fopen($dl_url, 'rb', false, $ctx);
+    if ($remote) {
+        $local = @fopen($local_path, 'wb');
+        if ($local) {
+            // Spawn non-blocking background download
+            stream_set_blocking($remote, false);
+            $chunk = fread($remote, 8192);
+            if ($chunk !== false && strlen($chunk) > 0) {
+                fwrite($local, $chunk);
+                // Save remaining in background via register_shutdown_function
+                register_shutdown_function(function() use ($remote, $local) {
+                    while (!feof($remote)) {
+                        $c = fread($remote, 65536);
+                        if ($c === false || strlen($c) === 0) break;
+                        fwrite($local, $c);
+                    }
+                    fclose($local);
+                    fclose($remote);
+                });
+            } else {
+                fclose($local);
+                fclose($remote);
+                // Download failed, fall through to redirect
+            }
+        } else {
+            fclose($remote);
+        }
+    }
+
+    // Redirect to Telegram CDN for immediate streaming
+    header('Location: ' . $dl_url);
+    exit;
+}
+
+// 3) Check if message_id is stored — generate t.me link as fallback
+$vid = DB::fetch("SELECT chat_id, message_id, assigned_to_episode_id FROM telegram_videos WHERE file_id = ?", [$file_id]);
+if ($vid && $vid['chat_id'] && $vid['message_id']) {
+    $chat_id_str = ltrim($vid['chat_id'], '-');
+    $tme_url = 'https://t.me/c/' . $chat_id_str . '/' . $vid['message_id'];
     http_response_code(404);
     header('Content-Type: application/json');
-    echo json_encode(['error' => 'File not found or inaccessible']);
+    echo json_encode([
+        'error' => 'File too large for direct streaming',
+        'message' => 'This video exceeds Telegram\'s 20MB streaming limit. View it directly on Telegram.',
+        'telegram_url' => $tme_url
+    ]);
     exit;
 }
 
-// Cache it
-DB::execute(
-    "INSERT INTO telegram_videos (file_id, file_unique_id, file_path, file_size)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE file_path = VALUES(file_path), file_size = VALUES(file_size)",
-    [$info['file_id'], $info['file_unique_id'], $info['file_path'], $info['file_size']]
-);
-
-header('Location: ' . $info['stream_url']);
-exit;
+http_response_code(404);
+header('Content-Type: application/json');
+echo json_encode(['error' => 'File not found or inaccessible']);
