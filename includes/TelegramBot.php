@@ -142,9 +142,15 @@ class TelegramBot {
     public function parseWebhookInput(): ?array {
         if ($this->webhook_data !== null) return $this->webhook_data;
         $input = file_get_contents('php://input');
-        if (!$input) return null;
-        $this->webhook_data = json_decode($input, true);
-        return $this->webhook_data;
+        if ($input) {
+            $this->webhook_data = json_decode($input, true);
+            return $this->webhook_data;
+        }
+        if (isset($GLOBALS['telegram_update'])) {
+            $this->webhook_data = $GLOBALS['telegram_update'];
+            return $this->webhook_data;
+        }
+        return null;
     }
 
     public function getChatId(): ?string {

@@ -51,13 +51,74 @@ if ($action === 'set_webhook') {
     redirect(BASE_URL . '/admin/telegram.php');
 
 } elseif ($action === 'run_poll') {
+    $processed = 0;
     $poll_script = __DIR__ . '/../telegram/poll.php';
     $output = [];
-    $exit_code = 0;
+    $exit_code = -1;
     exec('php ' . escapeshellarg($poll_script) . ' 2>&1', $output, $exit_code);
-    $output_text = implode("\n", $output);
-    log_activity('Manual poll run', 'telegram', 0, ['output' => $output_text, 'exit_code' => $exit_code]);
-    $_SESSION['admin_success'] = 'Poll executed. Output: ' . htmlspecialchars($output_text);
+    if ($exit_code === 0) {
+        $output_text = implode("\n", $output);
+        log_activity('Manual poll run', 'telegram', 0, ['output' => $output_text, 'exit_code' => $exit_code]);
+        $_SESSION['admin_success'] = 'Poll executed. Output: ' . htmlspecialchars($output_text);
+    } else {
+        // Fallback: process updates inline (webhook.php uses exit; we process directly)
+        $updates = $bot->getUpdates(0, 100, ['message', 'callback_query', 'channel_post']);
+        $vids_saved = 0;
+        $subs_registered = 0;
+        $total = 0;
+        $max_offset = 0;
+        foreach ($updates['result'] ?? [] as $update) {
+            $uid = $update['update_id'];
+            if ($uid > $max_offset) $max_offset = $uid;
+            $msg = $update['message'] ?? $update['channel_post'] ?? [];
+            if (empty($msg)) continue;
+            $total++;
+            $chat_id = $msg['chat']['id'] ?? '';
+            if (!$chat_id) continue;
+            $is_channel = !empty($update['channel_post']);
+            $is_group = str_starts_with((string)$chat_id, '-');
+            if (!$is_channel && !$is_group) {
+                try {
+                    DB::execute(
+                        "INSERT INTO telegram_subscribers (chat_id, username, first_name) VALUES (?, ?, ?)
+                         ON DUPLICATE KEY UPDATE active = 1",
+                        [$chat_id, $msg['from']['username'] ?? '', $msg['from']['first_name'] ?? '']
+                    );
+                    $subs_registered++;
+                } catch (Exception $e) {}
+            }
+            $video_data = $msg['video'] ?? $msg['document'] ?? null;
+            if ($video_data && !empty($video_data['file_id'])) {
+                $file_id = $video_data['file_id'];
+                $existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
+                if (!$existing) {
+                    try {
+                        DB::insert(
+                            "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
+                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                            [
+                                $file_id, $video_data['file_unique_id'] ?? '', $video_data['file_size'] ?? 0,
+                                $video_data['file_name'] ?? ($file_id . '.mp4'), $video_data['duration'] ?? null,
+                                $video_data['mime_type'] ?? '', $video_data['width'] ?? null,
+                                $video_data['height'] ?? null, $video_data['thumbnail']['file_id'] ?? '',
+                                $msg['caption'] ?? '', $chat_id,
+                                $msg['from']['id'] ?? $chat_id, $msg['from']['username'] ?? ''
+                            ]
+                        );
+                        $vids_saved++;
+                    } catch (Exception $e) {}
+                }
+            }
+        }
+        if ($max_offset > 0) $bot->getUpdates($max_offset + 1, 1);
+        log_activity('Manual poll run (inline)', 'telegram', 0, ['updates' => $total, 'videos' => $vids_saved, 'subscribers' => $subs_registered]);
+        $msg_parts = [];
+        if ($total > 0) $msg_parts[] = "{$total} update(s) processed";
+        if ($vids_saved > 0) $msg_parts[] = "{$vids_saved} new video(s) saved";
+        if ($subs_registered > 0) $msg_parts[] = "{$subs_registered} subscriber(s) registered";
+        $summary = $msg_parts ? implode(', ', $msg_parts) : 'No pending updates found';
+        $_SESSION['admin_success'] = "Poll executed inline. {$summary}.";
+    }
     redirect(BASE_URL . '/admin/telegram.php');
 
 } elseif ($action === 'sync_channel') {

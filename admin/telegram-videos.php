@@ -123,37 +123,50 @@ if ($action === 'fetch_url' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (preg_match('#t\.me/([a-z0-9_]+)/(\d+)#i', $telegram_url, $m)) {
         $channel = $m[1];
         $msg_id = (int)$m[2];
-
-        // Check if the channel exists
         $chat_info = $bot->getChat('@' . $channel);
         if (!$chat_info || !isset($chat_info['result']['id'])) {
             $_SESSION['admin_error'] = 'Could not find channel @' . htmlspecialchars($channel) . '.';
             redirect(BASE_URL . '/admin/telegram-videos.php');
         }
-
-        // Find an admin user's chat_id to forward the video to
         $target_chat = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
-
-        if ($target_chat) {
-            // Forward the message from the channel to the admin's DM
-            $result = $bot->forwardMessage('@' . $channel, $msg_id, $target_chat['chat_id']);
-            if ($result) {
-                $_SESSION['admin_success'] = 'Video forwarded to your Telegram! The bot saved it. Check the list below and refresh the page.';
-                log_activity('Forwarded Telegram video', 'telegram', 0, ['channel' => $channel, 'msg_id' => $msg_id, 'target' => $target_chat['chat_id']]);
-            } else {
-                // Fallback: try copyMessage
-                $copy_result = $bot->copyMessage('@' . $channel, $msg_id, $target_chat['chat_id'], ['disable_notification' => true]);
-                if ($copy_result) {
-                    $_SESSION['admin_success'] = 'Video copied to your Telegram! The bot saved it. Check the list below.';
-                } else {
-                    $_SESSION['admin_error'] = 'Could not forward the message. Make sure @' . TELEGRAM_BOT_USERNAME . ' is an admin of @' . htmlspecialchars($channel) . '. You can also manually forward the video from the channel to the bot.';
-                }
-            }
-        } else {
-            $_SESSION['admin_error'] = 'No Telegram subscribers found. Send /start to @' . TELEGRAM_BOT_USERNAME . ' first, then try again.';
+        if (!$target_chat) {
+            $_SESSION['admin_error'] = 'No subscribers. Send /start to @' . TELEGRAM_BOT_USERNAME . ' on Telegram, then click "Run Poll Now".';
+            redirect(BASE_URL . '/admin/telegram-videos.php');
         }
+        $forward_result = $bot->forwardMessage('@' . $channel, $msg_id, $target_chat['chat_id']);
+        if (!$forward_result) {
+            $forward_result = $bot->copyMessage('@' . $channel, $msg_id, $target_chat['chat_id'], ['disable_notification' => true]);
+        }
+        if (!$forward_result) {
+            $_SESSION['admin_error'] = 'Failed to forward. Ensure @' . TELEGRAM_BOT_USERNAME . ' is admin of @' . htmlspecialchars($channel);
+            redirect(BASE_URL . '/admin/telegram-videos.php');
+        }
+        $forwarded_msg = $forward_result['result'] ?? [];
+        $video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
+        $file_id = $video_data['file_id'] ?? null;
+        if (!$video_data || !$file_id) {
+            $_SESSION['admin_error'] = 'The message at that URL does not contain a video.';
+            redirect(BASE_URL . '/admin/telegram-videos.php');
+        }
+        $file_name = $video_data['file_name'] ?? ($file_id . '.mp4');
+        $existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
+        if (!$existing) {
+            DB::insert(
+                "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [
+                    $file_id, $video_data['file_unique_id'] ?? '', $video_data['file_size'] ?? 0,
+                    $file_name, $video_data['duration'] ?? null, $video_data['mime_type'] ?? '',
+                    $video_data['width'] ?? null, $video_data['height'] ?? null,
+                    $video_data['thumbnail']['file_id'] ?? '', '',
+                    $target_chat['chat_id'], 'admin', 'admin',
+                ]
+            );
+        }
+        log_activity('Fetched Telegram video', 'telegram', 0, ['channel' => $channel, 'msg_id' => $msg_id, 'file_id' => $file_id]);
+        $_SESSION['admin_success'] = 'Video saved: ' . htmlspecialchars($file_name) . ' (' . ($video_data['duration'] ?? '?') . 's). <a href="telegram-videos.php" style="color:var(--accent);text-decoration:underline;">Refresh to see it in the list.</a>';
     } else {
-        $_SESSION['admin_error'] = 'Invalid Telegram URL. Use format: https://t.me/channelname/123';
+        $_SESSION['admin_error'] = 'Invalid URL. Use format: https://t.me/channelname/123';
     }
     redirect(BASE_URL . '/admin/telegram-videos.php');
 }
@@ -177,6 +190,8 @@ $videos = DB::fetchAll(
 $anime_list = DB::fetchAll("SELECT id, title FROM anime ORDER BY title");
 $bot_info = $bot->getMe();
 $bot_username = $bot_info['result']['username'] ?? TELEGRAM_BOT_USERNAME;
+$sub_count = DB::fetch("SELECT COUNT(*) as cnt FROM telegram_subscribers WHERE active = 1")['cnt'] ?? 0;
+$has_subscribers = $sub_count > 0;
 ?>
 
 <div class="stats-grid" style="margin-bottom:20px;">
@@ -185,6 +200,13 @@ $bot_username = $bot_info['result']['username'] ?? TELEGRAM_BOT_USERNAME;
         <div class="stat-info">
             <h3>@<?= htmlspecialchars($bot_username) ?></h3>
             <p>Bot</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-user"></i></div>
+        <div class="stat-info">
+            <h3 id="subCountHeader"><?= $sub_count ?></h3>
+            <p>Active Subscribers</p>
         </div>
     </div>
     <div class="stat-card">
@@ -203,41 +225,42 @@ $bot_username = $bot_info['result']['username'] ?? TELEGRAM_BOT_USERNAME;
     </div>
 </div>
 
-<div class="card" style="margin-bottom:20px;padding:16px;">
-    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;">
-        <a href="?action=sync_channel" class="btn btn-info"><i class="fas fa-cloud-download-alt"></i> Sync Channel Posts</a>
-        <span style="color:var(--text-muted);font-size:0.85rem;">
-            <i class="fas fa-info-circle"></i> Also try forwarding a video from the channel directly to <strong>@<?= htmlspecialchars($bot_username) ?></strong>, or paste a <code>t.me/username/123</code> URL below.
-        </span>
+<?php if (!$has_subscribers): ?>
+<div class="card" style="margin-bottom:20px;border-left:3px solid var(--warning);">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-play-circle" style="color:var(--warning);"></i> Quick Start — First-time Setup</h3>
     </div>
-    <form method="post" action="telegram-videos.php?action=fetch_url" style="display:flex;gap:8px;margin-top:10px;">
-        <input type="url" name="telegram_url" class="form-control" placeholder="https://t.me/channelname/123" style="flex:1;" required>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-cloud-download-alt"></i> Fetch URL</button>
-    </form>
+    <div style="padding:16px;">
+        <ol style="margin:0;padding-left:20px;color:var(--text-secondary);line-height:2;">
+            <li>Open Telegram and send <code>/start</code> to <strong>@<?= htmlspecialchars($bot_username) ?></strong></li>
+            <li>Come back here and click <strong>"Run Poll Now"</strong> on the <a href="telegram.php" style="color:var(--accent);">Telegram Bot page</a></li>
+            <li>Return here — you'll see "1 Active Subscriber" above, and the URL form below will work</li>
+        </ol>
+        <p style="margin-top:8px;color:var(--text-muted);font-size:0.85rem;">
+            <i class="fas fa-info-circle"></i> Only one subscriber is needed. The bot forwards channel videos to that subscriber and captures the video data instantly.
+        </p>
+    </div>
 </div>
+<?php endif; ?>
 
 <div class="card" style="margin-bottom:20px;">
     <div class="card-header">
-        <h3 class="card-title">Import Video from Telegram</h3>
+        <h3 class="card-title"><i class="fas fa-link"></i> Import from Channel</h3>
+        <div style="display:flex;gap:8px;">
+            <a href="?action=sync_channel" class="btn btn-sm btn-info"><i class="fas fa-cloud-download-alt"></i> Sync Channel</a>
+        </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-        <div>
-            <h4 style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">📤 Forward to Bot</h4>
-            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">
-                Open Telegram and forward a video to <strong>@<?= htmlspecialchars($bot_username) ?></strong>.
-                The bot will save it and you can assign it here.
-            </p>
-        </div>
-        <div>
-            <h4 style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">🔗 Paste Channel Post URL</h4>
-            <form method="post" action="telegram-videos.php?action=fetch_url">
-                <div class="form-row" style="grid-template-columns:1fr auto;">
-                    <input type="url" name="telegram_url" class="form-control" placeholder="https://t.me/aniwavebd/14" value="https://t.me/aniwavebd/14">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Fetch</button>
-                </div>
-                <p style="color:var(--text-muted);font-size:0.78rem;margin-top:4px;">Bot must be an admin of the channel for this to work. Otherwise, forward the video manually.</p>
-            </form>
-        </div>
+    <div style="padding:16px;">
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:10px;">
+            Paste a Telegram channel post URL below. The bot forwards the video from the channel to import it.
+            <?php if (!$has_subscribers): ?>
+            <strong style="color:var(--danger);">Requires a subscriber — follow Quick Start above.</strong>
+            <?php endif; ?>
+        </p>
+        <form method="post" action="telegram-videos.php?action=fetch_url" style="display:flex;gap:8px;">
+            <input type="url" name="telegram_url" class="form-control" placeholder="https://t.me/aniwavebd/16" style="flex:1;" value="https://t.me/aniwavebd/" required>
+            <button type="submit" class="btn btn-primary" <?= !$has_subscribers ? 'disabled' : '' ?>><i class="fas fa-download"></i> Import Now</button>
+        </form>
     </div>
 </div>
 

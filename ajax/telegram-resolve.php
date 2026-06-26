@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['url'])) {
 $url = trim($_POST['url']);
 if (!preg_match('#t\.me/([a-z0-9_]+)/(\d+)#i', $url, $m)) {
     http_response_code(400);
-    echo json_encode(['error' => 'Invalid Telegram URL. Use format: https://t.me/channelname/123']);
+    echo json_encode(['error' => 'Invalid URL. Use: https://t.me/channelname/123']);
     exit;
 }
 
@@ -33,7 +33,7 @@ if (!$chat_info || !isset($chat_info['result']['id'])) {
 $subscriber = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
 if (!$subscriber) {
     http_response_code(400);
-    echo json_encode(['error' => 'No active subscribers. Send /start to @' . TELEGRAM_BOT_USERNAME . ' first.']);
+    echo json_encode(['error' => 'No subscribers. Send /start to @' . TELEGRAM_BOT_USERNAME . ' on Telegram, then click "Run Poll Now" to register.']);
     exit;
 }
 
@@ -43,38 +43,26 @@ if (!$result) {
 }
 if (!$result) {
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to forward message. Ensure @' . TELEGRAM_BOT_USERNAME . ' is admin of @' . $channel]);
+    echo json_encode(['error' => 'Failed to forward. Ensure @' . TELEGRAM_BOT_USERNAME . ' is admin of @' . $channel]);
     exit;
 }
 
-sleep(1);
+$forwarded_msg = $result['result'] ?? [];
+$video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
+$file_id = $video_data['file_id'] ?? null;
 
-$updates = $bot->getUpdates(0, 10, ['message']);
+if (!$video_data || !$file_id) {
+    http_response_code(400);
+    echo json_encode(['error' => 'The message at that URL does not contain a video.']);
+    exit;
+}
 
-$saved_video = null;
-$max_offset = 0;
+$file_name = $video_data['file_name'] ?? ($file_id . '.mp4');
 
-foreach ($updates['result'] ?? [] as $update) {
-    $uid = $update['update_id'];
-    if ($uid > $max_offset) $max_offset = $uid;
-
-    $msg = $update['message'] ?? [];
-    $msg_chat_id = $msg['chat']['id'] ?? '';
-    if ((string)$msg_chat_id !== (string)$subscriber['chat_id']) continue;
-
-    $video_data = $msg['video'] ?? $msg['document'] ?? null;
-    if (!$video_data) continue;
-
-    $file_id = $video_data['file_id'] ?? '';
-    if (!$file_id) continue;
-
-    $existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
-    if ($existing) {
-        $saved_video = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$existing['id']]);
-        break;
-    }
-
-    $file_name = $video_data['file_name'] ?? ($file_id . '.mp4');
+$existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
+if ($existing) {
+    $saved_video = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$existing['id']]);
+} else {
     DB::insert(
         "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -88,36 +76,23 @@ foreach ($updates['result'] ?? [] as $update) {
             $video_data['width'] ?? null,
             $video_data['height'] ?? null,
             $video_data['thumbnail']['file_id'] ?? '',
-            $msg['caption'] ?? '',
+            '',
             $subscriber['chat_id'],
             'admin',
-            'admin'
+            'admin',
         ]
     );
     $new_id = DB::lastInsertId();
     $saved_video = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$new_id]);
-    break;
 }
 
-if ($max_offset > 0) {
-    $bot->getUpdates($max_offset + 1, 1);
-}
-
-if ($saved_video) {
-    echo json_encode([
-        'success' => true,
-        'video_id' => $saved_video['id'],
-        'file_id' => $saved_video['file_id'],
-        'file_name' => $saved_video['file_name'],
-        'proxy_url' => BASE_URL . '/telegram-proxy.php?fid=' . urlencode($saved_video['file_id']),
-        'duration' => $saved_video['duration'],
-        'width' => $saved_video['width'],
-        'height' => $saved_video['height'],
-    ]);
-} else {
-    echo json_encode([
-        'success' => true,
-        'pending' => true,
-        'message' => 'Video forwarded. It will appear in the list shortly — refresh the Telegram Videos page.',
-    ]);
-}
+echo json_encode([
+    'success' => true,
+    'video_id' => $saved_video['id'],
+    'file_id' => $saved_video['file_id'],
+    'file_name' => $saved_video['file_name'],
+    'proxy_url' => BASE_URL . '/telegram-proxy.php?fid=' . urlencode($saved_video['file_id']),
+    'duration' => $saved_video['duration'],
+    'width' => $saved_video['width'],
+    'height' => $saved_video['height'],
+]);
