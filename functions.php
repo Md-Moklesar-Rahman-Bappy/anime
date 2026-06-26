@@ -209,3 +209,21 @@ function auth_logout(): void {
     unset($_SESSION['user_id']);
     session_destroy();
 }
+
+function log_activity(string $action, string $entity_type = null, $entity_id = null, array $details = []): void {
+    $user_id = 0;
+    $username = 'system';
+    if (isset($GLOBALS['_user'])) {
+        $user_id = (int)$GLOBALS['_user']['id'];
+        $username = $GLOBALS['_user']['username'];
+    } elseif (isset($_SESSION['user_id'])) {
+        $user_id = (int)$_SESSION['user_id'];
+        $u = DB::fetch("SELECT username FROM users WHERE id = ?", [$user_id]);
+        if ($u) $username = $u['username'];
+    }
+    DB::insert(
+        "INSERT INTO activity_logs (user_id, username, action, entity_type, entity_id, details, ip_address)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [$user_id, $username, $action, $entity_type, $entity_id, json_encode($details), $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+    );
+}

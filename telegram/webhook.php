@@ -5,23 +5,16 @@ require_once __DIR__ . '/../includes/TelegramBot.php';
 
 $bot = TelegramBot::getInstance();
 
-// Support both webhook (POST) and polling (global variable)
 $update = $bot->parseWebhookInput();
 if (!$update && isset($GLOBALS['telegram_update'])) {
     $update = $GLOBALS['telegram_update'];
 }
-
-if (!$update) {
-    http_response_code(400);
-    exit;
-}
+if (!$update) { http_response_code(400); exit; }
 
 $chat_id = $bot->getChatId();
 $text = $bot->getText();
-
 if (!$chat_id) exit;
 
-// Ensure telegram_subscribers table exists
 try {
     DB::query("CREATE TABLE IF NOT EXISTS `telegram_subscribers` (
         `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -34,8 +27,9 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 } catch (Exception $e) {}
 
-// Helper: extract video info from a message array and save to DB
-function save_video_from_message(array $msg_data, string $source_chat_id, string $from_id, string $from_username): bool {
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function save_video_from_message(array $msg_data, string $source_chat_id, string $from_id, string $from_username): int|false {
     $video_data = null;
     $file_id = null;
     if ($msg_data['video'] ?? null) {
@@ -49,43 +43,242 @@ function save_video_from_message(array $msg_data, string $source_chat_id, string
     $file_name = $video_data['file_name'] ?? ($file_id . '.mp4');
     try {
         $existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
-        if (!$existing) {
-            DB::insert(
-                "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [
-                    $file_id,
-                    $video_data['file_unique_id'] ?? '',
-                    $video_data['file_size'] ?? 0,
-                    $file_name,
-                    $video_data['duration'] ?? null,
-                    $video_data['mime_type'] ?? '',
-                    $video_data['width'] ?? null,
-                    $video_data['height'] ?? null,
-                    $video_data['thumbnail']['file_id'] ?? '',
-                    $msg_data['caption'] ?? '',
-                    $source_chat_id,
-                    $from_id,
-                    $from_username,
-                ]
-            );
-        }
-    } catch (Exception $e) {}
-    return true;
+        if ($existing) return (int)$existing['id'];
+        DB::insert(
+            "INSERT INTO telegram_videos (file_id, file_unique_id, file_size, file_name, duration, mime_type, width, height, thumbnail, caption, chat_id, from_user_id, from_username)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [$file_id, $video_data['file_unique_id'] ?? '', $video_data['file_size'] ?? 0, $file_name,
+             $video_data['duration'] ?? null, $video_data['mime_type'] ?? '', $video_data['width'] ?? null,
+             $video_data['height'] ?? null, $video_data['thumbnail']['file_id'] ?? '', $msg_data['caption'] ?? '',
+             $source_chat_id, $from_id, $from_username]
+        );
+        return (int)DB::lastInsertId();
+    } catch (Exception $e) { return false; }
 }
 
-// ---- Handle channel_post (bot is admin in a channel) ----
+function match_anime_episode_from_caption(string $caption): ?array {
+    $caption = trim($caption);
+    if (!$caption) return null;
+
+    // Strategy 1: "Title Episode 12" or "Title Ep 12" or "Title #12"
+    if (preg_match('/^(.+?)\s+(?:ep|episode|#)\s*(\d+)$/i', $caption, $m)) {
+        $search = trim($m[1]);
+        $ep_num = (int)$m[2];
+        $anime = DB::fetch("SELECT id, title FROM anime WHERE title LIKE ? LIMIT 1", ['%' . $search . '%']);
+        if ($anime) {
+            $ep = DB::fetch("SELECT id FROM episodes WHERE anime_id = ? AND number = ?", [$anime['id'], $ep_num]);
+            return [
+                'anime_id' => $anime['id'], 'anime_title' => $anime['title'],
+                'episode_id' => $ep ? (int)$ep['id'] : null, 'episode_number' => $ep_num,
+                'confidence' => $ep ? 0.95 : 0.7
+            ];
+        }
+    }
+
+    // Strategy 2: "Title ep12", "Title#12", "Title 12 sub/dub"
+    if (preg_match('/^(.+?)\s*[ep#]?\s*(\d+)\s*(sub|dub)?$/i', $caption, $m)) {
+        $search = trim($m[1]);
+        $ep_num = (int)$m[2];
+        $anime = DB::fetch("SELECT id, title FROM anime WHERE title LIKE ? LIMIT 1", ['%' . $search . '%']);
+        if ($anime) {
+            $ep = DB::fetch("SELECT id FROM episodes WHERE anime_id = ? AND number = ?", [$anime['id'], $ep_num]);
+            return [
+                'anime_id' => $anime['id'], 'anime_title' => $anime['title'],
+                'episode_id' => $ep ? (int)$ep['id'] : null, 'episode_number' => $ep_num,
+                'confidence' => $ep ? 0.9 : 0.65
+            ];
+        }
+    }
+
+    // Strategy 3: Just "/14" or "14" — infer from last imported anime
+    if (preg_match('/^\/?(\d+)$/', $caption, $m)) {
+        $ep_num = (int)$m[1];
+        $last = DB::fetch(
+            "SELECT a.id, a.title FROM anime a
+             INNER JOIN episodes e ON e.anime_id = a.id
+             INNER JOIN telegram_videos tv ON tv.assigned_to_episode_id = e.id
+             ORDER BY tv.created_at DESC LIMIT 1"
+        );
+        if (!$last) {
+            $last = DB::fetch("SELECT id, title FROM anime ORDER BY updated_at DESC LIMIT 1");
+        }
+        if ($last) {
+            $ep = DB::fetch("SELECT id FROM episodes WHERE anime_id = ? AND number = ?", [$last['id'], $ep_num]);
+            return [
+                'anime_id' => (int)$last['id'], 'anime_title' => $last['title'],
+                'episode_id' => $ep ? (int)$ep['id'] : null, 'episode_number' => $ep_num,
+                'confidence' => $ep ? 0.85 : 0.5
+            ];
+        }
+    }
+
+    // Strategy 4: "Episode 12" or "Ep 12" without title — same context inference
+    if (preg_match('/(?:ep|episode|#)\s*(\d+)/i', $caption, $m)) {
+        $ep_num = (int)$m[1];
+        $last = DB::fetch(
+            "SELECT a.id, a.title FROM anime a
+             INNER JOIN episodes e ON e.anime_id = a.id
+             INNER JOIN telegram_videos tv ON tv.assigned_to_episode_id = e.id
+             ORDER BY tv.created_at DESC LIMIT 1"
+        );
+        if ($last) {
+            $ep = DB::fetch("SELECT id FROM episodes WHERE anime_id = ? AND number = ?", [$last['id'], $ep_num]);
+            return [
+                'anime_id' => (int)$last['id'], 'anime_title' => $last['title'],
+                'episode_id' => $ep ? (int)$ep['id'] : null, 'episode_number' => $ep_num,
+                'confidence' => $ep ? 0.6 : 0.3
+            ];
+        }
+    }
+
+    return null;
+}
+
+function find_admin_chat(): ?string {
+    $admin = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
+    return $admin ? $admin['chat_id'] : null;
+}
+
+function notify_admin_about_video(TelegramBot $bot, int $video_id, string $caption, ?array $match): void {
+    $admin_chat = find_admin_chat();
+    if (!$admin_chat) return;
+
+    $vid = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$video_id]);
+    if (!$vid) return;
+
+    $proxy = BASE_URL . '/telegram-proxy.php?fid=' . urlencode($vid['file_id']);
+    $name = $vid['file_name'] ?: 'video.mp4';
+    $dur = $vid['duration'] ? gmdate('i:s', $vid['duration']) : '?';
+    $size = $vid['file_size'] ? round($vid['file_size'] / 1024 / 1024, 1) . ' MB' : '?';
+
+    $msg = "📹 <b>New Channel Video</b>\n\n"
+         . "File: <code>{$name}</code>\n"
+         . "Size: {$size}  Duration: {$dur}s\n"
+         . "Caption: " . htmlspecialchars($caption ?: '(none)') . "\n"
+         . "Stream: {$proxy}\n";
+
+    $keyboard = [];
+
+    if ($match && $match['confidence'] >= 0.4) {
+        $anime_link = BASE_URL . '/admin/anime.php?action=edit&id=' . $match['anime_id'];
+        $msg .= "\n🔍 <b>Match found:</b> {$match['anime_title']} — Ep #{$match['episode_number']} (confidence: " . round($match['confidence'] * 100) . "%)";
+
+        if ($match['episode_id']) {
+            $keyboard[] = [
+                ['text' => '✅ Attach to Episode', 'callback_data' => json_encode(['a' => 'attach', 'v' => $video_id, 'e' => $match['episode_id']])]
+            ];
+        } else {
+            $msg .= "\n⚠️ Episode #{$match['episode_number']} doesn't exist yet. Create it first in the admin panel.";
+            $keyboard[] = [
+                ['text' => '📝 Create Episode', 'url' => BASE_URL . '/admin/episodes.php?action=create&anime_id=' . $match['anime_id']]
+            ];
+        }
+    } else {
+        $msg .= "\n❓ Could not match to any anime. You can attach manually in the admin panel.";
+    }
+
+    $keyboard[] = [
+        ['text' => '🗑️ Ignore & Delete', 'callback_data' => json_encode(['a' => 'ignore', 'v' => $video_id])],
+        ['text' => '📋 Admin Panel', 'url' => BASE_URL . '/admin/telegram-videos.php']
+    ];
+
+    $bot->sendMessage($admin_chat, $msg, 'HTML', ['reply_markup' => ['inline_keyboard' => $keyboard]]);
+}
+
+function attach_video_to_episode(int $video_id, int $episode_id, TelegramBot $bot, string $callback_query_id, string $chat_id, int $msg_id): void {
+    $vid = DB::fetch("SELECT * FROM telegram_videos WHERE id = ?", [$video_id]);
+    $ep = DB::fetch("SELECT e.id, e.number, a.title as anime_title FROM episodes e INNER JOIN anime a ON a.id = e.anime_id WHERE e.id = ?", [$episode_id]);
+    if (!$vid || !$ep || $vid['assigned_to_episode_id']) {
+        $bot->call('answerCallbackQuery', ['callback_query_id' => $callback_query_id, 'text' => 'Cannot attach — already assigned or missing.', 'show_alert' => true]);
+        return;
+    }
+    $proxy_url = BASE_URL . '/telegram-proxy.php?fid=' . urlencode($vid['file_id']);
+    DB::insert(
+        "INSERT INTO episode_sources (episode_id, language, source_type, label, url, quality) VALUES (?,?,?,?,?,?)",
+        [$episode_id, 'sub', 'telegram', 'Telegram', $proxy_url, 'HD']
+    );
+    DB::execute("UPDATE telegram_videos SET assigned_to_episode_id = ? WHERE id = ?", [$episode_id, $video_id]);
+    log_activity('Auto-attached Telegram video', 'episode_source', $episode_id, ['video_id' => $video_id, 'anime' => $ep['anime_title'], 'ep' => $ep['number']]);
+    $bot->call('answerCallbackQuery', ['callback_query_id' => $callback_query_id, 'text' => "✅ Attached to {$ep['anime_title']} #{$ep['number']}!"]);
+    $bot->call('editMessageText', [
+        'chat_id' => $chat_id, 'message_id' => $msg_id,
+        'text' => "✅ <b>Attached!</b>\n{$ep['anime_title']} — Episode #{$ep['number']}\nStream: {$proxy_url}",
+        'parse_mode' => 'HTML',
+        'reply_markup' => ['inline_keyboard' => []]
+    ]);
+}
+
+function ignore_video(int $video_id, TelegramBot $bot, string $callback_query_id, string $chat_id, int $msg_id): void {
+    DB::execute("DELETE FROM telegram_videos WHERE id = ? AND assigned_to_episode_id IS NULL", [$video_id]);
+    $bot->call('answerCallbackQuery', ['callback_query_id' => $callback_query_id, 'text' => '🗑️ Deleted.']);
+    $bot->call('editMessageText', [
+        'chat_id' => $chat_id, 'message_id' => $msg_id,
+        'text' => "🗑️ Video ignored and removed.",
+        'reply_markup' => ['inline_keyboard' => []]
+    ]);
+}
+
+// ─── Callback Query (admin responds to Attach / Ignore) ─────────────────────
+
+$callback_query = $update['callback_query'] ?? null;
+if ($callback_query) {
+    $data = json_decode($callback_query['data'] ?? '', true);
+    $cq_id = $callback_query['id'];
+    $cq_chat_id = $callback_query['message']['chat']['id'];
+    $cq_msg_id = $callback_query['message']['message_id'];
+
+    if (!$data || !isset($data['a'])) {
+        $bot->call('answerCallbackQuery', ['callback_query_id' => $cq_id, 'text' => 'Invalid action.']);
+        exit;
+    }
+
+    $action = $data['a'];
+    $video_id = (int)($data['v'] ?? 0);
+
+    if ($action === 'attach' && ($data['e'] ?? null)) {
+        attach_video_to_episode($video_id, (int)$data['e'], $bot, $cq_id, $cq_chat_id, $cq_msg_id);
+    } elseif ($action === 'ignore') {
+        ignore_video($video_id, $bot, $cq_id, $cq_chat_id, $cq_msg_id);
+    } else {
+        $bot->call('answerCallbackQuery', ['callback_query_id' => $cq_id, 'text' => 'Unknown action.']);
+    }
+    exit;
+}
+
+// ─── Channel Post (new video posted in channel where bot is admin) ──────────
+
 $channel_post = $update['channel_post'] ?? null;
 if ($channel_post) {
     $channel_chat_id = $channel_post['chat']['id'] ?? '';
     $channel_username = $channel_post['chat']['username'] ?? '';
     $post_author_id = $channel_post['sender_chat']['id'] ?? $channel_chat_id;
-    $post_author_name = $channel_post['sender_chat']['username'] ?? $channel_username ? "@$channel_username" : "channel";
-    save_video_from_message($channel_post, $channel_chat_id, $post_author_id, $post_author_name);
+    $post_author_name = $channel_post['sender_chat']['username'] ?? ($channel_username ? "@$channel_username" : 'channel');
+
+    $video_id = save_video_from_message($channel_post, $channel_chat_id, $post_author_id, $post_author_name);
+    if (!$video_id) exit;
+
+    $caption = $channel_post['caption'] ?? '';
+    if ($caption) {
+        $match = match_anime_episode_from_caption($caption);
+        if ($match && $match['confidence'] >= 0.8 && $match['episode_id']) {
+            $proxy_url = BASE_URL . '/telegram-proxy.php?fid=' . urlencode(($channel_post['video']['file_id'] ?? $channel_post['document']['file_id'] ?? ''));
+            DB::insert(
+                "INSERT INTO episode_sources (episode_id, language, source_type, label, url, quality) VALUES (?,?,?,?,?,?)",
+                [$match['episode_id'], 'sub', 'telegram', 'Telegram', $proxy_url, 'HD']
+            );
+            DB::execute("UPDATE telegram_videos SET assigned_to_episode_id = ? WHERE id = ?", [$match['episode_id'], $video_id]);
+            log_activity('Auto-attached channel post', 'episode_source', $match['episode_id'], ['video_id' => $video_id, 'anime' => $match['anime_title'], 'ep' => $match['episode_number']]);
+        } elseif ($match && $match['confidence'] >= 0.4) {
+            notify_admin_about_video($bot, $video_id, $caption, $match);
+        } else {
+            notify_admin_about_video($bot, $video_id, $caption, null);
+        }
+    }
     exit;
 }
 
-// ---- Regular message handling ----
+// ─── Regular Message Handling ───────────────────────────────────────────────
+
 $is_channel_or_group = str_starts_with((string)$chat_id, '-');
 if (!$is_channel_or_group) {
     $username = $update['message']['from']['username'] ?? '';
@@ -97,18 +290,18 @@ if (!$is_channel_or_group) {
     );
 }
 
-// ---- Handle video messages (forwarded or direct) ----
 $msg_data = $update['message'] ?? [];
-$saved = save_video_from_message($msg_data, $chat_id, $update['message']['from']['id'] ?? '', $update['message']['from']['username'] ?? '');
-if ($saved) {
-    $file_id = ($msg_data['video']['file_id'] ?? $msg_data['document']['file_id'] ?? '');
-    $file_name = ($msg_data['video']['file_name'] ?? $msg_data['document']['file_name'] ?? $file_id . '.mp4');
+$saved_id = save_video_from_message($msg_data, $chat_id, $update['message']['from']['id'] ?? '', $update['message']['from']['username'] ?? '');
+if ($saved_id) {
+    $vid = DB::fetch("SELECT file_id, file_name FROM telegram_videos WHERE id = ?", [$saved_id]);
+    $fid = $vid['file_id'] ?? '';
+    $fname = $vid['file_name'] ?? 'video.mp4';
     $bot->sendMessage($chat_id,
         "📹 <b>Video received!</b>\n\n"
-        . "File: <code>{$file_name}</code>\n"
-        . "File ID: <code>{$file_id}</code>\n\n"
+        . "File: <code>{$fname}</code>\n"
+        . "File ID: <code>{$fid}</code>\n\n"
         . "Stream URL:\n"
-        . BASE_URL . "/telegram-proxy.php?file_id=" . urlencode($file_id) . "\n\n"
+        . BASE_URL . "/telegram-proxy.php?file_id=" . urlencode($fid) . "\n\n"
         . "Admin panel: " . BASE_URL . "/admin/telegram-videos.php"
     );
     exit;
@@ -155,8 +348,7 @@ switch ($command) {
 
     case '/videos':
         $vids = DB::fetchAll(
-            "SELECT id, file_name, file_id, created_at, assigned_to_episode_id
-             FROM telegram_videos ORDER BY created_at DESC LIMIT 10"
+            "SELECT id, file_name, file_id, created_at, assigned_to_episode_id FROM telegram_videos ORDER BY created_at DESC LIMIT 10"
         );
         if (empty($vids)) {
             $bot->sendMessage($chat_id, "No videos in the library. Forward a video to me to add it.");
@@ -174,14 +366,11 @@ switch ($command) {
 
     case '/latest':
         $eps = DB::fetchAll(
-            "SELECT e.title as ep_title, e.number, e.created_at, a.title, a.slug, a.thumbnail
+            "SELECT e.title as ep_title, e.number, e.created_at, a.title, a.slug
              FROM episodes e INNER JOIN anime a ON a.id = e.anime_id
              ORDER BY e.created_at DESC LIMIT 5"
         );
-        if (empty($eps)) {
-            $bot->sendMessage($chat_id, "No episodes available yet.");
-            break;
-        }
+        if (empty($eps)) { $bot->sendMessage($chat_id, "No episodes available yet."); break; }
         $msg = "<b>Latest Episodes</b>\n\n";
         foreach ($eps as $ep) {
             $url = BASE_URL . '/watch/' . $ep['slug'] . '?ep=' . $ep['number'];
@@ -196,36 +385,25 @@ switch ($command) {
             $bot->sendMessage($chat_id, "Usage: <code>/anime &lt;name&gt;</code>\nExample: <code>/anime One Piece</code>");
             break;
         }
-        $results = DB::fetchAll(
-            "SELECT title, slug, type, episodes_count, rating, thumbnail FROM anime WHERE title LIKE ? LIMIT 5",
-            ['%' . $search . '%']
-        );
+        $results = DB::fetchAll("SELECT title, slug, type, episodes_count, rating FROM anime WHERE title LIKE ? LIMIT 5", ['%' . $search . '%']);
         if (empty($results)) {
-            $bot->sendMessage($chat_id, "No results for \"" . htmlspecialchars($search) . "\". Try Jujutsu Kaisen, Naruto, One Piece...");
+            $bot->sendMessage($chat_id, "No results for \"" . htmlspecialchars($search) . "\".");
             break;
         }
         $msg = "<b>Search results for: " . htmlspecialchars($search) . "</b>\n\n";
         foreach ($results as $r) {
             $url = BASE_URL . '/' . $r['slug'];
-            $msg .= "• <a href=\"{$url}\">{$r['title']}</a>"
-                  . ($r['type'] ? " [{$r['type']}]" : '')
-                  . ($r['rating'] ? " ⭐{$r['rating']}" : '')
-                  . "\n";
+            $msg .= "• <a href=\"{$url}\">{$r['title']}</a>" . ($r['type'] ? " [{$r['type']}]" : '') . ($r['rating'] ? " ⭐{$r['rating']}" : '') . "\n";
         }
         $bot->sendMessage($chat_id, $msg);
         break;
 
     default:
-        // Unknown command — search as anime
-        $results = DB::fetchAll(
-            "SELECT title, slug, type, thumbnail FROM anime WHERE title LIKE ? LIMIT 3",
-            ['%' . $text . '%']
-        );
+        $results = DB::fetchAll("SELECT title, slug, type FROM anime WHERE title LIKE ? LIMIT 3", ['%' . $text . '%']);
         if (!empty($results)) {
             $msg = "<b>Did you mean?</b>\n\n";
             foreach ($results as $r) {
-                $url = BASE_URL . '/' . $r['slug'];
-                $msg .= "• <a href=\"{$url}\">{$r['title']}</a>\n";
+                $msg .= "• <a href=\"" . BASE_URL . '/' . $r['slug'] . "\">{$r['title']}</a>\n";
             }
             $bot->sendMessage($chat_id, $msg);
         } else {

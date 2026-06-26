@@ -30,30 +30,43 @@ if (!$chat_info || !isset($chat_info['result']['id'])) {
     exit;
 }
 
-$subscriber = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
-if (!$subscriber) {
+$file_id = null;
+$video_data = null;
+$source_label = '';
+
+// Strategy 1: forward message to the same channel, capture file_id, delete duplicate
+$result = $bot->forwardMessage('@' . $channel, $msg_id, '@' . $channel);
+if ($result) {
+    $forwarded_msg = $result['result'] ?? [];
+    $video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
+    $file_id = $video_data['file_id'] ?? null;
+    $new_msg_id = $forwarded_msg['message_id'] ?? 0;
+    if ($new_msg_id) {
+        $bot->call('deleteMessage', ['chat_id' => '@' . $channel, 'message_id' => $new_msg_id]);
+    }
+    $source_label = 'channel_self';
+}
+
+// Strategy 2: forward to a subscriber's DM (fallback)
+if (!$file_id) {
+    $subscriber = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
+    if ($subscriber) {
+        $result = $bot->forwardMessage('@' . $channel, $msg_id, $subscriber['chat_id']);
+        if (!$result) {
+            $result = $bot->copyMessage('@' . $channel, $msg_id, $subscriber['chat_id'], ['disable_notification' => true]);
+        }
+        if ($result) {
+            $forwarded_msg = $result['result'] ?? [];
+            $video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
+            $file_id = $video_data['file_id'] ?? null;
+            $source_label = 'subscriber_forward';
+        }
+    }
+}
+
+if (!$file_id) {
     http_response_code(400);
-    echo json_encode(['error' => 'No subscribers. Send /start to @' . TELEGRAM_BOT_USERNAME . ' on Telegram, then click "Run Poll Now" to register.']);
-    exit;
-}
-
-$result = $bot->forwardMessage('@' . $channel, $msg_id, $subscriber['chat_id']);
-if (!$result) {
-    $result = $bot->copyMessage('@' . $channel, $msg_id, $subscriber['chat_id'], ['disable_notification' => true]);
-}
-if (!$result) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Failed to forward. Ensure @' . TELEGRAM_BOT_USERNAME . ' is admin of @' . $channel]);
-    exit;
-}
-
-$forwarded_msg = $result['result'] ?? [];
-$video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
-$file_id = $video_data['file_id'] ?? null;
-
-if (!$video_data || !$file_id) {
-    http_response_code(400);
-    echo json_encode(['error' => 'The message at that URL does not contain a video.']);
+    echo json_encode(['error' => 'Could not retrieve video. The bot must be admin of @' . $channel . ' with can_delete_messages rights. If the channel self-forward fails, you also need a subscriber (send /start to @' . TELEGRAM_BOT_USERNAME . ', then click "Run Poll Now").']);
     exit;
 }
 
@@ -77,7 +90,7 @@ if ($existing) {
             $video_data['height'] ?? null,
             $video_data['thumbnail']['file_id'] ?? '',
             '',
-            $subscriber['chat_id'],
+            $channel,
             'admin',
             'admin',
         ]

@@ -90,20 +90,3 @@ function require_permission(string $permission_slug): void {
     }
 }
 
-function log_activity(string $action, string $entity_type = null, $entity_id = null, array $details = []): void {
-    $user = $GLOBALS['_user'] ?? null;
-    if (!$user) return;
-    DB::insert(
-        "INSERT INTO activity_logs (user_id, username, action, entity_type, entity_id, details, ip_address)
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [
-            $user['id'],
-            $user['username'],
-            $action,
-            $entity_type,
-            $entity_id,
-            json_encode($details),
-            $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
-        ]
-    );
-}

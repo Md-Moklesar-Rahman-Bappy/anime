@@ -128,26 +128,43 @@ if ($action === 'fetch_url' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_error'] = 'Could not find channel @' . htmlspecialchars($channel) . '.';
             redirect(BASE_URL . '/admin/telegram-videos.php');
         }
-        $target_chat = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
-        if (!$target_chat) {
-            $_SESSION['admin_error'] = 'No subscribers. Send /start to @' . TELEGRAM_BOT_USERNAME . ' on Telegram, then click "Run Poll Now".';
+
+        $file_id = null;
+        $video_data = null;
+
+        // Strategy 1: self-forward within the same channel, capture file_id, delete duplicate
+        $result = $bot->forwardMessage('@' . $channel, $msg_id, '@' . $channel);
+        if ($result) {
+            $forwarded_msg = $result['result'] ?? [];
+            $video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
+            $file_id = $video_data['file_id'] ?? null;
+            $new_msg_id = $forwarded_msg['message_id'] ?? 0;
+            if ($new_msg_id) {
+                $bot->call('deleteMessage', ['chat_id' => '@' . $channel, 'message_id' => $new_msg_id]);
+            }
+        }
+
+        // Strategy 2: forward to a subscriber DM (fallback)
+        if (!$file_id) {
+            $subscriber = DB::fetch("SELECT chat_id FROM telegram_subscribers WHERE active = 1 ORDER BY created_at ASC LIMIT 1");
+            if ($subscriber) {
+                $result = $bot->forwardMessage('@' . $channel, $msg_id, $subscriber['chat_id']);
+                if (!$result) {
+                    $result = $bot->copyMessage('@' . $channel, $msg_id, $subscriber['chat_id'], ['disable_notification' => true]);
+                }
+                if ($result) {
+                    $forwarded_msg = $result['result'] ?? [];
+                    $video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
+                    $file_id = $video_data['file_id'] ?? null;
+                }
+            }
+        }
+
+        if (!$file_id) {
+            $_SESSION['admin_error'] = 'Could not retrieve video. Ensure @' . TELEGRAM_BOT_USERNAME . ' is admin of @' . htmlspecialchars($channel) . ' with can_delete_messages rights. If channel self-forward fails, also send /start to the bot and click "Run Poll Now" to register a subscriber.';
             redirect(BASE_URL . '/admin/telegram-videos.php');
         }
-        $forward_result = $bot->forwardMessage('@' . $channel, $msg_id, $target_chat['chat_id']);
-        if (!$forward_result) {
-            $forward_result = $bot->copyMessage('@' . $channel, $msg_id, $target_chat['chat_id'], ['disable_notification' => true]);
-        }
-        if (!$forward_result) {
-            $_SESSION['admin_error'] = 'Failed to forward. Ensure @' . TELEGRAM_BOT_USERNAME . ' is admin of @' . htmlspecialchars($channel);
-            redirect(BASE_URL . '/admin/telegram-videos.php');
-        }
-        $forwarded_msg = $forward_result['result'] ?? [];
-        $video_data = $forwarded_msg['video'] ?? $forwarded_msg['document'] ?? null;
-        $file_id = $video_data['file_id'] ?? null;
-        if (!$video_data || !$file_id) {
-            $_SESSION['admin_error'] = 'The message at that URL does not contain a video.';
-            redirect(BASE_URL . '/admin/telegram-videos.php');
-        }
+
         $file_name = $video_data['file_name'] ?? ($file_id . '.mp4');
         $existing = DB::fetch("SELECT id FROM telegram_videos WHERE file_id = ?", [$file_id]);
         if (!$existing) {
@@ -159,7 +176,7 @@ if ($action === 'fetch_url' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     $file_name, $video_data['duration'] ?? null, $video_data['mime_type'] ?? '',
                     $video_data['width'] ?? null, $video_data['height'] ?? null,
                     $video_data['thumbnail']['file_id'] ?? '', '',
-                    $target_chat['chat_id'], 'admin', 'admin',
+                    '@' . $channel, 'admin', 'admin',
                 ]
             );
         }
@@ -225,44 +242,36 @@ $has_subscribers = $sub_count > 0;
     </div>
 </div>
 
-<?php if (!$has_subscribers): ?>
-<div class="card" style="margin-bottom:20px;border-left:3px solid var(--warning);">
-    <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-play-circle" style="color:var(--warning);"></i> Quick Start — First-time Setup</h3>
-    </div>
-    <div style="padding:16px;">
-        <ol style="margin:0;padding-left:20px;color:var(--text-secondary);line-height:2;">
-            <li>Open Telegram and send <code>/start</code> to <strong>@<?= htmlspecialchars($bot_username) ?></strong></li>
-            <li>Come back here and click <strong>"Run Poll Now"</strong> on the <a href="telegram.php" style="color:var(--accent);">Telegram Bot page</a></li>
-            <li>Return here — you'll see "1 Active Subscriber" above, and the URL form below will work</li>
-        </ol>
-        <p style="margin-top:8px;color:var(--text-muted);font-size:0.85rem;">
-            <i class="fas fa-info-circle"></i> Only one subscriber is needed. The bot forwards channel videos to that subscriber and captures the video data instantly.
-        </p>
-    </div>
-</div>
-<?php endif; ?>
-
 <div class="card" style="margin-bottom:20px;">
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-link"></i> Import from Channel</h3>
         <div style="display:flex;gap:8px;">
-            <a href="?action=sync_channel" class="btn btn-sm btn-info"><i class="fas fa-cloud-download-alt"></i> Sync Channel</a>
+            <a href="?action=sync_channel" class="btn btn-sm btn-info" title="Fetch pending channel_post updates from buffer"><i class="fas fa-cloud-download-alt"></i> Poll Channel</a>
         </div>
     </div>
     <div style="padding:16px;">
         <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:10px;">
-            Paste a Telegram channel post URL below. The bot forwards the video from the channel to import it.
-            <?php if (!$has_subscribers): ?>
-            <strong style="color:var(--danger);">Requires a subscriber — follow Quick Start above.</strong>
-            <?php endif; ?>
+            Paste a Telegram channel post URL below. The bot forwards the video through the channel, captures the <code>file_id</code> from the API response, and deletes the temporary duplicate — all in one synchronous call. No subscriber needed.
         </p>
         <form method="post" action="telegram-videos.php?action=fetch_url" style="display:flex;gap:8px;">
-            <input type="url" name="telegram_url" class="form-control" placeholder="https://t.me/aniwavebd/16" style="flex:1;" value="https://t.me/aniwavebd/" required>
-            <button type="submit" class="btn btn-primary" <?= !$has_subscribers ? 'disabled' : '' ?>><i class="fas fa-download"></i> Import Now</button>
+            <input type="url" name="telegram_url" class="form-control" placeholder="https://t.me/aniwavebd/16" style="flex:1;" required>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Import Now</button>
         </form>
     </div>
 </div>
+
+<?php if (!$has_subscribers): ?>
+<div class="card" style="margin-bottom:20px;border-left:3px solid var(--warning);">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-info-circle" style="color:var(--warning);"></i> Fallback: No Subscriber Registered</h3>
+    </div>
+    <div style="padding:16px;">
+        <p style="color:var(--text-secondary);font-size:0.85rem;">
+            If the channel self-forward fails (some Telegram API versions restrict same-chat forwarding), the system will automatically fall back to forwarding through a subscriber DM. To set that up: open Telegram, send <code>/start</code> to <strong>@<?= htmlspecialchars($bot_username) ?></strong>, then click <strong>"Run Poll Now"</strong> on the <a href="telegram.php" style="color:var(--accent);">Telegram Bot page</a> to register yourself.
+        </p>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="card">
     <div class="card-header">

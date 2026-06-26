@@ -118,6 +118,14 @@ class TelegramBot {
         ]);
     }
 
+    public function deleteMessage(int|string $chat_id, int $message_id): ?array {
+        return $this->call('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
+    }
+
+    public function editMessageText(string $text, array $extra = []): ?array {
+        return $this->call('editMessageText', array_merge(['text' => $text], $extra));
+    }
+
     public function getVideoInfo(string $file_id): ?array {
         $file = $this->getFile($file_id);
         if (!$file || !isset($file['result']['file_path'])) return null;
