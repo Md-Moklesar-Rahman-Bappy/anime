@@ -1,0 +1,228 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] { display: none !important; }
+
+:root {
+    --plyr-color-main: #7c3aed;
+    --plyr-video-background: #000;
+    --plyr-video-controls-background: linear-gradient(transparent, rgba(0,0,0,.85));
+    --plyr-menu-background: #1f2937;
+    --plyr-menu-color: #fff;
+    --plyr-menu-border-color: #374151;
+    --plyr-range-fill-background: #7c3aed;
+    --plyr-tooltip-background: #1f2937;
+    --plyr-tooltip-color: #fff;
+    --plyr-control-spacing: 10px;
+    --plyr-control-radius: 6px;
+}
+
+.plyr--video .plyr__control--overlaid {
+    background: rgba(124, 58, 237, 0.9);
+    padding: 20px;
+    border-radius: 50%;
+}
+.plyr--video .plyr__control--overlaid:hover {
+    background: #7c3aed;
+}
+.plyr--video .plyr__control--overlaid svg {
+    width: 22px;
+    height: 22px;
+}
+.plyr--video .plyr__controls {
+    padding: 8px 12px;
+}
+.plyr__progress__buffer {
+    background: rgba(255,255,255,0.15);
+}
+.plyr--full-ui input[type=range] {
+    color: #7c3aed;
+}
+
+/* Aniwaves-style control bar */
+.player-control-bar {
+    background: #111827;
+    border-top: 1px solid #1f2937;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+    overflow: visible;
+}
+.player-control-bar .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.player-control-bar .ctrl-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+    white-space: nowrap;
+    font-family: inherit;
+}
+.player-control-bar .ctrl-btn:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.08);
+}
+.player-control-bar .ctrl-btn.active {
+    color: #7c3aed;
+}
+.player-control-bar .ctrl-btn.active i {
+    color: #7c3aed;
+}
+.player-control-bar .ctrl-btn i {
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+}
+.player-control-bar .ctrl-btn .label {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Server selector */
+.server-select {
+    background: #1f2937;
+    border: 1px solid #374151;
+    color: #d1d5db;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+}
+.server-select:hover {
+    border-color: #7c3aed;
+}
+.server-select:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px rgba(124,58,237,0.3);
+}
+
+/* Dropdown menus */
+.player-dropdown {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 6px;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 6px;
+    min-width: 200px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+    z-index: 9999;
+}
+.player-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+.player-dropdown .dropdown-item:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+}
+.player-dropdown .dropdown-item.active {
+    color: #7c3aed;
+}
+.player-dropdown .dropdown-item .check {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+}
+.modal-box {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.modal-box h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 16px;
+}
+.modal-box .close-btn {
+    float: right;
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+.modal-box .close-btn:hover {
+    color: #fff;
+}
+
+/* Utility */
+.plyr-wrapper {
+    position: relative;
+    background: #000;
+}
+.plyr-wrapper.light {
+    background: #f3f4f6;
+}
+.skip-overlay {
+    position: absolute;
+    bottom: 70px;
+    left: 16px;
+    z-index: 20;
+    display: flex;
+    gap: 8px;
+}
+.skip-overlay button {
+    background: rgba(124, 58, 237, 0.85);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.skip-overlay button:hover {
+    background: #7c3aed;
+}
