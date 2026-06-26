@@ -43,6 +43,12 @@ $role_level = $GLOBALS['_role_level'] ?? 0;
             <a href="<?= BASE_URL ?>/admin/comments.php" class="nav-item <?= $current_page === 'comments.php' ? 'active' : '' ?>">
                 <i class="fas fa-comments"></i><span>Comments</span>
             </a>
+            <a href="<?= BASE_URL ?>/admin/reports.php" class="nav-item <?= $current_page === 'reports.php' ? 'active' : '' ?>">
+                <i class="fas fa-flag"></i><span>Reports</span>
+            </a>
+            <a href="<?= BASE_URL ?>/admin/requests.php" class="nav-item <?= $current_page === 'requests.php' ? 'active' : '' ?>">
+                <i class="fas fa-plus-circle"></i><span>Requests</span>
+            </a>
             <div class="nav-section-label">Ingestion</div>
             <a href="<?= BASE_URL ?>/admin/imports.php" class="nav-item <?= $current_page === 'imports.php' ? 'active' : '' ?>">
                 <i class="fas fa-download"></i><span>API Imports</span>

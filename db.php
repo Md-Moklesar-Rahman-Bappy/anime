@@ -40,4 +40,8 @@ class DB {
         $stmt = self::query($sql, $params);
         return $stmt->rowCount();
     }
+
+    public static function raw(string $sql): bool {
+        return self::connect()->exec($sql) !== false;
+    }
 }

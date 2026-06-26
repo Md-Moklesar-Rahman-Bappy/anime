@@ -4,7 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= escape($pageTitle ?? SITE_NAME) ?></title>
-    <meta name="description" content="<?= escape(SITE_DESC) ?>">
+    <meta name="description" content="<?= escape($pageDesc ?? SITE_DESC) ?>">
+    <meta name="keywords" content="<?= escape($pageKeywords ?? 'anime, watch anime online, anime streaming, ' . SITE_NAME) ?>">
+    <meta property="og:title" content="<?= escape($ogTitle ?? $pageTitle ?? SITE_NAME) ?>">
+    <meta property="og:description" content="<?= escape($ogDesc ?? $pageDesc ?? SITE_DESC) ?>">
+    <meta property="og:image" content="<?= escape($ogImage ?? (BASE_URL . '/aniwave.png')) ?>">
+    <meta property="og:type" content="<?= $ogType ?? 'website' ?>">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?= escape($ogTitle ?? $pageTitle ?? SITE_NAME) ?>">
+    <meta name="twitter:description" content="<?= escape($ogDesc ?? $pageDesc ?? SITE_DESC) ?>">
+    <meta name="twitter:image" content="<?= escape($ogImage ?? (BASE_URL . '/aniwave.png')) ?>">
+    <link rel="canonical" href="<?= escape($canonical ?? (BASE_URL . $_SERVER['REQUEST_URI'])) ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= asset('css/style.css') ?>">

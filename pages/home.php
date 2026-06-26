@@ -33,6 +33,20 @@ $upcoming_anime = DB::fetchAll(
     "SELECT * FROM anime WHERE status = 'Not yet aired' ORDER BY created_at DESC LIMIT 12"
 );
 
+// Continue Watching
+$continue_watching = [];
+if (is_auth()) {
+    $continue_watching = DB::fetchAll(
+        "SELECT DISTINCT a.*, wh.progress, wh.watched_at, wh.episode_id as last_ep_id
+         FROM watch_history wh
+         JOIN episodes e ON e.id = wh.episode_id
+         JOIN anime a ON a.id = e.anime_id
+         WHERE wh.user_id = ? AND wh.completed = 0
+         ORDER BY wh.watched_at DESC LIMIT 8",
+        [$_SESSION['user_id']]
+    );
+}
+
 // Current tab
 $tab = $_GET['tab'] ?? 'all';
 ?>
@@ -70,6 +84,35 @@ $tab = $_GET['tab'] ?? 'all';
     <div class="hero-nav" id="heroNav">
         <?php foreach ($featured as $i => $feat): ?>
             <button class="hero-dot <?= $i === 0 ? 'active' : '' ?>" data-index="<?= $i ?>"></button>
+        <?php endforeach; ?>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if (!empty($continue_watching)): ?>
+<section class="section">
+    <div class="section-header">
+        <h2 class="section-title"><i class="fas fa-history"></i> Continue Watching</h2>
+        <a href="<?= url('my-list?list=watching') ?>" class="section-link">View all <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <div class="anime-grid">
+        <?php foreach ($continue_watching as $a):
+            $last_ep = DB::fetch("SELECT number FROM episodes WHERE id = ?", [$a['last_ep_id']]);
+        ?>
+        <div class="ani-item continue-item">
+            <a href="<?= url('watch/' . $a['slug'] . '?ep=' . ($last_ep['number'] ?? 1)) ?>" class="ani-link">
+                <div class="ani-img">
+                    <img src="<?= escape($a['thumbnail'] ?: 'https://via.placeholder.com/200x280/1a1a2e/666?text=N') ?>" alt="<?= escape($a['title']) ?>" loading="lazy">
+                    <div class="ani-overlay"><i class="fas fa-play"></i></div>
+                </div>
+                <div class="ani-info">
+                    <h3 class="ani-title"><?= escape($a['title']) ?></h3>
+                    <div class="progress-bar" style="width:100%;height:3px;background:var(--bg-dark);border-radius:2px;margin-top:4px;">
+                        <div class="progress-fill" style="width:<?= (int)$a['progress'] ?>%;height:100%;background:var(--accent);border-radius:2px;"></div>
+                    </div>
+                </div>
+            </a>
+        </div>
         <?php endforeach; ?>
     </div>
 </section>

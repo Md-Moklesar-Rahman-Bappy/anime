@@ -32,8 +32,9 @@
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div class="dropdown-menu" id="userDropdown">
-                        <a href="#" class="dropdown-item"><i class="fas fa-list"></i> My List</a>
-                        <a href="#" class="dropdown-item"><i class="fas fa-history"></i> History</a>
+                        <a href="<?= url('my-list') ?>" class="dropdown-item"><i class="fas fa-list"></i> My List</a>
+                        <a href="<?= url('my-list?list=watching') ?>" class="dropdown-item"><i class="fas fa-history"></i> Continue Watching</a>
+                        <a href="<?= url('request') ?>" class="dropdown-item"><i class="fas fa-plus-circle"></i> Request Anime</a>
                         <?php
                         $cu = current_user();
                         if ($cu && !empty($cu['role_id'])) {

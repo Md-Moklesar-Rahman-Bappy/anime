@@ -1222,6 +1222,88 @@ textarea.form-input { resize: vertical; min-height: 80px; }
     color: var(--text-muted);
 }
 
+/* ---------- Watch Page ---------- */
+.watch-page { display: flex; gap: 20px; align-items: flex-start; }
+.watch-main { flex: 1; min-width: 0; }
+.player-wrapper { background: #000; border-radius: var(--radius); overflow: hidden; }
+.player-container { width: 100%; aspect-ratio: 16/9; position: relative; }
+.player-container video, .player-container .plyr { width: 100%; height: 100%; }
+.iframe-player { width: 100%; height: 100%; }
+.iframe-player iframe { width: 100%; height: 100%; border: none; }
+.server-selector { padding: 10px 16px; background: var(--bg-dark); }
+.server-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.server-lang-btn { padding: 4px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; background: var(--bg-card); color: var(--text-muted); border: none; cursor: pointer; }
+.server-lang-btn.active { background: var(--accent); color: #fff; }
+.server-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.server-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 12px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-color); cursor: pointer; transition: 0.15s; }
+.server-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.server-btn:hover { border-color: var(--accent); }
+.server-name { font-weight: 500; }
+.server-quality { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,0.08); color: var(--text-muted); }
+.episode-info-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-dark); flex-wrap: wrap; gap: 8px; }
+.ep-info-left h2 { font-size: 16px; font-weight: 700; }
+.ep-info-left h2 a { color: var(--text-primary); }
+.ep-info-left h2 a:hover { color: var(--accent); }
+.ep-subtitle { font-size: 13px; color: var(--text-muted); display: block; }
+.ep-info-right { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ep-dropdown { position: relative; }
+.ep-dropdown-menu { display: none; position: absolute; top: 100%; right: 0; z-index: 100; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; max-height: 300px; overflow-y: auto; min-width: 220px; }
+.ep-dropdown-menu.show { display: block; }
+.ep-dropdown-item { display: block; padding: 8px 14px; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); }
+.ep-dropdown-item:last-child { border-bottom: none; }
+.ep-dropdown-item:hover { background: var(--accent-light); color: var(--text-primary); }
+.ep-dropdown-item.active { color: var(--accent); font-weight: 600; }
+.watch-sidebar { width: 300px; flex-shrink: 0; }
+.watch-actions { display: flex; gap: 8px; margin-bottom: 16px; }
+.watch-ep-list { background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
+.watch-ep-list h4 { padding: 12px 16px; font-size: 14px; font-weight: 700; border-bottom: 1px solid var(--border-color); }
+.ep-list-scroll { max-height: 500px; overflow-y: auto; }
+.ep-list-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border-color); transition: 0.15s; }
+.ep-list-item:last-child { border-bottom: none; }
+.ep-list-item:hover { background: var(--accent-light); }
+.ep-list-item.active { background: var(--accent-light); border-left: 3px solid var(--accent); }
+.ep-num { font-size: 13px; font-weight: 700; color: var(--accent); min-width: 24px; }
+.ep-title { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skip-notification { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.8); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px; z-index: 10; pointer-events: none; animation: fadeInOut 2s ease; }
+@keyframes fadeInOut { 0% { opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---------- Comments ---------- */
+.comments-section { padding: 20px 0; }
+.comments-section h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.comment-form { display: flex; gap: 8px; margin-bottom: 16px; }
+.comment-form textarea { flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-dark); color: var(--text-primary); resize: none; font-size: 13px; min-height: 44px; }
+.comment-form textarea:focus { outline: none; border-color: var(--accent); }
+.comment-form .btn { align-self: flex-end; }
+.comments-list { display: flex; flex-direction: column; gap: 12px; }
+.comment-item { display: flex; gap: 12px; padding: 12px; background: var(--bg-dark); border-radius: 8px; }
+.comment-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.comment-body { flex: 1; min-width: 0; }
+.comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.comment-header strong { font-size: 13px; color: var(--text-primary); }
+.comment-time { font-size: 11px; color: var(--text-muted); }
+.comment-delete { margin-left: auto; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
+.comment-delete:hover { background: rgba(239,68,68,0.2); color: var(--danger); }
+.comment-body p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; word-wrap: break-word; }
+
+/* ---------- My List ---------- */
+.my-list-tabs .tab-btn { display: inline-flex; align-items: center; gap: 4px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; background: var(--bg-card); color: var(--text-secondary); transition: 0.15s; }
+.my-list-tabs .tab-btn.active { background: var(--accent); color: #fff; }
+.my-list-tabs .tab-btn .count { font-size: 11px; opacity: 0.7; }
+.my-list-tabs .tab-btn:hover:not(.active) { background: var(--accent-light); }
+
+/* ---------- Continue Watching ---------- */
+.continue-item .progress-bar { margin-top: 6px; }
+.continue-item .progress-fill { transition: width 0.3s ease; }
+
+/* ---------- Admin: Chart card ---------- */
+.card canvas { max-width: 100%; }
+
+@media (max-width: 1024px) {
+    .watch-page { flex-direction: column; }
+    .watch-sidebar { width: 100%; }
+    .ep-list-scroll { max-height: 250px; }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
     .watch-sidebar { width: 260px; }

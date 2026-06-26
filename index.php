@@ -108,6 +108,44 @@ switch (true) {
         redirect('');
         break;
 
+    // My List (favorites)
+    case $route === '/my-list':
+        if (!is_auth()) { $_SESSION['error'] = 'Please log in first.'; redirect(''); }
+        $pageFile = __DIR__ . '/pages/my-list.php';
+        $pageTitle = 'My List - ' . SITE_NAME;
+        break;
+
+    // Anime Request
+    case $route === '/request':
+        $pageFile = __DIR__ . '/pages/request.php';
+        $pageTitle = 'Request Anime - ' . SITE_NAME;
+        break;
+
+    // AJAX: Favorite toggle
+    case $route === '/ajax/favorite':
+        require __DIR__ . '/ajax/favorite.php';
+        exit;
+
+    // AJAX: Watch progress
+    case $route === '/ajax/watch-progress':
+        require __DIR__ . '/ajax/watch-progress.php';
+        exit;
+
+    // AJAX: Comments
+    case $route === '/ajax/comment':
+        require __DIR__ . '/ajax/comment.php';
+        exit;
+
+    // AJAX: Report
+    case $route === '/ajax/report':
+        require __DIR__ . '/ajax/report.php';
+        exit;
+
+    // AJAX: Skip times
+    case $route === '/ajax/skip-times':
+        require __DIR__ . '/ajax/skip-times.php';
+        exit;
+
     // Static pages
     case in_array($route, ['/about', '/faq', '/contact', '/dmca', '/terms']):
         $pageFile = __DIR__ . '/pages/static.php';

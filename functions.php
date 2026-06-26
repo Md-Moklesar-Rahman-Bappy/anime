@@ -52,6 +52,17 @@ function is_auth(): bool {
     return isset($_SESSION['user_id']);
 }
 
+function is_admin(): bool {
+    if (!is_auth()) return false;
+    $user = current_user();
+    if (!$user) return false;
+    if (!empty($user['role_id'])) {
+        $role = DB::fetch("SELECT level FROM roles WHERE id = ?", [$user['role_id']]);
+        return $role && (int)$role['level'] >= 2;
+    }
+    return ($user['role'] ?? 'user') === 'admin';
+}
+
 function current_user(): ?array {
     if (!is_auth()) return null;
     return DB::fetch("SELECT * FROM users WHERE id = ?", [$_SESSION['user_id']]);
